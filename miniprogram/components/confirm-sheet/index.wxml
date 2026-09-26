@@ -1,0 +1,15 @@
+<!--components/confirm-sheet/index.wxml-->
+<view class="sheet-mask" bindtap="onCancel">
+  <view class="sheet-content" catchtap="">
+    <text class="sheet-title {{danger ? 'danger' : ''}}">{{title}}</text>
+    <view class="sheet-items">
+      <view wx:for="{{items}}" wx:key="index" class="sheet-item">
+        <text>• {{item}}</text>
+      </view>
+    </view>
+    <view class="sheet-actions">
+      <button class="btn btn-secondary" bindtap="onCancel">取消</button>
+      <button class="btn {{danger ? 'btn-danger' : 'btn-primary'}}" bindtap="onConfirm">确认</button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "编辑故事",
+  "usingComponents": {
+    "sortable-grid": "/components/sortable-grid/index"
+  }
+}

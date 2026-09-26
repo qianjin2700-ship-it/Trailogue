@@ -1,0 +1,122 @@
+<!--pages/photo-review/index.wxml — 元数据确认-->
+<view class="page-photo-review">
+  <!-- EXIF 自动解析进行中提示 -->
+  <view wx:if="{{metaProcessing}}" class="meta-processing-bar">
+    <view class="meta-processing-dot" />
+    <text>正在自动解析照片的时间与地点{{metaProgress ? '（' + metaProgress + '）' : ''}}…</text>
+    <text wx:if="{{metaStuck}}" class="meta-stuck-hint">（解析暂未响应）</text>
+    <view class="meta-close" catchtap="onCloseMetaBar">关闭</view>
+  </view>
+
+  <!-- 重复照片提示条 -->
+  <view wx:if="{{dupCount > 0}}" class="dup-banner">
+    <text class="dup-text">发现 {{dupCount}} 张重复照片</text>
+    <view class="dup-btn" catchtap="onDedupeAll">一键去重</view>
+  </view>
+
+  <!-- 摘要条 -->
+  <view class="summary-bar">
+    <text class="summary-item high">高置信 {{summary.high}}</text>
+    <text class="summary-item low">待确认 {{summary.low}}</text>
+    <text class="summary-item unknown">未知 {{summary.unknown}}</text>
+  </view>
+
+  <scroll-view class="photo-scroll" scroll-y enhanced show-scrollbar>
+    <!-- 照片列表（时间轴） -->
+    <view class="photo-list" wx:if="{{!loading && photos.length > 0}}">
+      <view wx:for="{{photos}}" wx:key="_id" class="photo-row card" data-id="{{item._id}}" bindtap="onUpdateMeta">
+        <image class="thumb" src="{{item._thumb_url || item._temp_url}}" mode="aspectFill" lazy-load />
+        <view class="photo-info">
+          <text class="photo-time">{{item._formattedTime || '未知时间'}}</text>
+          <text class="photo-location">{{item._locationLabel || '未知地点'}}</text>
+          <view class="badges">
+            <meta-badge source="{{item.taken_at_source}}" confidence="{{item.taken_at_confidence}}" />
+            <view wx:if="{{item._isDuplicate}}" class="dup-badge">重复</view>
+          </view>
+        </view>
+        <view class="row-actions">
+          <view class="edit-hint">补充</view>
+          <view class="delete-hint" catchtap="onDeletePhoto" data-id="{{item._id}}">删除</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!loading && photos.length === 0}}" class="empty-state">
+      <text>暂无照片</text>
+      <text class="empty-sub">上传照片后会在这里确认拍摄时间与地点</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+  </scroll-view>
+
+  <!-- 确认按钮 -->
+  <view class="confirm-area safe-bottom">
+    <button class="btn btn-primary {{confirming ? 'btn-disabled' : ''}}" bindtap="onConfirmAndGenerate">
+      {{confirming ? '生成中...' : '确认并生成故事'}}
+    </button>
+  </view>
+
+  <!-- 编辑面板 -->
+  <view wx:if="{{editing}}" class="edit-mask" catchtouchmove="true">
+    <view class="edit-sheet" catchtap="noop">
+      <view class="sheet-header">
+        <text class="sheet-title">补充元数据</text>
+        <text class="sheet-close" bindtap="onCloseEdit">取消</text>
+      </view>
+
+      <scroll-view class="sheet-body" scroll-y>
+        <image
+          wx:if="{{editingPhoto}}"
+          class="sheet-thumb"
+          src="{{editingPhoto._thumb_url || editingPhoto._temp_url}}"
+          mode="aspectFill"
+        />
+
+        <view class="form-section">
+          <view class="form-label">拍摄时间</view>
+          <view class="form-row">
+            <picker mode="date" value="{{editTakenAt}}" bindchange="onDateChange">
+              <view class="picker-value {{editTakenAt ? '' : 'placeholder'}}">
+                {{editTakenAt || '选择日期'}}
+              </view>
+            </picker>
+            <picker mode="time" value="{{editTakenTime}}" bindchange="onTimeChange">
+              <view class="picker-value {{editTakenTime ? '' : 'placeholder'}}">
+                {{editTakenTime || '选择时间'}}
+              </view>
+            </picker>
+          </view>
+        </view>
+
+        <view class="form-section">
+          <view class="form-label">地点</view>
+          <input
+            class="form-input"
+            placeholder="城市，如：成都"
+            value="{{editCity}}"
+            bindinput="onCityInput"
+          />
+          <input
+            class="form-input"
+            placeholder="具体地点，如：宽窄巷子"
+            value="{{editPoi}}"
+            bindinput="onPoiInput"
+          />
+        </view>
+
+        <view class="form-section switch-row">
+          <text class="form-label">识别不出，标记为未知</text>
+          <switch checked="{{editMarkUnknown}}" bindchange="onMarkUnknownChange" />
+        </view>
+
+        <view class="form-tip">
+          补充准确的拍摄时间与地点，能让 AI 按时间线/地点更好地编排故事。
+        </view>
+      </scroll-view>
+
+      <view class="sheet-footer safe-bottom">
+        <button class="btn btn-primary" bindtap="onSaveMeta">保存</button>
+      </view>
+    </view>
+  </view>
+</view>

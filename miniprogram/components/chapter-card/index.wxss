@@ -1,0 +1,78 @@
+/* components/chapter-card/index.wxss */
+.chapter-card {
+  padding: 24rpx;
+}
+
+.chapter-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.chapter-meta {
+  font-size: 24rpx;
+  color: #888;
+  margin-bottom: 16rpx;
+}
+
+.narrative {
+  font-size: 30rpx;
+  line-height: 1.8;
+}
+
+.edit-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.title-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.lock-toggle {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: #f7f7f7;
+}
+
+.lock-toggle.locked {
+  background: rgba(232, 168, 124, 0.15);
+}
+
+.narrative-input {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 16rpx;
+  background: #f7f7f7;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.edit-actions {
+  margin-top: 12rpx;
+}
+
+.regen-btn {
+  display: inline-block;
+  padding: 12rpx 24rpx;
+  background: #4a7c59;
+  color: #fff;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+}
+
+.regen-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

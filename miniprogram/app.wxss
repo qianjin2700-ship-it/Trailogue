@@ -1,0 +1,117 @@
+/* app.wxss — 全局样式 */
+
+/* 色彩系统 */
+page {
+  --color-primary: #4a7c59;
+  --color-primary-light: #6b9b7a;
+  --color-primary-dark: #2d5a3d;
+  --color-accent: #e8a87c;
+  --color-bg: #f7f7f7;
+  --color-card: #ffffff;
+  --color-text: #2c2c2c;
+  --color-text-secondary: #888888;
+  --color-text-hint: #b0b0b0;
+  --color-danger: #d64545;
+  --color-success: #4a7c59;
+  --color-warning: #e8a87c;
+  --color-border: #e5e5e5;
+  --color-badge-exif: #4a7c59;
+  --color-badge-inferred: #e8a87c;
+  --color-badge-user: #4a90d9;
+  --color-badge-unknown: #b0b0b0;
+
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 28rpx;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+}
+
+/* 通用卡片 */
+.card {
+  background: var(--color-card);
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 按钮 */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 500;
+  border: none;
+  transition: opacity 0.2s;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--color-card);
+  color: var(--color-primary);
+  border: 2rpx solid var(--color-primary);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.btn-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* 文本辅助 */
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-hint {
+  color: var(--color-text-hint);
+  font-size: 24rpx;
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+/* 布局 */
+.flex-row {
+  display: flex;
+  align-items: center;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.gap-sm {
+  gap: 16rpx;
+}
+
+.gap-md {
+  gap: 24rpx;
+}
+
+/* 安全区底部 */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

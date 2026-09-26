@@ -1,0 +1,60 @@
+<!--pages/story-preview/index.wxml — 故事预览-->
+<view class="page-preview">
+  <block wx:if="{{story && !loading}}">
+    <!-- 封面 -->
+    <view class="cover-section">
+      <text class="story-title">{{story.title}}</text>
+      <text class="story-subtitle" wx:if="{{story.subtitle}}">{{story.subtitle}}</text>
+      <view wx:if="{{degraded}}" class="degraded-badge">含模板降级内容</view>
+      <text class="story-version">v{{version}}</text>
+    </view>
+
+    <!-- 开篇 -->
+    <view class="card section">
+      <text class="section-label">开篇</text>
+      <text class="narrative" user-select>{{story.preface}}</text>
+    </view>
+
+    <!-- 章节 -->
+    <view wx:for="{{story.chapters}}" wx:key="chapter_id" class="card section">
+      <text class="chapter-title">{{item.title}}</text>
+      <view class="chapter-meta" wx:if="{{item.date_label || item.location_label}}">
+        <text wx:if="{{item.date_label}}">{{item.date_label}}</text>
+        <text wx:if="{{item.date_label && item.location_label}}"> · </text>
+        <text wx:if="{{item.location_label}}">{{item.location_label}}</text>
+      </view>
+      <text class="narrative" user-select>{{item.narrative}}</text>
+
+      <!-- 章节照片 -->
+      <view class="chapter-photos">
+        <image
+          wx:for="{{item.photo_ids}}"
+          wx:for-item="pid"
+          wx:key="*this"
+          class="chapter-photo"
+          src="{{pid}}"
+          mode="aspectFill"
+          lazy-load
+        />
+      </view>
+    </view>
+
+    <!-- 尾声 -->
+    <view class="card section">
+      <text class="section-label">尾声</text>
+      <text class="narrative" user-select>{{story.epilogue}}</text>
+    </view>
+
+    <!-- 操作栏 -->
+    <view class="action-bar safe-bottom">
+      <button class="btn btn-secondary" bindtap="onEdit">编辑</button>
+      <button class="btn btn-secondary" bindtap="onExport" disabled="{{exporting}}">{{exporting ? '导出中...' : '导出'}}</button>
+      <button class="btn btn-primary" bindtap="onShare">分享</button>
+    </view>
+  </block>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <!-- 导出渲染用隐藏 canvas（2d 节点） -->
+  <canvas type="2d" id="export-canvas" class="export-canvas"></canvas>
+</view>

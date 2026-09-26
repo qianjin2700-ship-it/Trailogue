@@ -1,0 +1,16 @@
+<!--components/duplicate-dialog/index.wxml-->
+<view class="dialog-mask">
+  <view class="dialog-content">
+    <text class="dialog-title">检测到重复照片</text>
+    <text class="dialog-desc">以下照片与已上传照片内容相同，请选择保留或删除。</text>
+    <view class="photo-list">
+      <view wx:for="{{photos}}" wx:key="index" class="dup-item">
+        <image class="dup-thumb" src="{{item.thumbPath || item.thumb_file_id}}" mode="aspectFill" />
+        <view class="dup-actions">
+          <view class="dup-btn keep" data-index="{{index}}" bindtap="onKeep">保留</view>
+          <view class="dup-btn remove" data-index="{{index}}" bindtap="onRemove">删除</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

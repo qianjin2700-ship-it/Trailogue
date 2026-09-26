@@ -1,0 +1,14 @@
+<!--components/upload-item/index.wxml-->
+<view class="upload-item">
+  <image class="thumb" src="{{photo.thumbPath || photo.thumb_file_id}}" mode="aspectFill" />
+  <view class="info">
+    <view class="status-row">
+      <text class="status-text status-{{status}}">{{status}}</text>
+      <text wx:if="{{failReason}}" class="fail-reason">{{failReason}}</text>
+    </view>
+    <progress wx:if="{{status === 'uploading'}}" percent="{{progress}}" stroke-width="4" activeColor="#4a7c59" />
+  </view>
+  <view wx:if="{{status === 'failed'}}" class="retry-btn" bindtap="onRetry">
+    <text>重试</text>
+  </view>
+</view>

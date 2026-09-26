@@ -1,0 +1,11 @@
+<!--pages/failure/index.wxml — 通用失败页-->
+<view class="page-failure">
+  <view class="failure-card">
+    <view class="failure-icon">!</view>
+    <text class="failure-message">{{message}}</text>
+    <view class="failure-actions">
+      <button class="btn btn-primary" bindtap="onRetry">重试</button>
+      <button class="btn btn-secondary" bindtap="onBackHome">返回首页</button>
+    </view>
+  </view>
+</view>

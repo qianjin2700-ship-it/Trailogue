@@ -1,0 +1,32 @@
+<!--pages/album-detail/index.wxml — 相册详情-->
+<view class="page-album-detail">
+  <block wx:if="{{data && !loading}}">
+    <!-- 相册信息 -->
+    <view class="card album-info">
+      <text class="album-name">{{data.album.name}}</text>
+      <text class="album-meta">{{data.album.photo_count}}张 · {{data.album.status}}</text>
+
+      <!-- 元数据摘要 -->
+      <view class="meta-summary" wx:if="{{data.meta_summary}}">
+        <text>高置信 {{data.meta_summary.high}}</text>
+        <text>待确认 {{data.meta_summary.low}}</text>
+        <text>未知 {{data.meta_summary.unknown}}</text>
+      </view>
+    </view>
+
+    <!-- 操作按钮组 -->
+    <view class="actions">
+      <button class="btn btn-secondary" bindtap="onEdit">编辑相册</button>
+      <button wx:if="{{data.album.status === 'draft'}}" class="btn btn-primary" bindtap="onContinueUpload">继续上传</button>
+      <button wx:if="{{data.album.status === 'draft' || data.album.status === 'reviewing'}}" class="btn btn-secondary" bindtap="onConfirmMeta">确认元数据</button>
+      <button wx:if="{{data.album.status === 'reviewing'}}" class="btn btn-primary" bindtap="onGenerate">生成故事</button>
+      <button wx:if="{{data.album.status === 'generating'}}" class="btn btn-secondary" bindtap="onGenerate">查看进度</button>
+      <button wx:if="{{data.album.status === 'done'}}" class="btn btn-primary" bindtap="onViewStory">查看故事</button>
+      <button wx:if="{{data.album.status === 'done'}}" class="btn btn-secondary" bindtap="onGenerate">重新生成</button>
+      <button wx:if="{{data.album.status === 'done'}}" class="btn btn-secondary" bindtap="onShare">分享</button>
+      <button class="btn btn-danger" bindtap="onDelete">删除相册</button>
+    </view>
+  </block>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+</view>

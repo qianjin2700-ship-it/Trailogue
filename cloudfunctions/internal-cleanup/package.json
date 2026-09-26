@@ -1,0 +1,12 @@
+{
+    "name": "internal-cleanup",
+    "version": "1.0.0",
+    "description": "旅迹成书 — 定时清理（过期原图/软删/僵尸任务）",
+    "main": "index.js",
+    "dependencies": {
+        "wx-server-sdk": "^3.0.4"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.130"
+    }
+}

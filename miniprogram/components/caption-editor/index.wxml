@@ -1,0 +1,4 @@
+<!--components/caption-editor/index.wxml-->
+<view class="caption-editor">
+  <input class="caption-input" value="{{value}}" bindinput="onInput" maxlength="60" placeholder="添加图说..." />
+</view>

@@ -1,0 +1,44 @@
+<!--pages/story-generating/index.wxml — 生成进度-->
+<view class="page-generating">
+  <view class="card progress-section">
+    <text class="title">正在生成你的故事</text>
+
+    <!-- 阶段链 -->
+    <view class="stages">
+      <view wx:for="{{stages}}" wx:key="key" class="stage-item {{currentStage === item.key ? 'active' : ''}}">
+        <view class="stage-dot" />
+        <text class="stage-label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <!-- 进度条 -->
+    <progress percent="{{progress * 100}}" stroke-width="8" activeColor="#4a7c59" />
+
+    <!-- 当前阶段信息 -->
+    <text class="stage-message">{{stageMessage}}</text>
+    <text class="batch-info" wx:if="{{batches.total > 0}}">已完成 {{batches.done}}/{{batches.total}} 批</text>
+
+    <!-- 失败处理 -->
+    <view wx:if="{{failedPhotoIds.length > 0}}" class="failed-section">
+      <text class="failed-title">{{failedPhotoIds.length}} 张照片处理失败</text>
+      <view class="failed-actions">
+        <button class="btn btn-secondary" bindtap="onRetryFailed">重试失败项</button>
+        <button class="btn btn-secondary" bindtap="onRemoveFailed">移除失败照片</button>
+      </view>
+    </view>
+
+    <!-- 完成失败 -->
+    <view wx:if="{{status === 'failed'}}" class="error-section">
+      <text class="error-text">{{error || '生成失败'}}</text>
+      <view class="failed-actions">
+        <button class="btn btn-secondary" bindtap="onRetryGenerate">重试生成</button>
+        <button class="btn btn-secondary" bindtap="onBackHome">返回首页</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="leave-hint">
+    <text>可以离开本页，生成完成后会通知你</text>
+    <button class="btn btn-secondary" bindtap="onBackHome">返回首页</button>
+  </view>
+</view>

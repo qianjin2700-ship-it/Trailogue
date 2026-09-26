@@ -1,0 +1,103 @@
+/* pages/story-generating/index.wxss */
+.page-generating {
+  min-height: 100vh;
+  padding: 24rpx;
+}
+
+.progress-section {
+  text-align: center;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 40rpx;
+}
+
+.stages {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 40rpx;
+}
+
+.stage-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.stage-item.active {
+  opacity: 1;
+}
+
+.stage-dot {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  background: var(--color-text-hint);
+}
+
+.stage-item.active .stage-dot {
+  background: var(--color-primary);
+  box-shadow: 0 0 12rpx var(--color-primary);
+}
+
+.stage-label {
+  font-size: 22rpx;
+  color: var(--color-text-secondary);
+}
+
+.stage-message {
+  display: block;
+  margin: 24rpx 0 8rpx;
+  font-size: 28rpx;
+  color: var(--color-text);
+}
+
+.batch-info {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.failed-section, .error-section {
+  margin-top: 32rpx;
+  padding: 24rpx;
+  background: rgba(214, 69, 69, 0.05);
+  border-radius: 12rpx;
+}
+
+.failed-title {
+  font-size: 28rpx;
+  color: var(--color-danger);
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.failed-actions {
+  display: flex;
+  gap: 16rpx;
+  justify-content: center;
+}
+
+.error-text {
+  font-size: 28rpx;
+  color: var(--color-danger);
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.leave-hint {
+  text-align: center;
+  margin-top: 40rpx;
+}
+
+.leave-hint text {
+  font-size: 24rpx;
+  color: var(--color-text-hint);
+  display: block;
+  margin-bottom: 16rpx;
+}

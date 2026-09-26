@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "元数据确认",
+  "usingComponents": {
+    "meta-badge": "/components/meta-badge/index"
+  }
+}

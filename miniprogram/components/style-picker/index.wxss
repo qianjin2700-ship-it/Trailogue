@@ -1,0 +1,20 @@
+/* components/style-picker/index.wxss */
+.style-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.style-item {
+  padding: 16rpx 32rpx;
+  background: #f7f7f7;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
+}
+
+.style-item.active {
+  background: #4a7c59;
+  color: #fff;
+}

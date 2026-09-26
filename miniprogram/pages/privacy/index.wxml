@@ -1,0 +1,49 @@
+<!--pages/privacy/index.wxml — 隐私与数据管理-->
+<view class="page-privacy">
+  <!-- 隐私政策 -->
+  <view class="card section">
+    <text class="section-title">隐私政策</text>
+    <text class="policy-text">
+1. 照片上传至云端用于生成故事，保存期限可设为 90 天或永久；\n
+2. 默认不将用户照片用于模型训练；\n
+3. 原始照片、缩略图、GPS、AI 分析结果和故事内容均视为用户隐私数据；\n
+4. 相册默认私密，仅分享 token 持有者可见，token 可撤销、可过期；\n
+5. 云函数日志不记录原始照片、GPS 原始数据、完整提示词、密钥等敏感内容。
+    </text>
+  </view>
+
+  <!-- 保存期限 -->
+  <view class="card section">
+    <text class="section-title">原图保存期限</text>
+    <view class="retention-options">
+      <view class="retention-item {{retentionDays === 90 ? 'active' : ''}}" data-days="90" bindtap="onSelectRetention">
+        <text>90 天</text>
+        <text class="desc">到期仅保留故事与缩略图</text>
+      </view>
+      <view class="retention-item {{retentionDays === -1 ? 'active' : ''}}" data-days="-1" bindtap="onSelectRetention">
+        <text>永久</text>
+        <text class="desc">原图将一直保存</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 删除数据 -->
+  <view class="card section danger-section">
+    <text class="section-title text-danger">删除全部数据</text>
+    <text class="danger-desc">将永久删除你所有的相册、照片、故事和关联数据，不可恢复。</text>
+    <button class="btn btn-danger" bindtap="onShowDeleteConfirm">一键删除全部数据</button>
+  </view>
+</view>
+
+<!-- 删除确认弹窗 -->
+<view wx:if="{{showDeleteConfirm}}" class="modal-mask">
+  <view class="modal-content">
+    <text class="modal-title">确认删除</text>
+    <text class="modal-desc">此操作不可恢复，将删除你所有的相册和照片。请输入"删除"确认。</text>
+    <input class="modal-input" value="{{deleteInput}}" bindinput="onDeleteInput" placeholder='输入"删除"' />
+    <view class="modal-actions">
+      <button class="btn btn-secondary" bindtap="onCancelDelete">取消</button>
+      <button class="btn btn-danger {{deleting ? 'btn-disabled' : ''}}" bindtap="onConfirmDelete">确认删除</button>
+    </view>
+  </view>
+</view>

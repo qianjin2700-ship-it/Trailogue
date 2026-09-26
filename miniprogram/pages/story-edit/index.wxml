@@ -1,0 +1,61 @@
+<!--pages/story-edit/index.wxml — 故事编辑-->
+<view class="page-edit">
+  <block wx:if="{{story && !loading}}">
+    <!-- 标题编辑 -->
+    <view class="card edit-section">
+      <text class="label">标题</text>
+      <input class="input" value="{{story.title}}" bindinput="onInputTitle" maxlength="20" />
+    </view>
+
+    <!-- 照片排序：拖拽调整顺序，影响重新生成时的编排与导出次序 -->
+    <view class="card edit-section">
+      <text class="label">照片顺序</text>
+      <view wx:if="{{photosLoading}}" class="photos-tip">照片加载中...</view>
+      <sortable-grid
+        wx:else
+        photos="{{photos}}"
+        disabled="{{savingOrder}}"
+        max-height="{{280}}"
+        bind:change="onPhotosOrderChange"
+      />
+      <text class="photos-note">调整顺序后，需重新生成故事，新顺序才会体现在章节中。</text>
+    </view>
+
+    <!-- 章节列表 -->
+    <view wx:for="{{story.chapters}}" wx:key="chapter_id" class="card edit-section">
+      <view class="chapter-header">
+        <input class="chapter-title-input" value="{{item.title}}" data-index="{{index}}" bindinput="onInputChapterTitle" maxlength="16" />
+        <view class="chapter-actions">
+          <!-- 锁定开关 -->
+          <view class="lock-toggle {{item.locked ? 'locked' : ''}}" data-index="{{index}}" bindtap="onToggleLock">
+            <text>{{item.locked ? '🔒' : '🔓'}}</text>
+          </view>
+          <!-- 重生成 -->
+          <view class="regen-btn {{item.locked ? 'disabled' : ''}}" data-index="{{index}}" bindtap="onRegenerateChapter">
+            <text>{{regeneratingChapterId === item.chapter_id ? '...' : '重生成'}}</text>
+          </view>
+        </view>
+      </view>
+
+      <textarea class="narrative-input" value="{{item.narrative}}" data-index="{{index}}" bindinput="onInputNarrative" maxlength="-1" />
+
+      <view class="chapter-flags">
+        <text wx:if="{{item.locked}}" class="flag flag-locked">已锁定</text>
+        <text wx:if="{{item.user_edited}}" class="flag flag-edited">已编辑</text>
+      </view>
+    </view>
+
+    <!-- 全局操作 -->
+    <view class="global-actions">
+      <button class="btn btn-secondary" bindtap="onRegenerateAll">整体重生成</button>
+      <button class="btn btn-secondary" bindtap="onRestoreVersion">恢复上一版本</button>
+    </view>
+
+    <!-- 保存按钮 -->
+    <view class="save-area safe-bottom">
+      <button class="btn btn-primary" bindtap="onSave">保存（v{{version}}）</button>
+    </view>
+  </block>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+</view>

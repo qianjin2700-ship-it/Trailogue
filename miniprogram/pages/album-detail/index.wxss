@@ -1,0 +1,41 @@
+/* pages/album-detail/index.wxss */
+.page-album-detail {
+  min-height: 100vh;
+}
+
+.album-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.album-name {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.album-meta {
+  font-size: 26rpx;
+  color: var(--color-text-secondary);
+}
+
+.meta-summary {
+  display: flex;
+  gap: 32rpx;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding: 24rpx;
+}
+
+.loading {
+  text-align: center;
+  padding: 80rpx;
+  color: var(--color-text-hint);
+}

@@ -1,0 +1,7 @@
+<!--components/photo-card/index.wxml-->
+<view class="photo-card" bindtap="onTap">
+  <image class="thumb" src="{{photo.thumb_file_id}}" mode="aspectFill" />
+  <view wx:if="{{showMeta}}" class="meta-overlay">
+    <meta-badge source="{{photo.taken_at_source}}" confidence="{{photo.taken_at_confidence}}" />
+  </view>
+</view>

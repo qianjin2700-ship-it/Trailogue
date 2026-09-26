@@ -1,0 +1,6 @@
+<!--components/empty-state/index.wxml-->
+<view class="empty-state">
+  <text class="icon">{{icon}}</text>
+  <text class="text">{{text}}</text>
+  <button wx:if="{{actionText}}" class="btn btn-primary action-btn" bindtap="onAction">{{actionText}}</button>
+</view>

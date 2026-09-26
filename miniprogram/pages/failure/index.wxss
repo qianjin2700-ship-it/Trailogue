@@ -1,0 +1,40 @@
+/* pages/failure/index.wxss */
+.page-failure {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.failure-card {
+  text-align: center;
+  padding: 60rpx 32rpx;
+}
+
+.failure-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: rgba(214, 69, 69, 0.1);
+  color: var(--color-danger);
+  font-size: 64rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 32rpx;
+}
+
+.failure-message {
+  font-size: 32rpx;
+  color: var(--color-text);
+  display: block;
+  margin-bottom: 40rpx;
+}
+
+.failure-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 0 60rpx;
+}

@@ -1,0 +1,6 @@
+/* components/long-image-canvas/index.wxss */
+.long-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: 0;
+}

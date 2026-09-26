@@ -1,0 +1,117 @@
+/* pages/story-preview/index.wxss */
+.page-preview {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.cover-section {
+  padding: 60rpx 32rpx 40rpx;
+  text-align: center;
+}
+
+.story-title {
+  font-size: 48rpx;
+  font-weight: 700;
+  display: block;
+}
+
+.story-subtitle {
+  font-size: 28rpx;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-top: 12rpx;
+}
+
+.degraded-badge {
+  display: inline-block;
+  margin-top: 16rpx;
+  padding: 4rpx 16rpx;
+  background: rgba(232, 168, 124, 0.15);
+  color: var(--color-warning);
+  font-size: 22rpx;
+  border-radius: 16rpx;
+}
+
+.story-version {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: var(--color-text-hint);
+}
+
+.section {
+  margin: 16rpx 24rpx;
+}
+
+.section-label {
+  font-size: 24rpx;
+  color: var(--color-text-hint);
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.chapter-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.chapter-meta {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  margin-bottom: 16rpx;
+}
+
+.narrative {
+  font-size: 30rpx;
+  line-height: 1.8;
+  color: var(--color-text);
+}
+
+.chapter-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 20rpx;
+}
+
+.chapter-photo {
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 8rpx;
+}
+
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  background: var(--color-card);
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.action-bar .btn {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  font-size: 26rpx;
+}
+
+.loading {
+  text-align: center;
+  padding: 80rpx;
+  color: var(--color-text-hint);
+}
+
+/* 导出渲染用隐藏 canvas：移出屏幕，不干扰布局 */
+.export-canvas {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 375px;
+  height: 530px;
+}

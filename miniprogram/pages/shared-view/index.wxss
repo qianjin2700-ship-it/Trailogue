@@ -1,0 +1,72 @@
+/* pages/shared-view/index.wxss */
+.page-shared-view {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.cover-section {
+  padding: 60rpx 32rpx 40rpx;
+  text-align: center;
+}
+
+.story-title {
+  font-size: 48rpx;
+  font-weight: 700;
+  display: block;
+}
+
+.story-subtitle {
+  font-size: 28rpx;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-top: 12rpx;
+}
+
+.section {
+  margin: 16rpx 24rpx;
+}
+
+.section-label {
+  font-size: 24rpx;
+  color: var(--color-text-hint);
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.chapter-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.narrative {
+  font-size: 30rpx;
+  line-height: 1.8;
+}
+
+.cta-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 24rpx;
+  background: var(--color-card);
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.failed-state {
+  text-align: center;
+  padding: 120rpx 32rpx;
+}
+
+.failed-text {
+  font-size: 32rpx;
+  color: var(--color-text-hint);
+}
+
+.loading {
+  text-align: center;
+  padding: 80rpx;
+  color: var(--color-text-hint);
+}

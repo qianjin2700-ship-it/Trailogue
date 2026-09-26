@@ -1,0 +1,73 @@
+/* components/duplicate-dialog/index.wxss */
+.dialog-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.dialog-content {
+  width: 85%;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.dialog-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.dialog-desc {
+  font-size: 26rpx;
+  color: #888;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.dup-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+
+.dup-thumb {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 8rpx;
+}
+
+.dup-actions {
+  flex: 1;
+  display: flex;
+  gap: 12rpx;
+  justify-content: flex-end;
+}
+
+.dup-btn {
+  padding: 10rpx 24rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+}
+
+.dup-btn.keep {
+  background: #4a7c59;
+  color: #fff;
+}
+
+.dup-btn.remove {
+  background: #d64545;
+  color: #fff;
+}

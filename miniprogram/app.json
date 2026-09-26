@@ -1,0 +1,31 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/create-album/index",
+    "pages/album-detail/index",
+    "pages/upload/index",
+    "pages/photo-review/index",
+    "pages/story-generating/index",
+    "pages/story-preview/index",
+    "pages/story-edit/index",
+    "pages/share/index",
+    "pages/shared-view/index",
+    "pages/privacy/index",
+    "pages/failure/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "旅迹成书",
+    "backgroundColor": "#f7f7f7",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于逆地址解析，将照片 GPS 转换为城市/地点名称"
+    }
+  },
+  "lazyCodeLoading": "requiredComponents"
+}

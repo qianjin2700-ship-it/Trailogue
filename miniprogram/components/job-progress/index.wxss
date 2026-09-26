@@ -1,0 +1,12 @@
+/* components/job-progress/index.wxss */
+.job-progress {
+  padding: 16rpx;
+}
+
+.stage-message {
+  font-size: 26rpx;
+  color: #888;
+  display: block;
+  margin-top: 12rpx;
+  text-align: center;
+}

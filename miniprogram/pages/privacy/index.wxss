@@ -1,0 +1,119 @@
+/* pages/privacy/index.wxss */
+.page-privacy {
+  min-height: 100vh;
+}
+
+.section {
+  margin: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.policy-text {
+  font-size: 26rpx;
+  line-height: 2;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}
+
+.retention-options {
+  display: flex;
+  gap: 16rpx;
+}
+
+.retention-item {
+  flex: 1;
+  padding: 24rpx;
+  background: var(--color-bg);
+  border-radius: 12rpx;
+  text-align: center;
+  border: 2rpx solid transparent;
+}
+
+.retention-item.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.retention-item text {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.retention-item .desc {
+  font-size: 22rpx;
+  font-weight: 400;
+  margin-top: 8rpx;
+  opacity: 0.8;
+}
+
+.danger-section {
+  border: 2rpx solid rgba(214, 69, 69, 0.2);
+}
+
+.danger-desc {
+  font-size: 26rpx;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  width: 80%;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 40rpx 32rpx;
+}
+
+.modal-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.modal-desc {
+  font-size: 26rpx;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.modal-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 24rpx;
+  background: var(--color-bg);
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  box-sizing: border-box;
+  margin-bottom: 24rpx;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.modal-actions .btn {
+  flex: 1;
+}

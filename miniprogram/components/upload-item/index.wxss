@@ -1,0 +1,50 @@
+/* components/upload-item/index.wxss */
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx;
+}
+
+.thumb {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.status-text {
+  font-size: 24rpx;
+}
+
+.status-uploading { color: #4a90d9; }
+.status-uploaded { color: #4a7c59; }
+.status-failed { color: #d64545; }
+
+.fail-reason {
+  font-size: 22rpx;
+  color: #d64545;
+  flex: 1;
+}
+
+.retry-btn {
+  padding: 12rpx 24rpx;
+  background: #4a7c59;
+  color: #fff;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+}

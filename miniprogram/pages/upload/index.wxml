@@ -1,0 +1,42 @@
+<!--pages/upload/index.wxml — 上传与处理进度-->
+<view class="page-upload">
+  <!-- 顶栏计数 -->
+  <view class="counter-bar">
+    <text class="counter-text">已选择 {{photoCount}}/50 张</text>
+    <view class="counter-stats">
+      <text class="stat success">成功 {{successCount}}</text>
+      <text class="stat fail">失败 {{failCount}}</text>
+    </view>
+  </view>
+
+  <!-- 照片列表 -->
+  <view class="photo-list">
+    <view wx:for="{{items}}" wx:key="index" class="upload-item card">
+      <image class="thumb" src="{{item.thumbPath}}" mode="aspectFill" />
+      <view class="item-info">
+        <view class="item-status status-{{item.status}}">{{statusText[item.status] || item.status}}</view>
+        <view wx:if="{{item.status === 'uploading'}}" class="progress-row">
+          <progress class="progress-bar" percent="{{item.progress}}" stroke-width="4" activeColor="#4a7c59" />
+          <text wx:if="{{item.speedText}}" class="speed-text">{{item.speedText}}</text>
+        </view>
+        <text wx:if="{{item.failReason}}" class="fail-reason">{{item.failReason}}</text>
+      </view>
+      <view wx:if="{{item.status === 'failed'}}" class="retry-btn" data-index="{{index}}" bindtap="onRetryItem">
+        <text>重试</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="bottom-bar safe-bottom">
+    <button class="btn btn-secondary" bindtap="onChoosePhotos">继续添加</button>
+    <button wx:if="{{failCount > 0}}" class="btn btn-secondary" bindtap="onRetryAll">重试全部失败</button>
+    <button class="btn btn-primary" bindtap="onComplete">完成</button>
+  </view>
+</view>
+
+<!-- 隐私告知弹窗 -->
+<privacy-notice visible="{{showPrivacyNotice}}" bind:agree="onPrivacyAgree" bind:disagree="onPrivacyDisagree" />
+
+<!-- 重复照片弹窗 -->
+<duplicate-dialog wx:if="{{showDuplicateDialog}}" photos="{{duplicateItems}}" bind:keep="onDuplicateKeep" bind:remove="onDuplicateRemove" />

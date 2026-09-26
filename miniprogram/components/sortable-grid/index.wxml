@@ -1,0 +1,35 @@
+<!--components/sortable-grid/index.wxml — 可拖拽排序的照片网格-->
+<view class="sg">
+  <view wx:if="{{items.length === 0}}" class="sg-empty">
+    <text>暂无照片</text>
+  </view>
+
+  <block wx:else>
+    <!-- 拖拽期间禁用 scroll-view 滚动，避免手指移动被解释成滚动 -->
+    <scroll-view
+      class="sg-scroll"
+      scroll-y="{{!dragging}}"
+      style="height: {{viewHeight}}px;"
+      bindscroll="onScroll"
+    >
+      <view class="grid-inner" style="height: {{gridHeight}}px; padding: 0 {{padding}}px;">
+        <view
+          wx:for="{{items}}"
+          wx:key="_id"
+          class="grid-item {{dragging && dragIndex === index ? 'is-dragging' : ''}}"
+          style="width: {{cellW}}px; height: {{cellW}}px; transform: translate3d({{item.x}}px, {{item.y}}px, 0) {{dragging && dragIndex === index ? 'scale(1.06)' : 'scale(1)'}};"
+          data-index="{{index}}"
+          bindtouchstart="onTouchStart"
+          bindtouchmove="onTouchMove"
+          bindtouchend="onTouchEnd"
+          bindtouchcancel="onTouchEnd"
+        >
+          <image class="item-thumb" src="{{item.thumb}}" mode="aspectFill" />
+          <view class="item-order">{{index + 1}}</view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="sg-hint">长按照片可拖动排序，序号即故事中的先后</view>
+  </block>
+</view>

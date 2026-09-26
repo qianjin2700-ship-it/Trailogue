@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "上传照片",
+  "usingComponents": {
+    "privacy-notice": "/components/privacy-notice/index",
+    "duplicate-dialog": "/components/duplicate-dialog/index"
+  }
+}

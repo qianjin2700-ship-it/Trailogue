@@ -1,0 +1,5 @@
+<!--components/job-progress/index.wxml-->
+<view class="job-progress">
+  <progress percent="{{job.percent}}" stroke-width="8" activeColor="#4a7c59" />
+  <text class="stage-message">{{job.message || job.stage}}</text>
+</view>

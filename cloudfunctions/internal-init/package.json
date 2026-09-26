@@ -1,0 +1,12 @@
+{
+    "name": "internal-init",
+    "version": "1.0.0",
+    "description": "旅迹成书 — 一次性数据库集合初始化",
+    "main": "index.js",
+    "dependencies": {
+        "wx-server-sdk": "^3.0.4"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.130"
+    }
+}

@@ -1,0 +1,13 @@
+{
+    "name": "export",
+    "version": "1.0.0",
+    "description": "旅迹成书 — 相册导出（PDF 合成）",
+    "main": "index.js",
+    "dependencies": {
+        "pdf-lib": "^1.17.1",
+        "wx-server-sdk": "^3.0.4"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.130"
+    }
+}

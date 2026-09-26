@@ -1,0 +1,12 @@
+{
+    "name": "internal-processVision",
+    "version": "1.0.0",
+    "description": "旅迹成书 — 混元视觉理解",
+    "main": "index.js",
+    "dependencies": {
+        "wx-server-sdk": "^3.0.4"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.130"
+    }
+}

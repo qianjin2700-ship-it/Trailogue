@@ -1,0 +1,18 @@
+/* components/photo-card/index.wxss */
+.photo-card {
+  position: relative;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.meta-overlay {
+  position: absolute;
+  bottom: 8rpx;
+  left: 8rpx;
+}

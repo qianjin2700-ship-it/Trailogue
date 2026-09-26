@@ -1,0 +1,70 @@
+/* components/sortable-grid/index.wxss */
+.sg {
+  width: 100%;
+}
+
+.sg-empty {
+  padding: 48rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--color-text-hint, #b0b0b0);
+}
+
+.sg-scroll {
+  width: 100%;
+}
+
+.grid-inner {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.grid-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 10rpx;
+  overflow: hidden;
+  background-color: var(--color-bg, #f7f7f7);
+  /* 重排时非拖拽项平滑让位；拖拽中的项由 .is-dragging 关掉过渡以保证跟手 */
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+.grid-item.is-dragging {
+  transition: none;
+  z-index: 20;
+  box-shadow: 0 8rpx 24rpx rgba(18, 69, 122, 0.35);
+  opacity: 0.92;
+}
+
+.item-thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* 图片自身不参与拖拽事件，避免长按触发系统图片菜单 */
+  pointer-events: none;
+}
+
+.item-order {
+  position: absolute;
+  left: 0;
+  top: 0;
+  min-width: 28rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  padding: 0 8rpx;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  border-bottom-right-radius: 10rpx;
+}
+
+.sg-hint {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: var(--color-text-hint, #b0b0b0);
+  text-align: center;
+}

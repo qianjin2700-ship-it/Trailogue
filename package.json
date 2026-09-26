@@ -1,0 +1,19 @@
+{
+  "name": "lvji-chengshu",
+  "version": "0.1.0",
+  "description": "旅迹成书 — 上传旅行照片，AI 自动生成图文相册故事",
+  "scripts": {
+    "tsc": "tsc --noEmit",
+    "lint": "eslint miniprogram --ext .ts",
+    "format": "prettier --write \"miniprogram/**/*.ts\" \"miniprogram/**/*.wxml\""
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.0",
+    "miniprogram-api-typings": "^4.0.0",
+    "prettier": "^3.2.0",
+    "typescript": "^5.4.0"
+  }
+}

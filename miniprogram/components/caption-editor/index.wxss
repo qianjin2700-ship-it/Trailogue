@@ -1,0 +1,14 @@
+/* components/caption-editor/index.wxss */
+.caption-editor {
+  display: flex;
+  align-items: center;
+}
+
+.caption-input {
+  flex: 1;
+  height: 56rpx;
+  padding: 0 16rpx;
+  background: #f7f7f7;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}

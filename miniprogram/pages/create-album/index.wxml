@@ -1,0 +1,159 @@
+<!--pages/create-album/index.wxml — 创建/编辑相册-->
+<view class="page-create-album">
+  <view class="card form-section">
+    <!-- 相册名 -->
+    <view class="field">
+      <text class="label">相册名称 <text class="required">*</text></text>
+      <input
+        class="input"
+        value="{{form.name}}"
+        data-field="name"
+        bindinput="onInput"
+        maxlength="20"
+        placeholder="如：青海湖之行"
+      />
+      <text class="counter">{{form.name.length}}/20</text>
+    </view>
+
+    <!-- 主题 -->
+    <view class="field">
+      <text class="label">主题</text>
+      <input
+        class="input"
+        value="{{form.theme}}"
+        data-field="theme"
+        bindinput="onInput"
+        placeholder="如：环湖骑行"
+      />
+    </view>
+
+    <!-- 活动背景 -->
+    <view class="field">
+      <text class="label">活动背景</text>
+      <textarea
+        class="textarea"
+        value="{{form.background}}"
+        data-field="background"
+        bindinput="onInput"
+        maxlength="200"
+        placeholder="描述这次旅行的背景..."
+      />
+      <text class="counter">{{form.background.length}}/200</text>
+    </view>
+
+    <!-- 人物关系 -->
+    <view class="field">
+      <text class="label">人物关系</text>
+      <input
+        class="input"
+        value="{{form.relations}}"
+        data-field="relations"
+        bindinput="onInput"
+        maxlength="50"
+        placeholder="如：我和大学室友"
+      />
+      <text class="counter">{{form.relations.length}}/50</text>
+    </view>
+
+    <!-- 强调内容 -->
+    <view class="field">
+      <text class="label">想突出什么</text>
+      <textarea
+        class="textarea"
+        value="{{form.highlights}}"
+        data-field="highlights"
+        bindinput="onInput"
+        maxlength="100"
+        placeholder="如：湖边的日出"
+      />
+      <text class="counter">{{form.highlights.length}}/100</text>
+    </view>
+
+    <!-- 避免的表达 -->
+    <view class="field">
+      <text class="label">避免的表达</text>
+      <textarea
+        class="textarea"
+        value="{{form.avoid_expressions}}"
+        data-field="avoid_expressions"
+        bindinput="onInput"
+        maxlength="100"
+        placeholder="如：不要过度煽情"
+      />
+      <text class="counter">{{form.avoid_expressions.length}}/100</text>
+    </view>
+
+    <!-- 文风选择 -->
+    <view class="field">
+      <text class="label">文风</text>
+      <view class="style-grid">
+        <view
+          wx:for="{{styles}}"
+          wx:key="value"
+          class="style-item {{form.style === item.value ? 'active' : ''}}"
+          data-style="{{item.value}}"
+          bindtap="onSelectStyle"
+        >
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 自定义文风 -->
+    <view class="field" wx:if="{{form.style === 'custom'}}">
+      <text class="label">自定义文风 <text class="required">*</text></text>
+      <textarea
+        class="textarea"
+        value="{{form.style_custom}}"
+        data-field="style_custom"
+        bindinput="onInput"
+        maxlength="100"
+        placeholder="描述你想要的文风..."
+      />
+    </view>
+
+    <!-- 文字篇幅 -->
+    <view class="field">
+      <text class="label">文字篇幅</text>
+      <view class="style-grid">
+        <view
+          wx:for="{{lengths}}"
+          wx:key="value"
+          class="style-item {{form.content_length === item.value ? 'active' : ''}}"
+          data-length="{{item.value}}"
+          bindtap="onSelectLength"
+        >
+          <view class="style-item-main">
+            <text>{{item.label}}</text>
+          </view>
+          <text class="style-item-hint">{{item.hint}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 照片编排 -->
+    <view class="field">
+      <text class="label">照片编排</text>
+      <view class="style-grid">
+        <view
+          wx:for="{{arrangements}}"
+          wx:key="value"
+          class="style-item {{form.arrangement === item.value ? 'active' : ''}}"
+          data-arrangement="{{item.value}}"
+          bindtap="onSelectArrangement"
+        >
+          <view class="style-item-main">
+            <text>{{item.label}}</text>
+          </view>
+          <text class="style-item-hint">{{item.hint}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="submit-area safe-bottom">
+    <button class="btn btn-primary {{canSubmit ? '' : 'btn-disabled'}}" bindtap="onSubmit">
+      {{isEdit ? '保存修改' : '创建并上传照片'}}
+    </button>
+  </view>
+</view>

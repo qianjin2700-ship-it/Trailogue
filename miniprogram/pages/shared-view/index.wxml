@@ -1,0 +1,34 @@
+<!--pages/shared-view/index.wxml — 分享浏览页（只读）-->
+<view class="page-shared-view">
+  <block wx:if="{{story && !loading && !failed}}">
+    <view class="cover-section">
+      <text class="story-title">{{story.title}}</text>
+      <text class="story-subtitle" wx:if="{{story.subtitle}}">{{story.subtitle}}</text>
+    </view>
+
+    <view class="card section">
+      <text class="section-label">开篇</text>
+      <text class="narrative" user-select>{{story.preface}}</text>
+    </view>
+
+    <view wx:for="{{story.chapters}}" wx:key="chapter_id" class="card section">
+      <text class="chapter-title">{{item.title}}</text>
+      <text class="narrative" user-select>{{item.narrative}}</text>
+    </view>
+
+    <view class="card section">
+      <text class="section-label">尾声</text>
+      <text class="narrative" user-select>{{story.epilogue}}</text>
+    </view>
+
+    <view class="cta-bar safe-bottom">
+      <button class="btn btn-primary" bindtap="onMakeOwn">我也要做一本</button>
+    </view>
+  </block>
+
+  <view wx:if="{{failed}}" class="failed-state">
+    <text class="failed-text">链接已失效或不存在</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+</view>

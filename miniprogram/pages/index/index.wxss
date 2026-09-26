@@ -1,0 +1,105 @@
+/* pages/index/index.wxss */
+.page-index {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.header {
+  padding: 40rpx 32rpx 24rpx;
+}
+
+.title {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.album-list {
+  padding: 0 8rpx;
+}
+
+.album-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  position: relative;
+}
+
+.cover {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.meta {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.status-badge {
+  font-size: 20rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  color: #fff;
+}
+
+.status-draft { background: #b0b0b0; }
+.status-reviewing { background: var(--color-warning); }
+.status-generating { background: #4a90d9; }
+.status-done { background: var(--color-success); }
+.status-failed { background: var(--color-danger); }
+
+.loading {
+  text-align: center;
+  padding: 80rpx;
+  color: var(--color-text-hint);
+}
+
+/* 悬浮按钮 */
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 60rpx;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 56rpx;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(74, 124, 89, 0.4);
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  color: #fff;
+  line-height: 1;
+}
+
+/* 相册封面占位（无照片或未取到封面时） */
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e8ded1 0%, #d9cbb8 100%);
+}
+
+.cover-placeholder-text {
+  font-size: 32rpx;
+  color: #8a7a63;
+  font-weight: 600;
+}

@@ -1,0 +1,117 @@
+/* pages/upload/index.wxss */
+.page-upload {
+  min-height: 100vh;
+  padding-bottom: 180rpx;
+}
+
+.counter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 32rpx;
+  background: var(--color-card);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.counter-text {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.counter-stats {
+  display: flex;
+  gap: 24rpx;
+}
+
+.stat {
+  font-size: 24rpx;
+}
+
+.stat.success { color: var(--color-success); }
+.stat.fail { color: var(--color-danger); }
+
+.photo-list {
+  padding: 16rpx 8rpx;
+}
+
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx;
+  margin: 12rpx 16rpx;
+}
+
+.thumb {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.item-status {
+  font-size: 24rpx;
+}
+
+.status-uploading { color: #4a90d9; }
+.status-uploaded { color: var(--color-success); }
+.status-failed { color: var(--color-danger); }
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.progress-bar {
+  flex: 1;
+}
+
+.speed-text {
+  font-size: 20rpx;
+  color: #999;
+  flex-shrink: 0;
+  min-width: 90rpx;
+  text-align: right;
+}
+
+.fail-reason {
+  font-size: 22rpx;
+  color: var(--color-danger);
+}
+
+.retry-btn {
+  padding: 12rpx 24rpx;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  background: var(--color-card);
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.bottom-bar .btn {
+  flex: 1;
+  font-size: 28rpx;
+}

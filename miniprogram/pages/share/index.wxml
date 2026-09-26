@@ -1,0 +1,33 @@
+<!--pages/share/index.wxml — 分享海报页-->
+<view class="page-share">
+  <!-- 海报展示区 -->
+  <view class="poster-wrap">
+    <image
+      wx:if="{{posterImage}}"
+      class="poster-image"
+      src="{{posterImage}}"
+      mode="widthFix"
+      show-menu-by-longpress
+      lazy-load
+    />
+
+    <view wx:elif="{{loading || posterLoading}}" class="poster-placeholder">
+      <view class="spinner" />
+      <text class="placeholder-text">正在生成分享海报…</text>
+    </view>
+
+    <view wx:elif="{{posterError}}" class="poster-placeholder error">
+      <text class="placeholder-text">{{posterError}}</text>
+      <button class="btn btn-secondary retry-btn" bindtap="generatePoster">重新生成</button>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="action-bar safe-bottom" wx:if="{{posterImage}}">
+    <button class="btn btn-secondary action-btn" bindtap="onSavePoster">保存到相册</button>
+    <button class="btn btn-primary action-btn" open-type="share">转发给朋友</button>
+  </view>
+</view>
+
+<!-- 离屏画布：绘制海报用 -->
+<canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>

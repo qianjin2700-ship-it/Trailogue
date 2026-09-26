@@ -1,0 +1,27 @@
+# 依赖
+node_modules/
+cloudfunctions/**/node_modules/
+
+# 环境变量（真实密钥严禁入库，仅保留 .env.example 模板）
+.env
+.env.local
+.env.*
+!.env.example
+
+# 小程序编译产物（由 `npm run build` 即 npx tsc 从 .ts 生成）
+miniprogram/**/*.js
+miniprogram/**/*.js.map
+miniprogram/**/*.d.ts
+
+# 云函数编译 sourcemap（.js 保留以便直接部署；如需源码纯净可连 .js 一起忽略）
+cloudfunctions/**/*.js.map
+
+# WorkBuddy 工作区内部状态（记忆 / 临时文件 / 会话，非项目源码）
+.workbuddy/
+
+# 日志
+*.log
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+    "name": "internal-remap",
+    "version": "1.0.0",
+    "description": "临时云函数 — 迁移 cloud:// fileID 到新环境",
+    "main": "index.js",
+    "dependencies": {
+        "wx-server-sdk": "^3.0.4"
+    }
+}

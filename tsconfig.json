@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "module": "CommonJS",
+    "target": "ES2020",
+    "moduleResolution": "Node",
+    "sourceMap": true,
+    "outDir": "miniprogram",
+    "rootDir": "miniprogram",
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["miniprogram/*"]
+    },
+    "lib": ["ES2020"],
+    "typeRoots": ["./node_modules/@types"],
+    "types": []
+  },
+  "include": ["miniprogram/**/*.ts", "miniprogram/**/*.d.ts", "typings.d.ts"],
+  "exclude": ["node_modules", "cloudfunctions", "miniprogram/**/*.js"]
+}

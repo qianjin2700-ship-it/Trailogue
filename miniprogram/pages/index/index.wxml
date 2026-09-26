@@ -1,0 +1,50 @@
+<!--pages/index/index.wxml — 首页：相册列表-->
+<view class="page-index">
+  <!-- 头部 -->
+  <view class="header">
+    <text class="title">旅迹成书</text>
+  </view>
+
+  <!-- 相册列表 -->
+  <block wx:if="{{!empty && !loading}}">
+    <view class="album-list">
+      <view
+        wx:for="{{albums}}"
+        wx:key="album_id"
+        class="album-card card"
+        data-id="{{item.album_id}}"
+        bindtap="onTapAlbum"
+        bindlongpress="onLongPressAlbum"
+      >
+                <!-- 无封面时显示占位（coverUrl 为空字符串也不渲染图片） -->
+        <image wx:if="{{item.coverUrl}}" class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
+        <view wx:else class="cover cover-placeholder">
+          <text class="cover-placeholder-text">旅</text>
+        </view>
+        <view class="info">
+          <text class="name">{{item.name}}</text>
+          <text class="meta">{{item.photo_count}}张 · {{item.statusText}}</text>
+        </view>
+        <view class="status-badge status-{{item.status}}">{{item.statusText}}</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 空态 -->
+  <empty-state wx:if="{{empty && !loading}}" text="还没有相册，开始你的第一本旅行故事吧" actionText="创建相册" bind:action="onTapCreate" />
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+</view>
+
+<!-- 悬浮创建按钮 -->
+<view class="fab safe-bottom" bindtap="onTapCreate">
+  <text class="fab-icon">+</text>
+</view>
+
+<!-- 首次使用隐私告知 -->
+<privacy-notice
+  visible="{{showPrivacyNotice}}"
+  bind:agree="onAgreePrivacy"
+  bind:disagree="onDisagreePrivacy"
+/>

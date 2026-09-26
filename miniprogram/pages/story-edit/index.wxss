@@ -1,0 +1,140 @@
+/* pages/story-edit/index.wxss */
+.page-edit {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.edit-section {
+  margin: 16rpx 24rpx;
+}
+
+.label {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.input {
+  width: 100%;
+  height: 72rpx;
+  padding: 0 16rpx;
+  background: var(--color-bg);
+  border-radius: 8rpx;
+  font-size: 30rpx;
+}
+
+.chapter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.chapter-title-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  padding: 0 8rpx;
+}
+
+.chapter-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.lock-toggle {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: var(--color-bg);
+}
+
+.lock-toggle.locked {
+  background: rgba(232, 168, 124, 0.15);
+}
+
+.regen-btn {
+  padding: 12rpx 20rpx;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+}
+
+.regen-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.narrative-input {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 16rpx;
+  background: var(--color-bg);
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.chapter-flags {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+
+.flag {
+  font-size: 22rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.flag-locked { background: rgba(232, 168, 124, 0.15); color: var(--color-warning); }
+.flag-edited { background: rgba(74, 144, 217, 0.1); color: #4a90d9; }
+
+.global-actions {
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 24rpx;
+}
+
+.global-actions .btn {
+  flex: 1;
+  font-size: 26rpx;
+}
+
+.save-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 24rpx;
+  background: var(--color-card);
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.loading {
+  text-align: center;
+  padding: 80rpx;
+  color: var(--color-text-hint);
+}
+
+/* 照片排序区块 */
+.photos-tip {
+  padding: 40rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--color-text-hint);
+}
+
+.photos-note {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: var(--color-text-hint);
+}

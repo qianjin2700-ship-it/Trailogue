@@ -1,0 +1,2 @@
+<!--components/long-image-canvas/index.wxml-->
+<canvas type="2d" id="{{canvasId}}" class="long-canvas" style="width: 750rpx; height: 1px;"></canvas>

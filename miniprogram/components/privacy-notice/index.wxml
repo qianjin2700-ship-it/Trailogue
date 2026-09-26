@@ -1,0 +1,18 @@
+<!--components/privacy-notice/index.wxml-->
+<view wx:if="{{visible}}" class="notice-mask">
+  <view class="notice-card">
+    <text class="notice-title">隐私告知</text>
+    <view class="notice-body">
+      <text class="notice-item">1. 照片将上传至云端用于生成故事；</text>
+      <text class="notice-item">2. 保存期限默认 90 天，可改为永久；</text>
+      <text class="notice-item">3. 照片将发送给第三方 AI 模型进行视觉理解和文案生成；</text>
+      <text class="notice-item">4. 照片不会用于模型训练；</text>
+      <text class="notice-item">5. 原始照片、GPS 数据、AI 结果均视为隐私数据；</text>
+      <text class="notice-item">6. 你可以随时删除全部数据。</text>
+    </view>
+    <view class="notice-actions">
+      <button class="btn btn-secondary" bindtap="onDisagree">不同意</button>
+      <button class="btn btn-primary" bindtap="onAgree">同意并继续</button>
+    </view>
+  </view>
+</view>

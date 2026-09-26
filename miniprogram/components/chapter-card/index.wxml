@@ -1,0 +1,27 @@
+<!--components/chapter-card/index.wxml-->
+<view class="chapter-card">
+  <!-- 阅读模式 -->
+  <block wx:if="{{mode === 'read'}}">
+    <text class="chapter-title">{{chapter.title}}</text>
+    <view class="chapter-meta" wx:if="{{chapter.date_label || chapter.location_label}}">
+      <text wx:if="{{chapter.date_label}}">{{chapter.date_label}}</text>
+      <text wx:if="{{chapter.date_label && chapter.location_label}}"> · </text>
+      <text wx:if="{{chapter.location_label}}">{{chapter.location_label}}</text>
+    </view>
+    <text class="narrative">{{chapter.narrative}}</text>
+  </block>
+
+  <!-- 编辑模式 -->
+  <block wx:if="{{mode === 'edit'}}">
+    <view class="edit-header">
+      <input class="title-input" value="{{chapter.title}}" bindinput="onTitleInput" maxlength="16" />
+      <view class="lock-toggle {{locked ? 'locked' : ''}}" bindtap="onToggleLock">
+        <text>{{locked ? '🔒' : '🔓'}}</text>
+      </view>
+    </view>
+    <textarea class="narrative-input" value="{{chapter.narrative}}" bindinput="onNarrativeInput" />
+    <view class="edit-actions">
+      <view class="regen-btn {{locked ? 'disabled' : ''}}" bindtap="onRegenerate">重生成</view>
+    </view>
+  </block>
+</view>

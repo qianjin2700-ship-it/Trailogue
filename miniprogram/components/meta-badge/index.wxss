@@ -1,0 +1,9 @@
+/* components/meta-badge/index.wxss */
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}

@@ -1,0 +1,49 @@
+/* components/privacy-notice/index.wxss */
+.notice-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.notice-card {
+  width: 85%;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+}
+
+.notice-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 24rpx;
+  text-align: center;
+}
+
+.notice-body {
+  margin-bottom: 32rpx;
+}
+
+.notice-item {
+  display: block;
+  font-size: 26rpx;
+  line-height: 2;
+  color: #555;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.notice-actions .btn {
+  flex: 1;
+  font-size: 28rpx;
+}
