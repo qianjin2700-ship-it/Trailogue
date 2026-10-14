@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Trailogue",
+    "slug": "trailogue",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "trailogue",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F4EFE6"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
