@@ -19,6 +19,11 @@ cloudfunctions/**/*.js.map
 # WorkBuddy 工作区内部状态（记忆 / 临时文件 / 会话，非项目源码）
 .workbuddy/
 
+# Codex 个人会话日志（项目级决策和交接文件保留）
+.ai-memory/*/
+!.ai-memory/project_memory.md
+!.ai-memory/handoff.md
+
 # 日志
 *.log
 
