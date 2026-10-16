@@ -75,3 +75,32 @@ The Expo SDK 57 / React Native 0.86 toolchain currently reports transitive npm a
 **Status**: Client boundary complete; backend work pending approval
 
 The production auth function only accepts WeChat context and returns no bearer session. Apple identity tokens must be verified server-side before the iOS app can become authenticated. See `ios-app/docs/MOBILE_API_CONTRACT.md`.
+
+## Decision Record: iOS-only product and backend re-platforming
+
+**Date**: 2026-10-16
+**Problem**: The Tencent Cloud service has expired and the WeChat Mini Program is no longer an operating product. Preserving its runtime constraints would distort the long-term iOS architecture.
+
+### Decision
+
+**Choice**: Treat the iOS app as Trailogue's only primary client. Treat `miniprogram/`, `cloudfunctions/`, and CloudBase as read-only business references and possible migration sources, not compatibility targets.
+
+**Consequences**:
+
+- New code does not preserve `wx.cloud.callFunction`, WeChat OPENID, WeChat login, WeChat Pay, WeChat sharing/location/file APIs, or Cloud Function compatibility.
+- CloudBase is not the assumed long-term backend. Supabase, Firebase, and independent Node.js + PostgreSQL must be compared after the legacy resource audit.
+- New public services use a standard HTTPS API and a provider-neutral Trailogue user identity linked to Apple Sign in.
+- User, Trip, Photo, Story, and Book become the canonical product entities. Legacy `albums` data is an import source only if it remains recoverable.
+- The existing Wave 2 client layers remain useful, but their DTOs, route names, and repositories are provisional until the backend and canonical schema are approved.
+- Do not expand major iOS business screens before the backend ADR, core schema, and API boundary are approved.
+
+**Supersedes**: The Mini Program preservation constraint in the iOS foundation decision, the production-Cloud-Functions assumption in the Wave 2 API decision, and the rule that Trip must remain backed by the legacy Album schema.
+
+**Reversal condition**: Only an explicit product decision to reactivate a legacy client can reintroduce compatibility work; it must not happen implicitly during migration.
+
+## Glossary Update: Trip
+
+**Canonical name**: Trip
+**Legacy source alias**: Album
+**Definition**: The primary travel aggregate in the new iOS product model.
+**Migration rule**: Map recoverable legacy `albums` documents into Trips through an explicit, versioned import process; do not perpetuate legacy field names or identifiers in the canonical schema solely for compatibility.

@@ -1,13 +1,18 @@
 # Mobile API boundary
 
+> **Status: superseded provisional Wave 2 contract.** Do not implement these routes
+> as the long-term production API. The Mini Program is retired and CloudBase is now
+> a legacy reference/migration source. The approved API will follow the backend ADR
+> and canonical User / Trip / Photo / Story / Book model.
+
 The production backend currently exposes WeChat Cloud Functions through
 `wx.cloud.callFunction`. Authentication is derived from
 `cloud.getWXContext().OPENID`; there is no HTTPS bearer-token endpoint, current-user
 endpoint, or Apple identity-token verification endpoint yet.
 
-The iOS app therefore treats the following routes as a proposed gateway contract.
-They are implemented in the client, but they are not production-ready until a
-backend gateway implements them.
+The iOS app currently uses the following routes as testable client scaffolding.
+They keep the Wave 2 authentication and trip-list layers executable, but route
+names, envelopes, DTOs, and repositories may change after the backend decision.
 
 ## Shared behavior
 
@@ -48,8 +53,10 @@ or travel-date fields that are absent from the current schema.
 Returns the existing `getAlbum` payload. The gateway must enforce ownership using
 the authenticated server session before returning the document.
 
-## Not included in Wave 2
+## Replacement gate
 
-No Cloud Function, database schema, production environment, upload path, AI flow,
-book/PDF flow, payment flow, or Mini Program behavior is changed by this contract.
+Before implementing this boundary in production, complete the legacy resource
+audit, choose the long-term backend, approve the canonical data model and Apple
+identity lifecycle, and publish a versioned HTTPS API contract. See
+`BACKEND_REPLATFORMING_AUDIT.md`.
 

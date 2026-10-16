@@ -1,10 +1,11 @@
 # Trailogue iOS
 
-The overseas iOS client for Trailogue. It is built with React Native, Expo SDK 57,
+The primary client for Trailogue. It is built with React Native, Expo SDK 57,
 TypeScript, Expo Router, and Continuous Native Generation.
 
-This directory is additive: the existing WeChat Mini Program and CloudBase functions
-remain in their original locations.
+The WeChat Mini Program is retired. Its code and the existing CloudBase functions
+remain in their original locations only as references for business rules, data
+recovery, and migration analysis; new iOS work does not preserve their runtime APIs.
 
 ## Requirements
 
@@ -40,13 +41,15 @@ Wave 2 uses these public values:
 - `EXPO_PUBLIC_PRIVACY_URL`: published privacy policy.
 - `EXPO_PUBLIC_TERMS_URL`: published terms of service.
 
-The current CloudBase backend does not implement the mobile gateway yet. See
-[`docs/MOBILE_API_CONTRACT.md`](docs/MOBILE_API_CONTRACT.md) for the exact boundary
-and backend responsibilities. Production screens never fall back to fixture data.
+The long-term backend is intentionally undecided until the CloudBase audit and the
+Supabase / Firebase / Node.js + PostgreSQL comparison are complete. The current
+[`docs/MOBILE_API_CONTRACT.md`](docs/MOBILE_API_CONTRACT.md) is Wave 2 scaffolding,
+not an approved production contract. Production screens never fall back to fixture
+data.
 
-## Wave 2 architecture
+## Wave 2 client foundation
 
-- `src/contracts`: DTOs based on the existing `users` and `albums` documents.
+- `src/contracts`: provisional DTOs based on the legacy `users` and `albums` documents.
 - `src/domain`: UI-safe User and Trip models plus DTO mappers.
 - `src/api`: one JSON/Bearer/timeout/error client and resource APIs.
 - `src/repositories`: domain mapping boundary used by screens.
@@ -55,3 +58,8 @@ and backend responsibilities. Production screens never fall back to fixture data
 
 Product app icons and store artwork are intentionally deferred until branding is
 approved; generated Expo starter artwork is ignored.
+
+Further business-screen expansion is paused until the backend ADR, canonical data
+model, storage strategy, and versioned HTTPS API are approved. The audit and
+decision checklist is in
+[`docs/BACKEND_REPLATFORMING_AUDIT.md`](docs/BACKEND_REPLATFORMING_AUDIT.md).
