@@ -63,3 +63,6 @@ Further business-screen expansion is paused until the backend ADR, canonical dat
 model, storage strategy, and versioned HTTPS API are approved. The audit and
 decision checklist is in
 [`docs/BACKEND_REPLATFORMING_AUDIT.md`](docs/BACKEND_REPLATFORMING_AUDIT.md).
+The supporting repository-level reports are
+[`../docs/20-legacy-cloudbase-audit.md`](../docs/20-legacy-cloudbase-audit.md) and
+[`../docs/21-ios-backend-selection.md`](../docs/21-ios-backend-selection.md).

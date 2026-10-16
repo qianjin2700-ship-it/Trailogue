@@ -104,3 +104,20 @@ The production auth function only accepts WeChat context and returns no bearer s
 **Legacy source alias**: Album
 **Definition**: The primary travel aggregate in the new iOS product model.
 **Migration rule**: Map recoverable legacy `albums` documents into Trips through an explicit, versioned import process; do not perpetuate legacy field names or identifiers in the canonical schema solely for compatibility.
+
+## Audit Finding: legacy CloudBase state
+
+**Date**: 2026-10-16
+**Evidence**: Static source audit plus a read-only CloudBase CLI connectivity attempt.
+
+- The repository currently points to `lvji-d6g41bt719c85fe54`; the historical migration document references `yaomiao-d3g3u7ckz71fffd26`. Both require live verification.
+- Source declares 11 collections and 12 Cloud Function directories. `photo_groups`, fact-base persistence, independent vision processing, and payment are not implemented as documented.
+- CloudBase CLI 3.8.0 is installed but has no valid login session. No conclusion about live data availability is valid until the account owner logs in and both environments are inspected read-only.
+- See `docs/20-legacy-cloudbase-audit.md` for evidence, migration priority, and data-integrity risks.
+
+## Pending Architecture Recommendation: Supabase managed core
+
+**Date**: 2026-10-16
+**Status**: Recommended, not approved
+
+Use Supabase Auth/PostgreSQL/Storage as the managed core, keep domain operations behind a versioned TypeScript HTTPS API, use a durable Postgres queue, and run AI/PDF work in an independent Node worker. This recommendation becomes a Decision Record only after the POC in `docs/21-ios-backend-selection.md` passes and the user confirms it.

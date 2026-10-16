@@ -17,13 +17,13 @@ means not yet verified, not unavailable.
 
 | Area | Evidence to collect | Current status |
 | --- | --- | --- |
-| CloudBase environments | Environment IDs, region, service state, console/CLI access | Unknown |
-| Database | Collections, indexes, document counts, representative redacted schemas | Static code references only |
-| Object storage | Buckets/prefixes, file counts and sizes, metadata, downloadable originals | Unknown |
-| Cloud Functions | Deployed names/versions, triggers, environment variables, logs | Repository source available; deployment unknown |
+| CloudBase environments | Environment IDs, region, service state, console/CLI access | Two candidate IDs found; CLI is installed but not logged in |
+| Database | Collections, indexes, document counts, representative redacted schemas | 11 collections identified from source; live counts unknown |
+| Object storage | Buckets/prefixes, file counts and sizes, metadata, downloadable originals | Four path families identified; live objects unknown |
+| Cloud Functions | Deployed names/versions, triggers, environment variables, logs | 12 source directories audited; deployment unknown |
 | Identity | OPENID/user linkage, duplicate-user rules, account deletion state | Static code references only |
 | Secrets/integrations | Secret names and owners only; never copy secret values into Git | Unknown |
-| Export/recovery | Supported export formats, checksums, retry limits, expiration risks | Unknown |
+| Export/recovery | Supported export formats, checksums, retry limits, expiration risks | Blocked on CloudBase account login |
 
 The source audit must enumerate business behavior in `cloudfunctions/` and data
 assumptions in `miniprogram/`, including users, albums, photos, photo groups,
@@ -77,3 +77,8 @@ The first post-decision implementation slice should prove the complete productio
 path: Apple sign-in -> current user -> trip list -> create trip -> signed photo
 upload -> persisted trip detail. AI organization follows only after that path is
 observable and recoverable.
+
+## Audit outputs
+
+- Legacy evidence and migration disposition: `../../docs/20-legacy-cloudbase-audit.md`
+- Backend comparison and conditional recommendation: `../../docs/21-ios-backend-selection.md`

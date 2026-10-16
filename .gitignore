@@ -27,6 +27,9 @@ cloudfunctions/**/*.js.map
 # 日志
 *.log
 
+# 可写工作区内的 Expo/Hermes 临时构建缓存（沙箱环境）
+ios-app/.tmp-expo-build/
+
 # 系统 / 编辑器
 .DS_Store
 Thumbs.db
