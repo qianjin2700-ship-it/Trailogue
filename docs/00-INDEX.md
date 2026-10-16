@@ -23,6 +23,9 @@
 | 16 | [知识产权与合规待办](./16-ip-and-compliance.md) | 个人主体下的商标/软著/商业秘密保护、三方服务商用合规、AIGC 合规、**商标检索结果与决策记录（含改名规则、监控计划）** |
 | 17 | [App 化可行性评估](./17-app-feasibility.md) | 独立 App 的合规硬门槛（AI 类目算法备案/安全评估）、商业获客路径断裂、技术改造量实测、**决策记录：暂不启动 App** |
 | 18 | [出海与 iOS 上架可行性](./18-overseas-ios.md) | 出海绕开的国内门槛 vs 新增门槛、Apple 个人账号卖家名显示真名、无 Mac 上架方案、Apple/EU AI 合规清单、CloudBase 新加坡仅支持 PG、海外竞品格局与差异化角度、W-8BEN 税务、美国商标成本、**建议路径：先用英文落地页验证需求** |
+| 20 | [旧 CloudBase 资产审计](./20-legacy-cloudbase-audit.md) | 已关闭的历史审计；仅保留旧业务规则和数据风险证据，不再迁移腾讯云数据 |
+| 21 | [iOS 后端方案对比](./21-ios-backend-selection.md) | Supabase / Firebase / 独立 Node.js + PostgreSQL 的历史比较，已被 22 号 ADR 替代 |
+| 22 | [阿里云美国区后端 ADR](./22-alibaba-cloud-us-architecture.md) | iOS 长期后端正式决策、服务边界、身份、数据、API、部署阶段和验证门槛 |
 
 ## 技术栈总览
 

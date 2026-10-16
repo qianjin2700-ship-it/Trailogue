@@ -83,14 +83,14 @@ The production auth function only accepts WeChat context and returns no bearer s
 
 ### Decision
 
-**Choice**: Treat the iOS app as Trailogue's only primary client. Treat `miniprogram/`, `cloudfunctions/`, and CloudBase as read-only business references and possible migration sources, not compatibility targets.
+**Choice**: Treat the iOS app as Trailogue's only primary client. Treat `miniprogram/`, `cloudfunctions/`, and CloudBase as read-only business references, not compatibility targets.
 
 **Consequences**:
 
 - New code does not preserve `wx.cloud.callFunction`, WeChat OPENID, WeChat login, WeChat Pay, WeChat sharing/location/file APIs, or Cloud Function compatibility.
-- CloudBase is not the assumed long-term backend. Supabase, Firebase, and independent Node.js + PostgreSQL must be compared after the legacy resource audit.
+- CloudBase is not the long-term backend. The initial Supabase/Firebase/Node.js comparison was completed and later superseded by the Alibaba Cloud US decision below.
 - New public services use a standard HTTPS API and a provider-neutral Trailogue user identity linked to Apple Sign in.
-- User, Trip, Photo, Story, and Book become the canonical product entities. Legacy `albums` data is an import source only if it remains recoverable.
+- User, Trip, Photo, Story, and Book become the canonical product entities. Legacy `albums` data will not be imported.
 - The existing Wave 2 client layers remain useful, but their DTOs, route names, and repositories are provisional until the backend and canonical schema are approved.
 - Do not expand major iOS business screens before the backend ADR, core schema, and API boundary are approved.
 
@@ -103,21 +103,74 @@ The production auth function only accepts WeChat context and returns no bearer s
 **Canonical name**: Trip
 **Legacy source alias**: Album
 **Definition**: The primary travel aggregate in the new iOS product model.
-**Migration rule**: Map recoverable legacy `albums` documents into Trips through an explicit, versioned import process; do not perpetuate legacy field names or identifiers in the canonical schema solely for compatibility.
+**Migration rule**: No legacy records will be imported. Use the old `albums` shape only to recover product rules; do not perpetuate legacy field names or identifiers in the canonical schema.
 
 ## Audit Finding: legacy CloudBase state
 
 **Date**: 2026-10-16
 **Evidence**: Static source audit plus a read-only CloudBase CLI connectivity attempt.
 
-- The repository currently points to `lvji-d6g41bt719c85fe54`; the historical migration document references `yaomiao-d3g3u7ckz71fffd26`. Both require live verification.
+- The repository points to `lvji-d6g41bt719c85fe54`; the historical migration document references `yaomiao-d3g3u7ckz71fffd26`. Live verification is no longer required because legacy data migration was cancelled.
 - Source declares 11 collections and 12 Cloud Function directories. `photo_groups`, fact-base persistence, independent vision processing, and payment are not implemented as documented.
-- CloudBase CLI 3.8.0 is installed but has no valid login session. No conclusion about live data availability is valid until the account owner logs in and both environments are inspected read-only.
+- CloudBase CLI 3.8.0 was installed without a valid login session at audit time. This no longer blocks the iOS program.
 - See `docs/20-legacy-cloudbase-audit.md` for evidence, migration priority, and data-integrity risks.
 
-## Pending Architecture Recommendation: Supabase managed core
+## Superseded Architecture Recommendation: Supabase managed core
 
 **Date**: 2026-10-16
-**Status**: Recommended, not approved
+**Status**: Superseded by the Alibaba Cloud US decision on 2026-10-16
 
-Use Supabase Auth/PostgreSQL/Storage as the managed core, keep domain operations behind a versioned TypeScript HTTPS API, use a durable Postgres queue, and run AI/PDF work in an independent Node worker. This recommendation becomes a Decision Record only after the POC in `docs/21-ios-backend-selection.md` passes and the user confirms it.
+Supabase Auth/PostgreSQL/Storage was conditionally recommended, but the product owner subsequently chose Alibaba Cloud US. No Supabase POC is required unless the Alibaba decision reaches a documented reversal condition.
+
+## Decision Record: Alibaba Cloud US backend
+
+**Date**: 2026-10-16
+**Problem**: Select a maintainable production backend for the overseas iOS app after retiring Tencent Cloud and deciding not to migrate legacy data.
+
+### Options
+
+| Option | Benefit | Cost | Complexity |
+| --- | --- | --- | --- |
+| Supabase managed core | Fast Auth/Postgres/Storage MVP | Adds a second cloud and platform-specific Auth/Storage | Medium |
+| Firebase | Mature mobile ecosystem | Firestore model and Google platform lock-in | Medium |
+| All services on one ECS | Lowest initial service count | Database, backup, storage and recovery burden | High risk |
+| Alibaba Cloud ECS + RDS PostgreSQL + OSS | Standard protocols, managed durability, one-cloud operations | Team owns API/auth/worker and ECS patching | Medium |
+
+### Decision
+
+**Choice**: Use Alibaba Cloud in one US region. Run a standard TypeScript API and an independent worker on ECS, store relational data in ApsaraDB RDS for PostgreSQL, store private media/PDF objects in OSS, use a durable PostgreSQL job queue, and use SLS/CloudMonitor plus KMS/Secrets Manager for operations and secrets.
+
+**Reason**: The user explicitly selected Alibaba Cloud US. This combination preserves standard HTTPS/PostgreSQL boundaries and keeps the durable state in managed services without adding Supabase or Firebase as a second cloud.
+
+**Trade-offs**: Trailogue must implement Apple token verification, session rotation, authorization, deletion, deployment, patching and worker recovery. Exact US region and billable specifications remain gated by latency, inventory, compliance and cost validation.
+
+### Impact
+
+- `docs/22-alibaba-cloud-us-architecture.md` is the active backend ADR.
+- `docs/21-ios-backend-selection.md` is historical and Supabase POC work is cancelled.
+- CloudBase login/export and all legacy data migration work are cancelled.
+- The Wave 2 `/v1/albums` contract is provisional and must become the canonical `/v1/trips` API.
+- Major iOS page expansion stays paused until the backend POC, canonical schema, Apple auth and initial OpenAPI contract pass.
+
+### Reversal condition
+
+Re-evaluate only if Alibaba Cloud US fails required service availability, network quality, SLA, data-residency/compliance, or sustained cost gates, or if the product owner explicitly changes the cloud constraint.
+
+## Project Convention: backend cloud boundary
+
+**Type**: Architecture constraint
+**Scope**: All new backend, infrastructure, shared contract and iOS integration code
+
+### Convention
+
+New business operations use the versioned HTTPS API and internal UUID ownership. Cloud SDKs stay inside infrastructure adapters; the iOS Domain/UI and shared contracts must not import Alibaba Cloud SDKs. Legacy CloudBase and WeChat code is read-only reference material and receives no compatibility work.
+
+### Examples
+
+**Correct**: iOS requests an upload intent from `/v1/trips/{tripId}/photos/upload-intents`, then uploads with a short-lived OSS signature.
+
+**Incorrect**: iOS stores an OSS AccessKey, calls CloudBase directly, or keeps `/v1/albums` only to match the Mini Program.
+
+### Source
+
+User architecture decision and `docs/22-alibaba-cloud-us-architecture.md`.

@@ -1,13 +1,18 @@
 # Backend re-platforming audit
 
+> Closed on 2026-10-16. The product owner chose Alibaba Cloud US and explicitly
+> abandoned Tencent Cloud data migration. This file remains historical evidence;
+> the active decision and implementation gates are in
+> `../../docs/22-alibaba-cloud-us-architecture.md`.
+
 ## Purpose
 
 This document is the decision gate between the completed Wave 2 iOS client
 foundation and further product implementation. It prevents provisional CloudBase
 assumptions from becoming the long-term Trailogue architecture.
 
-No production data, cloud resource, or legacy function should be modified during
-this audit. Record evidence first; design the replacement second.
+No production data, cloud resource, or legacy function was modified during this
+audit. No further CloudBase login, export, or migration work is required.
 
 ## 1. Legacy Tencent Cloud evidence
 
@@ -64,14 +69,15 @@ The backend decision must produce:
 4. A versioned HTTPS API specification with validation, authorization, pagination,
    idempotency, error semantics, and upload/download flows.
 5. Storage, AI-job, book/PDF, audit-log, backup, and disaster-recovery designs.
-6. A legacy album migration mapping with dry-run reports, deterministic IDs,
-   checksums, retry/idempotency behavior, reconciliation, and rollback strategy.
+6. A documented decision to exclude legacy data from the new database and API.
 
 ## 4. Implementation gate
 
-Do not build additional major iOS business pages until items 1–4 above are
-approved. Existing Wave 2 client code may be refactored after approval; it must not
-force the new backend to reproduce CloudBase or WeChat-specific semantics.
+Items 1–2 now resolve to the Alibaba Cloud ADR and a provider-neutral Apple identity
+model. Do not build additional major iOS business pages until the cloud POC,
+canonical schema, Apple authentication flow, and initial OpenAPI contract pass the
+gates in the active ADR. Existing Wave 2 client code must not force the new backend
+to reproduce CloudBase or WeChat-specific semantics.
 
 The first post-decision implementation slice should prove the complete production
 path: Apple sign-in -> current user -> trip list -> create trip -> signed photo
@@ -81,4 +87,5 @@ observable and recoverable.
 ## Audit outputs
 
 - Legacy evidence and migration disposition: `../../docs/20-legacy-cloudbase-audit.md`
-- Backend comparison and conditional recommendation: `../../docs/21-ios-backend-selection.md`
+- Superseded backend comparison: `../../docs/21-ios-backend-selection.md`
+- Active Alibaba Cloud US ADR: `../../docs/22-alibaba-cloud-us-architecture.md`

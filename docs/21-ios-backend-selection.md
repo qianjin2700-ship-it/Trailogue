@@ -1,8 +1,12 @@
-# 21 · iOS 长期后端技术选型
+# 21 · iOS 长期后端技术选型（已被替代）
 
-> 状态：推荐方案，等待最小 POC 与用户确认后转为正式 ADR。
+> 状态：2026-10-16 已被 `22-alibaba-cloud-us-architecture.md` 替代。
 >
 > 依据：`20-legacy-cloudbase-audit.md` 的实际业务负载，而不是通用 BaaS 对比。
+>
+> 替代原因：用户已明确长期使用阿里云美国区，并接受放弃腾讯云和旧数据。本文保留当时的
+> Supabase / Firebase / 独立 Node.js + PostgreSQL 对比过程，不再代表当前推荐，也不再要求
+> Supabase POC。
 
 ## 1. 项目约束
 

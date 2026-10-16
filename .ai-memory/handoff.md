@@ -2,8 +2,8 @@
 
 **Updated**: 2026-10-16 +08:00
 **Current objective**: Deliver Trailogue as an iOS-first product on a maintainable long-term backend.
-**Current stage**: Architecture selection — legacy source audit complete; live CloudBase audit and backend POC pending
-**Completion**: Static backend audit and conditional recommendation complete; product implementation remains paused
+**Current stage**: Alibaba Cloud US architecture approved; local backend skeleton and cloud POC not started
+**Completion**: Cloud direction, service boundaries, canonical entities and implementation gates are documented; product implementation remains paused
 
 ### Completed
 
@@ -19,7 +19,7 @@
 - Added My Trips loading, empty, loaded, error, retry, pull-to-refresh, and basic detail screens.
 - Added API, mapper, auth restoration, and four-state trip UI tests.
 - Documented the proposed mobile gateway in `ios-app/docs/MOBILE_API_CONTRACT.md`.
-- Superseded the Mini Program compatibility constraint: `miniprogram/`, `cloudfunctions/`, and CloudBase are now legacy reference and migration sources only.
+- Superseded the Mini Program compatibility constraint: `miniprogram/`, `cloudfunctions/`, and CloudBase are now read-only legacy references only.
 - Marked the Wave 2 `/v1/auth/apple`, `/v1/users/me`, and `/v1/albums` boundary as provisional rather than the approved production API.
 - Added `ios-app/docs/BACKEND_REPLATFORMING_AUDIT.md` as the evidence checklist and decision gate for the new backend.
 - Audited all 12 Cloud Function areas, 11 declared collections, storage paths, identity, AI, metadata, sharing, PDF, deletion, and payment placeholders.
@@ -27,13 +27,17 @@
 - Verified CloudBase CLI 3.8.0 is installed; live resource access is blocked by the absence of a valid login session.
 - Added `docs/20-legacy-cloudbase-audit.md` with migration priorities and source/data integrity risks.
 - Added `docs/21-ios-backend-selection.md`; conditionally recommends Supabase managed core plus a standard TypeScript API, durable queue, and independent Node worker, pending POC and approval.
+- Closed the CloudBase audit and cancelled all legacy data migration work by product decision.
+- Marked the Supabase recommendation as superseded.
+- Added `docs/22-alibaba-cloud-us-architecture.md` as the active ADR for ECS API/worker, RDS PostgreSQL, private OSS, SLS/CloudMonitor, KMS and standard `/v1` HTTPS APIs.
+- Preserved both Alibaba Cloud US regions as candidates; final Region must be selected by target-user latency, product inventory, compliance and cost evidence before purchase.
 
 ### Next
 
-- Have the Tencent account owner run `cloudbase login`, then perform the documented read-only audit against both candidate environment IDs.
-- Confirm or reject the conditional Supabase recommendation.
-- If confirmed, run the seven-item backend POC before recording the formal ADR or expanding iOS screens.
-- After the POC, specify SQL migrations, OpenAPI contracts, RLS policies, storage keys, worker deployment, and legacy import tooling.
+- After explicit implementation approval, create the local `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, and `db/migrations` skeleton without provisioning billable resources.
+- Specify the canonical PostgreSQL schema and initial OpenAPI contract, replacing provisional Album routes with Trip routes.
+- Benchmark `us-east-1` and `us-west-1`, obtain a budget, then separately approve the billable Alibaba Cloud POC.
+- Run the ADR POC before expanding major iOS business screens.
 
 ### Recovery entry
 
@@ -44,8 +48,7 @@
 
 - Final Apple bundle identifier and Expo project/account are not yet provided; neither is required for the local JS bundle stage.
 - A signed iOS build requires Apple credentials through EAS or macOS/Xcode.
-- Actual access to the expired Tencent CloudBase environment and its exportable data is not yet verified.
-- CloudBase CLI has no valid identity session; online read-only inspection requires the Tencent account owner to log in.
-- The Supabase-based architecture is a recommendation, not an approved ADR, until its POC passes and the user confirms it.
+- Alibaba Cloud account/project, final US Region, monthly budget, API domain and deployment credentials are not yet provided.
+- No billable cloud resources have been created; provisioning requires explicit implementation approval and cost confirmation.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL are not configured.
 - The `feature/ios-app` push is blocked in this environment because Git Credential Manager cannot start its helper process.
