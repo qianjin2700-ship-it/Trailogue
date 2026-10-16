@@ -34,5 +34,24 @@ Copy `.env.example` to `.env.local` and set only public client configuration the
 Any value prefixed with `EXPO_PUBLIC_` is embedded in the app and must never contain
 API keys or other secrets.
 
+Wave 2 uses these public values:
+
+- `EXPO_PUBLIC_API_BASE_URL`: mobile HTTPS gateway base URL.
+- `EXPO_PUBLIC_PRIVACY_URL`: published privacy policy.
+- `EXPO_PUBLIC_TERMS_URL`: published terms of service.
+
+The current CloudBase backend does not implement the mobile gateway yet. See
+[`docs/MOBILE_API_CONTRACT.md`](docs/MOBILE_API_CONTRACT.md) for the exact boundary
+and backend responsibilities. Production screens never fall back to fixture data.
+
+## Wave 2 architecture
+
+- `src/contracts`: DTOs based on the existing `users` and `albums` documents.
+- `src/domain`: UI-safe User and Trip models plus DTO mappers.
+- `src/api`: one JSON/Bearer/timeout/error client and resource APIs.
+- `src/repositories`: domain mapping boundary used by screens.
+- `src/auth`: three-state session restoration and global protected routing.
+- `src/services`: SecureStore and Apple credential adapters.
+
 Product app icons and store artwork are intentionally deferred until branding is
 approved; generated Expo starter artwork is ignored.
