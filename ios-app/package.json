@@ -44,7 +44,8 @@
     "doctor": "expo-doctor"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "cacheDirectory": "<rootDir>/.jest-cache"
   },
   "engines": {
     "node": ">=22.13"

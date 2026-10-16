@@ -11,4 +11,3 @@ export const usersApi = createUsersApi(apiClient);
 export const tripsApi = createTripsApi(apiClient);
 export const tripRepository = createTripRepository(tripsApi);
 
-
