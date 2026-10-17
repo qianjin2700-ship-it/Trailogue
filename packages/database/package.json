@@ -1,0 +1,31 @@
+{
+  "name": "@trailogue/database",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src test --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --test test/**/*.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx src/scripts/migrate.ts",
+    "db:seed": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx src/scripts/seed.ts"
+  },
+  "dependencies": {
+    "@trailogue/domain": "file:../domain",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11"
+  }
+}
