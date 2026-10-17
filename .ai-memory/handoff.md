@@ -1,9 +1,9 @@
 ## Handoff Checkpoint
 
-**Updated**: 2026-10-16 +08:00
+**Updated**: 2026-10-17 +08:00
 **Current objective**: Deliver Trailogue as an iOS-first product on a maintainable long-term backend.
-**Current stage**: Phase A local backend foundation implemented; Docker-host verification and Phase B remain pending
-**Completion**: Fastify API, PostgreSQL schema/migration, repositories, worker, shared contracts and iOS Trip contract are implemented and pass non-Docker gates
+**Current stage**: Phase A.1 complete on real PostgreSQL 17; Phase B awaits explicit approval
+**Completion**: Fastify API, PostgreSQL schema/migration/seed, repositories, worker, shared contracts and iOS Trip contract pass real PostgreSQL 17 and repository quality gates
 
 ### Completed
 
@@ -31,10 +31,12 @@
 - Marked the Supabase recommendation as superseded.
 - Added `docs/22-alibaba-cloud-us-architecture.md` as the active ADR for ECS API/worker, RDS PostgreSQL, private OSS, SLS/CloudMonitor, KMS and standard `/v1` HTTPS APIs.
 - Preserved both Alibaba Cloud US regions as candidates; final Region must be selected by target-user latency, product inventory, compliance and cost evidence before purchase.
+- Verified the empty-database migration, development seed, constraints, indexes, identity/session/Trip repository behavior, concurrent Job claiming, API health/readiness degradation, and worker polling against PostgreSQL 17.11.
+- Corrected the migration folder resolution and the emitted-file exports for the shared Domain and Contracts packages.
+- Recorded the evidence and Phase A.1 boundary in `docs/24-phase-a1-postgresql-verification.md`.
 
 ### Next
 
-- Install/start Docker Desktop, run the checked-in migration and seed against `postgres:17-alpine`, then repeat the API readiness check.
 - After explicit Phase B approval, implement real Apple verification, session middleware, current-user and Trip handlers.
 - Benchmark `us-east-1` and `us-west-1`, obtain a budget, then separately approve the billable Alibaba Cloud POC.
 - Run the ADR POC before expanding major iOS business screens.
@@ -51,5 +53,4 @@
 - Alibaba Cloud account/project, final US Region, monthly budget, API domain and deployment credentials are not yet provided.
 - No billable cloud resources have been created; provisioning requires explicit implementation approval and cost confirmation.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL are not configured.
-- The `feature/ios-app` push is blocked in this environment because Git Credential Manager cannot start its helper process.
-- Docker CLI/daemon is unavailable on this host; empty-database migration, seed and repository behavior were verified with embedded PostgreSQL (PGlite), but the Compose runtime was not executed.
+- Docker CLI/daemon is unavailable on this host. This is no longer a Phase A.1 verification blocker because the same migration, API and worker were exercised against a real PostgreSQL 17.11 server; the Compose wrapper itself remains untested here.

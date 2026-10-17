@@ -191,3 +191,12 @@ User architecture decision and `docs/22-alibaba-cloud-us-architecture.md`.
 - On Windows hosts that forbid symlinks, npm internal `file:` packages are installed with `--install-links`.
 
 **Phase boundary**: Apple JWKS/JWT verification, functional auth/user/trip handlers, OSS, AI, maps, PDF, billing, and cloud provisioning remain out of scope until Phase B is explicitly approved.
+
+## Verification Record: Phase A.1 on PostgreSQL 17
+
+**Date**: 2026-10-17
+**Result**: Phase A passed against an empty native PostgreSQL 17.11 database. Migration, repeat development seed, production seed guard, constraints/indexes, Identity uniqueness, hashed Session behavior, Trip owner isolation, concurrent Job claim safety, API health/readiness degradation, and worker polling were verified.
+
+**Corrections**: The database migration directory is relative to `packages/database/src/scripts`, and package export paths must match each package's actual TypeScript `rootDir`/`outDir` output. Domain and Contracts emit `dist/index`; Config and Database emit `dist/src/index`.
+
+**Environment note**: Docker was unavailable, so official native PostgreSQL binaries provided the real PostgreSQL runtime. This validates database behavior but not the Docker Compose wrapper.
