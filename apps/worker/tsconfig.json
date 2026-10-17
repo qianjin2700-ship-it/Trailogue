@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "paths": {
+      "@trailogue/config": ["../../packages/config/dist/src/index.d.ts"],
+      "@trailogue/database": ["../../packages/database/dist/src/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

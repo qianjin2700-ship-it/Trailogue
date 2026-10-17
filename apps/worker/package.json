@@ -1,0 +1,18 @@
+{
+  "name": "@trailogue/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --watch src/main.ts",
+    "start": "node dist/src/main.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src test --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@trailogue/config": "file:../../packages/config",
+    "@trailogue/database": "file:../../packages/database"
+  }
+}
