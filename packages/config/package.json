@@ -1,0 +1,21 @@
+{
+  "name": "@trailogue/config",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

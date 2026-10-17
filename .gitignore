@@ -1,6 +1,11 @@
 # 依赖
 node_modules/
+.legacy-node-modules/
+.partial-node-modules*/
 cloudfunctions/**/node_modules/
+dist/
+coverage/
+*.tsbuildinfo
 
 # 环境变量（真实密钥严禁入库，仅保留 .env.example 模板）
 .env
@@ -29,6 +34,11 @@ cloudfunctions/**/*.js.map
 
 # 可写工作区内的 Expo/Hermes 临时构建缓存（沙箱环境）
 ios-app/.tmp-expo-build/
+
+# Local PostgreSQL volumes and test databases
+.postgres-data/
+.pglite/
+.npm-cache/
 
 # 系统 / 编辑器
 .DS_Store
