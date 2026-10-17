@@ -48,6 +48,7 @@
 
 ### Blockers
 
+- Remote backup remains blocked because this host has no usable GitHub credential: Git Credential Manager cannot persist to the Windows credential store. Local verification and commits are complete.
 - Final Apple bundle identifier and Expo project/account are not yet provided; neither is required for the local JS bundle stage.
 - A signed iOS build requires Apple credentials through EAS or macOS/Xcode.
 - Alibaba Cloud account/project, final US Region, monthly budget, API domain and deployment credentials are not yet provided.
