@@ -174,3 +174,20 @@ New business operations use the versioned HTTPS API and internal UUID ownership.
 ### Source
 
 User architecture decision and `docs/22-alibaba-cloud-us-architecture.md`.
+
+## Decision Record: Phase A local backend foundation
+
+**Date**: 2026-10-17
+**Choice**: Fastify 5 + Drizzle + PostgreSQL 17, with an independent polling worker and pure TypeScript contracts shared with iOS.
+
+**Implementation**:
+
+- Active server code lives in `apps/api` and `apps/worker`.
+- Canonical code lives in `packages/contracts`, `packages/domain`, `packages/database`, and `packages/config`.
+- PostgreSQL migrations define User, Identity, Session, Trip, Photo, Story, Book, and Job with foreign keys, deletion rules, unique constraints, and indexes.
+- Persistent job claims use `FOR UPDATE SKIP LOCKED` and bounded retry state.
+- The iOS client now uses `/v1/trips` and camelCase canonical DTOs; Album/OPENID transport fields are removed from the active path.
+- PGlite is a test-only PostgreSQL runtime for empty-database migration and repository verification; Docker Compose PostgreSQL 17 remains the standard local developer runtime.
+- On Windows hosts that forbid symlinks, npm internal `file:` packages are installed with `--install-links`.
+
+**Phase boundary**: Apple JWKS/JWT verification, functional auth/user/trip handlers, OSS, AI, maps, PDF, billing, and cloud provisioning remain out of scope until Phase B is explicitly approved.

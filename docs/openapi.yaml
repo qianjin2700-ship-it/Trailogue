@@ -1,0 +1,86 @@
+openapi: 3.0.3
+info:
+  title: Trailogue API
+  version: 1.0.0
+  description: Phase A API boundary. Routes marked 501 are planned contracts, not active services.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200': { description: Process is healthy }
+  /ready:
+    get:
+      operationId: ready
+      responses:
+        '200': { description: PostgreSQL is reachable }
+        '503': { description: A required dependency is unavailable }
+  /v1/auth/apple:
+    post:
+      operationId: signInWithApple
+      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppleSignInRequest' }
+      responses:
+        '501': { $ref: '#/components/responses/NotImplemented' }
+  /v1/users/me:
+    get:
+      operationId: getCurrentUser
+      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      responses:
+        '501': { $ref: '#/components/responses/NotImplemented' }
+  /v1/trips:
+    get:
+      operationId: listTrips
+      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      responses:
+        '501': { $ref: '#/components/responses/NotImplemented' }
+  /v1/trips/{id}:
+    get:
+      operationId: getTrip
+      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '501': { $ref: '#/components/responses/NotImplemented' }
+components:
+  schemas:
+    AppleSignInRequest:
+      type: object
+      required: [identityToken, nonce, profile]
+      properties:
+        identityToken: { type: string }
+        authorizationCode: { type: string, nullable: true }
+        nonce: { type: string, minLength: 16 }
+        profile:
+          type: object
+          required: [givenName, familyName, email]
+          properties:
+            givenName: { type: string, nullable: true }
+            familyName: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+  responses:
+    NotImplemented:
+      description: Planned Phase A boundary
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

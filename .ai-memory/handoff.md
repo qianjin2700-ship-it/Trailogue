@@ -2,8 +2,8 @@
 
 **Updated**: 2026-10-16 +08:00
 **Current objective**: Deliver Trailogue as an iOS-first product on a maintainable long-term backend.
-**Current stage**: Alibaba Cloud US architecture approved; local backend skeleton and cloud POC not started
-**Completion**: Cloud direction, service boundaries, canonical entities and implementation gates are documented; product implementation remains paused
+**Current stage**: Phase A local backend foundation implemented; Docker-host verification and Phase B remain pending
+**Completion**: Fastify API, PostgreSQL schema/migration, repositories, worker, shared contracts and iOS Trip contract are implemented and pass non-Docker gates
 
 ### Completed
 
@@ -34,8 +34,8 @@
 
 ### Next
 
-- After explicit implementation approval, create the local `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, and `db/migrations` skeleton without provisioning billable resources.
-- Specify the canonical PostgreSQL schema and initial OpenAPI contract, replacing provisional Album routes with Trip routes.
+- Install/start Docker Desktop, run the checked-in migration and seed against `postgres:17-alpine`, then repeat the API readiness check.
+- After explicit Phase B approval, implement real Apple verification, session middleware, current-user and Trip handlers.
 - Benchmark `us-east-1` and `us-west-1`, obtain a budget, then separately approve the billable Alibaba Cloud POC.
 - Run the ADR POC before expanding major iOS business screens.
 
@@ -52,3 +52,4 @@
 - No billable cloud resources have been created; provisioning requires explicit implementation approval and cost confirmation.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL are not configured.
 - The `feature/ios-app` push is blocked in this environment because Git Credential Manager cannot start its helper process.
+- Docker CLI/daemon is unavailable on this host; empty-database migration, seed and repository behavior were verified with embedded PostgreSQL (PGlite), but the Compose runtime was not executed.
