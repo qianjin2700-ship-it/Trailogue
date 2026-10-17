@@ -42,11 +42,11 @@ export function mapHttpStatus(status: number): ApiErrorCode {
   return 'UNKNOWN';
 }
 
-export function mapBackendCode(code: number): ApiErrorCode {
-  if (code === 40101) return 'UNAUTHORIZED';
-  if (code === 40301) return 'FORBIDDEN';
-  if (code === 40401) return 'NOT_FOUND';
-  if (code >= 50000) return 'SERVER_ERROR';
+export function mapBackendCode(code: string): ApiErrorCode {
+  if (code === 'UNAUTHORIZED' || code === 'INVALID_APPLE_TOKEN') return 'UNAUTHORIZED';
+  if (code === 'FORBIDDEN') return 'FORBIDDEN';
+  if (code === 'NOT_FOUND') return 'NOT_FOUND';
+  if (code === 'INTERNAL_ERROR') return 'SERVER_ERROR';
   return 'UNKNOWN';
 }
 

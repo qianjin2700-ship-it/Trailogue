@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const credential = await getAppleCredential();
       const session = await authApi.signInWithApple(credential);
-      await authStorage.saveToken(session.access_token);
+      await authStorage.saveToken(session.accessToken);
       setUser(mapUserDTO(session.user));
       setStatus('authenticated');
     } catch (signInError) {

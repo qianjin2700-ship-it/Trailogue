@@ -37,9 +37,10 @@ describe('<TripListContent />', () => {
       data: [{
         id: 'trip-1',
         title: 'Kyoto in Autumn',
-        status: 'done',
+        status: 'published',
         photoCount: 18,
         coverUrl: null,
+        destinationName: 'Kyoto',
         updatedAt: new Date('2026-10-14T08:30:00.000Z'),
       }],
     });

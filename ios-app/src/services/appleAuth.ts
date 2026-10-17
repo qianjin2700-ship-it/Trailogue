@@ -2,7 +2,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 
 import { AppError } from '@/api/errors';
-import type { AppleSignInRequestDTO } from '@/contracts/auth';
+import type { AppleSignInRequest } from '@/contracts/auth';
 
 export class AppleSignInCancelledError extends Error {
   constructor() {
@@ -11,7 +11,7 @@ export class AppleSignInCancelledError extends Error {
   }
 }
 
-export async function getAppleCredential(): Promise<AppleSignInRequestDTO> {
+export async function getAppleCredential(): Promise<AppleSignInRequest> {
   if (!(await AppleAuthentication.isAvailableAsync())) {
     throw new AppError('UNKNOWN');
   }
@@ -34,12 +34,12 @@ export async function getAppleCredential(): Promise<AppleSignInRequestDTO> {
     }
 
     return {
-      identity_token: credential.identityToken,
-      authorization_code: credential.authorizationCode,
+      identityToken: credential.identityToken,
+      authorizationCode: credential.authorizationCode,
       nonce,
-      user: {
-        given_name: credential.fullName?.givenName ?? null,
-        family_name: credential.fullName?.familyName ?? null,
+      profile: {
+        givenName: credential.fullName?.givenName ?? null,
+        familyName: credential.fullName?.familyName ?? null,
         email: credential.email,
       },
     };

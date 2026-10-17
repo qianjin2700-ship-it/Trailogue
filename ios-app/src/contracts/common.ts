@@ -1,13 +1,9 @@
-export interface ApiEnvelope<T> {
-  code: number;
-  data?: T;
-  message?: string;
-}
-
-export interface CursorPage<T> {
-  items: T[];
-  next_cursor: string | null;
-}
+export type {
+  ApiDataResponse,
+  ApiErrorCode,
+  ApiErrorResponse,
+  ApiListResponse,
+} from '@trailogue/contracts';
 
 export type LoadState<T> =
   | { status: 'idle' }

@@ -3,14 +3,12 @@ import { restoreSession } from '@/auth/restoreSession';
 import type { UserDTO } from '@/contracts/user';
 
 const userDTO: UserDTO = {
-  _id: 'user-1',
-  _openid: 'legacy-openid',
-  nickname: 'Avery',
-  avatar_url: null,
-  privacy_agreed_at: null,
-  retention_days: 90,
-  created_at: '2026-10-01T00:00:00.000Z',
-  updated_at: '2026-10-01T00:00:00.000Z',
+  id: 'user-1',
+  displayName: 'Avery',
+  avatarUrl: null,
+  email: 'avery@example.com',
+  createdAt: '2026-10-01T00:00:00.000Z',
+  updatedAt: '2026-10-01T00:00:00.000Z',
 };
 
 function storageWithToken(token: string | null) {

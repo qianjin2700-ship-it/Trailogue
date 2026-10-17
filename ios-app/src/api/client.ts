@@ -1,4 +1,4 @@
-import type { ApiEnvelope } from '@/contracts/common';
+import type { ApiErrorResponse } from '@/contracts/common';
 
 import { AppError, mapBackendCode, mapHttpStatus } from './errors';
 
@@ -54,15 +54,15 @@ export function createApiClient({
           signal: controller.signal,
         });
 
-        const envelope = await parseEnvelope<T>(response);
+        const payload = await parseJson<T>(response);
         if (!response.ok) {
-          throw new AppError(mapHttpStatus(response.status), response.status);
+          const backendCode = (payload as Partial<ApiErrorResponse>).error?.code;
+          throw new AppError(
+            backendCode ? mapBackendCode(backendCode) : mapHttpStatus(response.status),
+            response.status,
+          );
         }
-        if (envelope.code !== 0) {
-          throw new AppError(mapBackendCode(envelope.code), response.status);
-        }
-
-        return envelope.data as T;
+        return payload;
       } catch (error) {
         if (error instanceof AppError) throw error;
         if (controller.signal.aborted) throw new AppError('TIMEOUT', undefined, error);
@@ -74,11 +74,9 @@ export function createApiClient({
   };
 }
 
-async function parseEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
+async function parseJson<T>(response: Response): Promise<T> {
   try {
-    const value = (await response.json()) as Partial<ApiEnvelope<T>>;
-    if (typeof value.code !== 'number') throw new Error('Missing API envelope code');
-    return value as ApiEnvelope<T>;
+    return (await response.json()) as T;
   } catch (error) {
     if (!response.ok) throw new AppError(mapHttpStatus(response.status), response.status, error);
     throw new AppError('UNKNOWN', response.status, error);

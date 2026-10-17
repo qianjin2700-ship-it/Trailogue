@@ -56,8 +56,8 @@ export default function TripDetailScreen() {
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
       <Text accessibilityRole="header" style={styles.title}>{trip.title}</Text>
       <Text style={styles.meta}>{trip.photoCount} {trip.photoCount === 1 ? 'photo' : 'photos'} · {trip.status}</Text>
-      {trip.theme ? <Section label="Theme" value={trip.theme} /> : null}
-      {trip.background ? <Section label="About this trip" value={trip.background} /> : null}
+      {trip.destinationName ? <Section label="Destination" value={trip.destinationName} /> : null}
+      {trip.description ? <Section label="About this trip" value={trip.description} /> : null}
       <Section label="Last updated" value={trip.updatedAt.toLocaleDateString()} />
     </ScrollView>
   );

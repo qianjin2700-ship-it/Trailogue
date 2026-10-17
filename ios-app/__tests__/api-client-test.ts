@@ -10,14 +10,14 @@ function response(status: number, body: unknown): Response {
 
 describe('API client', () => {
   it('returns data from a successful envelope and adds the session token', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(response(200, { code: 0, data: { id: '1' } }));
+    const fetchMock = jest.fn().mockResolvedValue(response(200, { data: { id: '1' } }));
     const client = createApiClient({
       baseUrl: 'https://api.example.com/',
       fetch: fetchMock,
       getToken: async () => 'session-token',
     });
 
-    await expect(client.request('/v1/example')).resolves.toEqual({ id: '1' });
+    await expect(client.request('/v1/example')).resolves.toEqual({ data: { id: '1' } });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example.com/v1/example',
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer session-token' }) })
@@ -27,7 +27,7 @@ describe('API client', () => {
   it('normalizes a 401 response', async () => {
     const client = createApiClient({
       baseUrl: 'https://api.example.com',
-      fetch: jest.fn().mockResolvedValue(response(401, { code: 40101, message: 'raw backend message' })),
+      fetch: jest.fn().mockResolvedValue(response(401, { error: { code: 'UNAUTHORIZED', message: 'raw backend message', requestId: 'request-1' } })),
     });
 
     await expect(client.request('/v1/example')).rejects.toMatchObject({
@@ -39,7 +39,7 @@ describe('API client', () => {
   it('normalizes a 500 response', async () => {
     const client = createApiClient({
       baseUrl: 'https://api.example.com',
-      fetch: jest.fn().mockResolvedValue(response(500, { code: 50001 })),
+      fetch: jest.fn().mockResolvedValue(response(500, { error: { code: 'INTERNAL_ERROR', message: 'hidden', requestId: 'request-2' } })),
     });
 
     await expect(client.request('/v1/example')).rejects.toMatchObject({

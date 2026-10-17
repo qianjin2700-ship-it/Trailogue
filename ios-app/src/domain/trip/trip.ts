@@ -1,4 +1,4 @@
-import type { TripDTO, TripListItemDTO, TripStatus } from '@/contracts/trip';
+import type { TripDTO, TripStatus } from '@/contracts/trip';
 
 export interface TripSummary {
   id: string;
@@ -6,37 +6,26 @@ export interface TripSummary {
   status: TripStatus;
   photoCount: number;
   coverUrl: string | null;
+  destinationName: string | null;
   updatedAt: Date;
 }
 
 export interface Trip extends TripSummary {
-  theme: string;
-  background: string;
+  description: string | null;
   createdAt: Date;
-}
-
-export function mapTripListItemDTO(dto: TripListItemDTO): TripSummary {
-  return {
-    id: dto.album_id,
-    title: dto.name,
-    status: dto.status,
-    photoCount: dto.photo_count,
-    coverUrl: dto.cover_thumb_url,
-    updatedAt: new Date(dto.updated_at),
-  };
 }
 
 export function mapTripDTO(dto: TripDTO): Trip {
   return {
-    id: dto._id,
-    title: dto.name,
+    id: dto.id,
+    title: dto.title,
     status: dto.status,
-    photoCount: dto.photo_count,
-    coverUrl: dto.cover_file_id,
-    theme: dto.theme,
-    background: dto.background,
-    createdAt: new Date(dto.created_at),
-    updatedAt: new Date(dto.updated_at),
+    photoCount: dto.photoCount,
+    coverUrl: null,
+    destinationName: dto.destinationName,
+    description: dto.description,
+    createdAt: new Date(dto.createdAt),
+    updatedAt: new Date(dto.updatedAt),
   };
 }
 
