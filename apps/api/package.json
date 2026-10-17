@@ -1,0 +1,23 @@
+{
+  "name": "@trailogue/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --watch src/server.ts",
+    "start": "node dist/src/server.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src test --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^9.9.2",
+    "@fastify/swagger-ui": "^6.1.2",
+    "@trailogue/config": "file:../../packages/config",
+    "@trailogue/contracts": "file:../../packages/contracts",
+    "@trailogue/database": "file:../../packages/database",
+    "@trailogue/domain": "file:../../packages/domain",
+    "fastify": "^5.12.7"
+  }
+}
