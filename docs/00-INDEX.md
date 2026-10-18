@@ -1,5 +1,7 @@
 # 旅迹成书 — 第一阶段设计文档索引
 
+> 当前工程基线：海外版 iOS 为唯一主客户端，独立 Node.js + PostgreSQL 为长期后端。微信小程序与 CloudBase 内容仅作为历史资料。当前实现状态见 [Phase A 本地后端](./23-phase-a-local-backend.md)、[PostgreSQL 验证](./24-phase-a1-postgresql-verification.md) 和 [Phase B 身份认证数据链路](./25-phase-b-authenticated-data.md)。
+
 > 独立微信小程序 · MVP 设计规格 v1.0
 > 本目录为第一阶段交付物（纯规格，不含代码）。确认后将搭建可在微信开发者工具中运行的项目骨架。
 

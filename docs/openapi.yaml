@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Trailogue API
   version: 1.0.0
-  description: Phase A API boundary. Routes marked 501 are planned contracts, not active services.
+  description: Phase B authenticated API for the Trailogue iOS client.
 servers:
   - url: http://localhost:3000
 paths:
@@ -16,57 +16,149 @@ paths:
       operationId: ready
       responses:
         '200': { description: PostgreSQL is reachable }
-        '503': { description: A required dependency is unavailable }
+        '503': { $ref: '#/components/responses/InternalError' }
   /v1/auth/apple:
     post:
       operationId: signInWithApple
-      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      description: Verifies an Apple identity token and creates a Trailogue bearer session.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/AppleSignInRequest' }
       responses:
-        '501': { $ref: '#/components/responses/NotImplemented' }
+        '200':
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/AuthSession' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/InvalidAppleToken' }
   /v1/users/me:
     get:
       operationId: getCurrentUser
-      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      security: [{ bearerAuth: [] }]
       responses:
-        '501': { $ref: '#/components/responses/NotImplemented' }
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /v1/trips:
     get:
       operationId: listTrips
-      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 512 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
       responses:
-        '501': { $ref: '#/components/responses/NotImplemented' }
+        '200':
+          description: Owner-scoped trip page ordered by most recently updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Trip' }
+                  meta:
+                    type: object
+                    required: [nextCursor]
+                    properties:
+                      nextCursor: { type: string, nullable: true }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /v1/trips/{id}:
     get:
       operationId: getTrip
-      description: Contract only in Phase A; returns NOT_IMPLEMENTED.
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: id
           in: path
           required: true
           schema: { type: string, format: uuid }
       responses:
-        '501': { $ref: '#/components/responses/NotImplemented' }
+        '200':
+          description: Owner-scoped trip detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Trip' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   schemas:
     AppleSignInRequest:
       type: object
+      additionalProperties: false
       required: [identityToken, nonce, profile]
       properties:
-        identityToken: { type: string }
-        authorizationCode: { type: string, nullable: true }
-        nonce: { type: string, minLength: 16 }
+        identityToken: { type: string, minLength: 1, maxLength: 16384 }
+        authorizationCode: { type: string, nullable: true, maxLength: 4096 }
+        nonce: { type: string, minLength: 16, maxLength: 256 }
         profile:
           type: object
+          additionalProperties: false
           required: [givenName, familyName, email]
           properties:
-            givenName: { type: string, nullable: true }
-            familyName: { type: string, nullable: true }
-            email: { type: string, nullable: true }
+            givenName: { type: string, nullable: true, maxLength: 160 }
+            familyName: { type: string, nullable: true, maxLength: 160 }
+            email: { type: string, nullable: true, maxLength: 320 }
+    AuthSession:
+      type: object
+      required: [accessToken, expiresAt, user]
+      properties:
+        accessToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+        user: { $ref: '#/components/schemas/User' }
+    User:
+      type: object
+      required: [id, displayName, avatarUrl, email, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string, nullable: true }
+        avatarUrl: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Trip:
+      type: object
+      required: [id, title, description, destinationName, status, coverPhotoId, photoCount, startDate, endDate, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        destinationName: { type: string, nullable: true }
+        status: { type: string, enum: [draft, organizing, ready, archived] }
+        coverPhotoId: { type: string, format: uuid, nullable: true }
+        photoCount: { type: integer, minimum: 0 }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     Error:
       type: object
       required: [error]
@@ -79,8 +171,28 @@ components:
             message: { type: string }
             requestId: { type: string }
   responses:
-    NotImplemented:
-      description: Planned Phase A boundary
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InvalidAppleToken:
+      description: Apple identity token is invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: A valid active Trailogue bearer session is required
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: The owner-scoped resource does not exist
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: A required dependency is unavailable
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
