@@ -56,7 +56,16 @@ test('identity uniqueness, session expiry, and trip ownership are enforced', asy
     const trips = new TripRepository(executor);
     const alice = await users.create({ displayName: 'Alice' });
     const bob = await users.create({ displayName: 'Bob' });
-    await identities.create({ userId: alice.id, provider: 'apple', providerUserId: 'apple-subject' });
+    await identities.create({
+      userId: alice.id,
+      provider: 'apple',
+      providerUserId: 'apple-subject',
+      email: 'alice@example.com',
+    });
+    assert.equal(
+      (await identities.findByProviderSubject('apple', 'apple-subject'))?.userId,
+      alice.id,
+    );
     await assert.rejects(() =>
       identities.create({ userId: bob.id, provider: 'apple', providerUserId: 'apple-subject' }),
     );
@@ -65,8 +74,13 @@ test('identity uniqueness, session expiry, and trip ownership are enforced', asy
     assert.equal(await sessions.findActiveByTokenHash('a'.repeat(64)), null);
 
     const trip = await trips.create({ userId: alice.id, title: 'Alice Trip' });
+    await trips.create({ userId: bob.id, title: 'Bob Trip' });
     assert.equal((await trips.findByIdForUser(trip.id, alice.id))?.id, trip.id);
     assert.equal(await trips.findByIdForUser(trip.id, bob.id), null);
+    const aliceTrips = await trips.listForUser({ userId: alice.id, limit: 20 });
+    assert.equal(aliceTrips.length, 1);
+    assert.equal(aliceTrips[0]?.id, trip.id);
+    assert.equal(aliceTrips[0]?.photoCount, 0);
   } finally {
     await client.close();
   }

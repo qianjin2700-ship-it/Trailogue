@@ -21,6 +21,14 @@ export interface SessionRecord {
   lastUsedAt: Date;
 }
 
+export interface IdentityRecord {
+  id: string;
+  userId: string;
+  provider: IdentityProvider;
+  providerUserId: string;
+  email: string | null;
+}
+
 export interface TripRecord {
   id: string;
   userId: string;
@@ -28,6 +36,10 @@ export interface TripRecord {
   description: string | null;
   destinationName: string | null;
   status: TripStatus;
+  coverPhotoId: string | null;
+  photoCount: number;
+  startDate: string | null;
+  endDate: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,19 +98,34 @@ export class IdentityRepository {
     provider: IdentityProvider;
     providerUserId: string;
     email?: string | null;
-  }): Promise<{ id: string; userId: string; provider: IdentityProvider; providerUserId: string }> {
-    const result = await this.database.query<{
-      id: string;
-      userId: string;
-      provider: IdentityProvider;
-      providerUserId: string;
-    }>(
+  }): Promise<IdentityRecord> {
+    const result = await this.database.query<IdentityRecord>(
       `insert into user_identities (user_id, provider, provider_user_id, email)
        values ($1, $2, $3, $4)
-       returning id, user_id as "userId", provider, provider_user_id as "providerUserId"`,
+       returning id, user_id as "userId", provider, provider_user_id as "providerUserId", email`,
       [input.userId, input.provider, input.providerUserId, input.email ?? null],
     );
     return requireRow(result.rows[0]);
+  }
+
+  async lockProviderSubject(provider: IdentityProvider, providerUserId: string): Promise<void> {
+    await this.database.query(
+      'select pg_advisory_xact_lock(hashtext($1))',
+      [`${provider}:${providerUserId}`],
+    );
+  }
+
+  async findByProviderSubject(
+    provider: IdentityProvider,
+    providerUserId: string,
+  ): Promise<IdentityRecord | null> {
+    const result = await this.database.query<IdentityRecord>(
+      `select id, user_id as "userId", provider, provider_user_id as "providerUserId", email
+       from user_identities
+       where provider = $1 and provider_user_id = $2`,
+      [provider, providerUserId],
+    );
+    return result.rows[0] ?? null;
   }
 }
 
@@ -150,6 +177,8 @@ export class TripRepository {
        values ($1, $2, $3, $4)
        returning id, user_id as "userId", title, description,
          destination_name as "destinationName", status,
+         cover_photo_id as "coverPhotoId", 0::int as "photoCount",
+         start_date as "startDate", end_date as "endDate",
          created_at as "createdAt", updated_at as "updatedAt"`,
       [input.userId, input.title, input.description ?? null, input.destinationName ?? null],
     );
@@ -158,13 +187,41 @@ export class TripRepository {
 
   async findByIdForUser(id: string, userId: string): Promise<TripRecord | null> {
     const result = await this.database.query<TripRecord>(
-      `select id, user_id as "userId", title, description,
-         destination_name as "destinationName", status,
-         created_at as "createdAt", updated_at as "updatedAt"
-       from trips where id = $1 and user_id = $2`,
+      `select t.id, t.user_id as "userId", t.title, t.description,
+         t.destination_name as "destinationName", t.status,
+         t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
+         t.start_date as "startDate", t.end_date as "endDate",
+         t.created_at as "createdAt", t.updated_at as "updatedAt"
+       from trips t
+       left join photos p on p.trip_id = t.id
+       where t.id = $1 and t.user_id = $2
+       group by t.id`,
       [id, userId],
     );
     return result.rows[0] ?? null;
+  }
+
+  async listForUser(input: {
+    userId: string;
+    limit: number;
+    cursor?: { updatedAt: Date; id: string } | null;
+  }): Promise<TripRecord[]> {
+    const result = await this.database.query<TripRecord>(
+      `select t.id, t.user_id as "userId", t.title, t.description,
+         t.destination_name as "destinationName", t.status,
+         t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
+         t.start_date as "startDate", t.end_date as "endDate",
+         t.created_at as "createdAt", t.updated_at as "updatedAt"
+       from trips t
+       left join photos p on p.trip_id = t.id
+       where t.user_id = $1
+         and ($2::timestamptz is null or (t.updated_at, t.id) < ($2::timestamptz, $3::uuid))
+       group by t.id
+       order by t.updated_at desc, t.id desc
+       limit $4`,
+      [input.userId, input.cursor?.updatedAt ?? null, input.cursor?.id ?? null, input.limit],
+    );
+    return result.rows;
   }
 }
 

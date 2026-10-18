@@ -43,7 +43,6 @@ export interface AppleSignInRequest {
 
 export interface AuthSessionDTO {
   accessToken: string;
-  refreshToken: string;
   expiresAt: string;
   user: UserDTO;
 }

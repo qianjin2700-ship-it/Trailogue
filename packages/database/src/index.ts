@@ -7,6 +7,7 @@ export {
   TripRepository,
   UserRepository,
   type JobRecord,
+  type IdentityRecord,
   type SessionRecord,
   type TripRecord,
   type UserRecord,
