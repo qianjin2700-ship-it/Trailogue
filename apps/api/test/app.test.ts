@@ -1,10 +1,71 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildApp } from '../src/app.js';
+import type { SessionRecord, TripRecord, UserRecord } from '@trailogue/database';
+
+import { buildApp, type ApiServices } from '../src/app.js';
+import { InvalidAppleIdentityError } from '../src/modules/auth/appleIdentityVerifier.js';
+
+const now = new Date('2026-10-18T00:00:00.000Z');
+const userId = '10000000-0000-4000-8000-000000000001';
+const tripId = '20000000-0000-4000-8000-000000000002';
+const bearerToken = 'a'.repeat(48);
+
+const user: UserRecord = {
+  id: userId,
+  displayName: 'Trailogue Traveler',
+  avatarUrl: null,
+  email: 'traveler@example.com',
+  createdAt: now,
+  updatedAt: now,
+};
+
+const trip: TripRecord = {
+  id: tripId,
+  userId,
+  title: 'Pacific Coast',
+  description: 'A test trip',
+  destinationName: 'California',
+  status: 'draft',
+  coverPhotoId: null,
+  photoCount: 3,
+  startDate: '2026-10-01',
+  endDate: '2026-10-07',
+  createdAt: now,
+  updatedAt: now,
+};
+
+function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
+  const session: SessionRecord = {
+    id: '30000000-0000-4000-8000-000000000003',
+    userId,
+    tokenHash: 'hash',
+    expiresAt: new Date('2026-11-18T00:00:00.000Z'),
+    revokedAt: null,
+    createdAt: now,
+    lastUsedAt: now,
+  };
+  return {
+    authentication: {
+      signInWithApple: async () => ({ accessToken: bearerToken, expiresAt: session.expiresAt, user }),
+    },
+    sessions: { verify: async (token) => (token === bearerToken ? session : null) },
+    users: { findById: async (id) => (id === userId ? user : null) },
+    trips: {
+      findByIdForUser: async (id, ownerId) =>
+        id === tripId && ownerId === userId ? trip : null,
+      listForUser: async ({ userId: ownerId }) => (ownerId === userId ? [trip] : []),
+    },
+    ...overrides,
+  };
+}
+
+async function createApp(services = createServices()) {
+  return buildApp({ readiness: { healthCheck: async () => undefined }, services });
+}
 
 test('GET /health returns a data envelope and request id', async () => {
-  const app = await buildApp({ readiness: { healthCheck: async () => undefined } });
+  const app = await createApp();
   const response = await app.inject({ method: 'GET', url: '/health' });
   await app.close();
 
@@ -14,7 +75,7 @@ test('GET /health returns a data envelope and request id', async () => {
 });
 
 test('GET /ready returns 200 when PostgreSQL is reachable', async () => {
-  const app = await buildApp({ readiness: { healthCheck: async () => undefined } });
+  const app = await createApp();
   const response = await app.inject({ method: 'GET', url: '/ready' });
   await app.close();
 
@@ -25,6 +86,7 @@ test('GET /ready returns 200 when PostgreSQL is reachable', async () => {
 test('GET /ready returns a safe 503 error when PostgreSQL is unavailable', async () => {
   const app = await buildApp({
     readiness: { healthCheck: async () => Promise.reject(new Error('database password leaked')) },
+    services: createServices(),
   });
   const response = await app.inject({ method: 'GET', url: '/ready' });
   await app.close();
@@ -35,7 +97,7 @@ test('GET /ready returns a safe 503 error when PostgreSQL is unavailable', async
 });
 
 test('unknown routes use the standard error envelope', async () => {
-  const app = await buildApp({ readiness: { healthCheck: async () => undefined } });
+  const app = await createApp();
   const response = await app.inject({ method: 'GET', url: '/unknown' });
   await app.close();
 
@@ -44,21 +106,129 @@ test('unknown routes use the standard error envelope', async () => {
   assert.equal(response.json().error.requestId, response.headers['x-request-id']);
 });
 
-test('invalid trip id returns VALIDATION_ERROR before the planned handler', async () => {
-  const app = await buildApp({ readiness: { healthCheck: async () => undefined } });
-  const response = await app.inject({ method: 'GET', url: '/v1/trips/not-a-uuid' });
+test('POST /v1/auth/apple returns a Trailogue bearer session', async () => {
+  const app = await createApp();
+  const response = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/apple',
+    payload: {
+      identityToken: 'signed-apple-token',
+      authorizationCode: null,
+      nonce: '0123456789abcdef0123456789abcdef',
+      profile: { givenName: 'Trailogue', familyName: 'Traveler', email: null },
+    },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().data.accessToken, bearerToken);
+  assert.equal(response.json().data.user.id, userId);
+});
+
+test('POST /v1/auth/apple maps invalid identity tokens to a safe 401', async () => {
+  const app = await createApp(
+    createServices({
+      authentication: { signInWithApple: async () => Promise.reject(new InvalidAppleIdentityError()) },
+    }),
+  );
+  const response = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/apple',
+    payload: {
+      identityToken: 'invalid',
+      authorizationCode: null,
+      nonce: '0123456789abcdef0123456789abcdef',
+      profile: { givenName: null, familyName: null, email: null },
+    },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.json().error.code, 'INVALID_APPLE_TOKEN');
+});
+
+test('authenticated user and trip routes reject a missing bearer token', async () => {
+  const app = await createApp();
+  for (const url of ['/v1/users/me', '/v1/trips', `/v1/trips/${tripId}`]) {
+    const response = await app.inject({ method: 'GET', url });
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.json().error.code, 'UNAUTHORIZED');
+  }
+  await app.close();
+});
+
+test('GET /v1/users/me returns the authenticated user', async () => {
+  const app = await createApp();
+  const response = await app.inject({
+    method: 'GET',
+    url: '/v1/users/me',
+    headers: { authorization: `Bearer ${bearerToken}` },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().data.id, userId);
+  assert.equal(response.json().data.email, user.email);
+});
+
+test('GET /v1/trips returns authenticated user data and a pagination envelope', async () => {
+  let requestedUserId = '';
+  let requestedLimit = 0;
+  const services = createServices();
+  services.trips.listForUser = async (input) => {
+    requestedUserId = input.userId;
+    requestedLimit = input.limit;
+    return [trip];
+  };
+  const app = await createApp(services);
+  const response = await app.inject({
+    method: 'GET',
+    url: '/v1/trips?limit=10',
+    headers: { authorization: `Bearer ${bearerToken}` },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestedUserId, userId);
+  assert.equal(requestedLimit, 11);
+  assert.equal(response.json().data[0].id, tripId);
+  assert.deepEqual(response.json().meta, { nextCursor: null });
+});
+
+test('GET /v1/trips/:id is owner-scoped and returns NOT_FOUND safely', async () => {
+  const app = await createApp();
+  const missingId = '40000000-0000-4000-8000-000000000004';
+  const response = await app.inject({
+    method: 'GET',
+    url: `/v1/trips/${missingId}`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 404);
+  assert.equal(response.json().error.code, 'NOT_FOUND');
+});
+
+test('invalid trip id returns VALIDATION_ERROR before repository access', async () => {
+  const app = await createApp();
+  const response = await app.inject({
+    method: 'GET',
+    url: '/v1/trips/not-a-uuid',
+    headers: { authorization: `Bearer ${bearerToken}` },
+  });
   await app.close();
 
   assert.equal(response.statusCode, 400);
   assert.equal(response.json().error.code, 'VALIDATION_ERROR');
 });
 
-test('OpenAPI marks the Phase A auth, user, and trip routes', async () => {
-  const app = await buildApp({ readiness: { healthCheck: async () => undefined } });
+test('OpenAPI exposes authentication and active user and trip routes', async () => {
+  const app = await createApp();
   await app.ready();
   const specification = app.swagger();
   await app.close();
 
+  assert.ok('components' in specification && specification.components?.securitySchemes?.bearerAuth);
   assert.ok(specification.paths?.['/v1/auth/apple']);
   assert.ok(specification.paths?.['/v1/users/me']);
   assert.ok(specification.paths?.['/v1/trips']);

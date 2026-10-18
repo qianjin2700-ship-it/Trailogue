@@ -18,6 +18,7 @@
     "@trailogue/contracts": "file:../../packages/contracts",
     "@trailogue/database": "file:../../packages/database",
     "@trailogue/domain": "file:../../packages/domain",
-    "fastify": "^5.12.7"
+    "fastify": "^5.12.7",
+    "jose": "6.2.12"
   }
 }

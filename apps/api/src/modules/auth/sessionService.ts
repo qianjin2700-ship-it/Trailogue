@@ -7,7 +7,10 @@ import {
 
 export class SessionService {
   constructor(
-    private readonly sessions: SessionRepository,
+    private readonly sessions: Pick<
+      SessionRepository,
+      'create' | 'findActiveByTokenHash' | 'revoke'
+    >,
     private readonly secret: string,
     private readonly ttlSeconds: number,
   ) {}

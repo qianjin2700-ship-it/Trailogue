@@ -3,17 +3,31 @@ import { randomUUID } from 'node:crypto';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyServerOptions } from 'fastify';
+import type { TripRepository, UserRepository } from '@trailogue/database';
 
 import { HttpError, sendError } from './errors/httpError.js';
-import { registerPlannedRoutes } from './routes/planned.js';
+import type { AuthenticationService } from './modules/auth/authService.js';
+import { createBearerAuthenticator } from './modules/auth/bearerAuthentication.js';
+import type { SessionService } from './modules/auth/sessionService.js';
+import { registerAuthRoutes } from './routes/auth.js';
 import { registerSystemRoutes, type ReadinessDependency } from './routes/system.js';
+import { registerTripRoutes } from './routes/trips.js';
+import { registerUserRoutes } from './routes/users.js';
+
+export interface ApiServices {
+  authentication: AuthenticationService;
+  sessions: Pick<SessionService, 'verify'>;
+  trips: Pick<TripRepository, 'findByIdForUser' | 'listForUser'>;
+  users: Pick<UserRepository, 'findById'>;
+}
 
 interface BuildAppOptions {
   readiness: ReadinessDependency;
+  services: ApiServices;
   logger?: FastifyServerOptions['logger'];
 }
 
-export async function buildApp({ readiness, logger = false }: BuildAppOptions) {
+export async function buildApp({ readiness, services, logger = false }: BuildAppOptions) {
   const app = Fastify({
     logger,
     requestIdHeader: 'x-request-id',
@@ -30,6 +44,11 @@ export async function buildApp({ readiness, logger = false }: BuildAppOptions) {
         { name: 'users' },
         { name: 'trips' },
       ],
+      components: {
+        securitySchemes: {
+          bearerAuth: { type: 'http', scheme: 'bearer' },
+        },
+      },
     },
   });
   await app.register(swaggerUi, { routePrefix: '/documentation' });
@@ -37,6 +56,7 @@ export async function buildApp({ readiness, logger = false }: BuildAppOptions) {
   app.addHook('onRequest', async (request, reply) => {
     void reply.header('x-request-id', request.id);
   });
+  app.decorateRequest('authentication', null);
 
   app.setErrorHandler((error, request, reply) => {
     if (typeof error === 'object' && error !== null && 'validation' in error) {
@@ -54,6 +74,9 @@ export async function buildApp({ readiness, logger = false }: BuildAppOptions) {
   );
 
   await registerSystemRoutes(app, readiness);
-  await registerPlannedRoutes(app);
+  const authenticate = createBearerAuthenticator(services.sessions);
+  await registerAuthRoutes(app, services.authentication);
+  await registerUserRoutes(app, authenticate, services.users);
+  await registerTripRoutes(app, authenticate, services.trips);
   return app;
 }
