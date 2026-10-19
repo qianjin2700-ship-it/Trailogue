@@ -10,15 +10,15 @@ Phase B.1 deploys the existing authenticated read path to a staging-only environ
 | --- | --- | --- |
 | Git branch | Pass | Local and GitHub `feature/ios-app` both resolved to `f2430d5e40c7f57dc30fcb475b2446c5c0fcaad6` before Phase B.1 configuration work. |
 | Apple App ID | Pass | An explicit App ID was registered for `com.qianjin2700.trailogue`. |
+| Apple capability | Pass | The App ID has **Sign in with Apple** enabled as a primary App ID. |
 | Expo bundle identifier | Pass | `ios.bundleIdentifier` resolves to `com.qianjin2700.trailogue`. |
 | Backend Apple audience template | Pass | `.env.example` uses `APPLE_BUNDLE_ID=com.qianjin2700.trailogue`; real staging configuration must be injected outside Git. |
 | Expo Apple auth package | Pass | `expo-apple-authentication` is installed and configured as an Expo plugin. |
 | Expo Apple entitlement | Pass | Expo config introspection resolves `com.apple.developer.applesignin` to `Default`. |
 | Staging SSH reachability | Pass | The provided staging host accepts TCP connections on port 22 and advertises Ubuntu OpenSSH. No login was attempted. |
 
-## Apple configuration still to verify
+## Apple integration still to verify
 
-- Confirm that the registered App ID has the **Sign in with Apple** capability enabled as a primary App ID.
 - Confirm that the Expo account can create or access the EAS project for this bundle identifier.
 - Generate a development build with the matching provisioning profile and install it on a real iPhone.
 - Do not create a Services ID or Sign in with Apple private key for the current native-token verification path.
@@ -56,4 +56,4 @@ For a single-host staging deployment, PostgreSQL must not expose its port public
 
 ## Current result
 
-Phase C Ready: **NO**. The identifier configuration is complete, but Apple capability confirmation, staging deployment, HTTPS, PostgreSQL migration, and real-device verification remain open.
+Phase C Ready: **NO**. The App ID and capability configuration are complete, but EAS signing, staging deployment, HTTPS, PostgreSQL migration, and real-device verification remain open.

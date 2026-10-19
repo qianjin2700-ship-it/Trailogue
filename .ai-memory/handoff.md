@@ -20,6 +20,7 @@
 - Updated OpenAPI and added `docs/25-phase-b-authenticated-data.md`.
 - Synchronized `feature/ios-app` with GitHub at `f2430d5` before Phase B.1 changes.
 - Registered the explicit Apple App ID and configured Expo/backend templates with `com.qianjin2700.trailogue`.
+- Verified that Sign in with Apple is enabled as a primary App ID in Apple Developer.
 - Verified Expo config produces the `com.apple.developer.applesignin = Default` entitlement.
 - Commits:
   - `3c08f9c feat(data): add identity and owner-scoped trip access`
@@ -38,8 +39,8 @@
 
 ### Next
 
-1. Confirm in Apple Developer that Sign in with Apple is enabled for `com.qianjin2700.trailogue` as a primary App ID.
-2. Audit the purchased Alibaba Cloud US host, choose the staging PostgreSQL placement and configure a user-controlled HTTPS API domain.
+1. Audit the purchased Alibaba Cloud US host, choose the staging PostgreSQL placement and configure a user-controlled HTTPS API domain.
+2. Confirm the Expo account/EAS project and create a signed development build for the registered App ID.
 3. Deploy without production seed data, execute the empty-database migration, and verify health/readiness and authenticated APIs.
 4. Run the real-iPhone Sign in with Apple smoke test, including first and returning login, session restore, 401 cleanup, `/v1/users/me`, and owner-scoped Trip list/detail.
 5. Enter Phase C only after every Phase B.1 gate passes.
@@ -52,7 +53,7 @@
 
 ### Blockers / external prerequisites
 
-- Apple App ID registration and the Expo entitlement are verified, but the Apple Developer capability state and a real signed iPhone build are not yet verified.
+- Apple App ID registration, primary Sign in with Apple capability, and Expo entitlement are verified; a real signed iPhone build is not yet verified.
 - The purchased Alibaba Cloud host is reachable on SSH, but product type, US Region, specifications, login method, database placement, and public API domain are not yet confirmed; no resources were changed.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL remain unconfigured.
 - Current implementation issues one opaque session and does not yet exchange Apple authorization codes, refresh sessions, revoke Apple grants, or expose a server sign-out endpoint.
