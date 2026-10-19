@@ -200,3 +200,26 @@ User architecture decision and `docs/22-alibaba-cloud-us-architecture.md`.
 **Corrections**: The database migration directory is relative to `packages/database/src/scripts`, and package export paths must match each package's actual TypeScript `rootDir`/`outDir` output. Domain and Contracts emit `dist/index`; Config and Database emit `dist/src/index`.
 
 **Environment note**: Docker was unavailable, so official native PostgreSQL binaries provided the real PostgreSQL runtime. This validates database behavior but not the Docker Compose wrapper.
+
+## Decision Record: Trailogue Apple application identifier
+
+**Date**: 2026-10-19
+**Problem**: Align the Apple Developer App ID, Expo iOS application identifier, and backend Apple identity-token audience before staging integration.
+
+### Decision
+
+**Choice**: Use the explicit Bundle ID `com.qianjin2700.trailogue` for the Trailogue iOS app and use the same value for backend `APPLE_BUNDLE_ID`.
+
+**Reason**: The identifier is registered in Apple Developer and gives the native app and backend verifier one stable audience value.
+
+**Trade-offs**: Changing the Bundle ID later would create a distinct Apple application identity and require new signing/provisioning configuration.
+
+### Impact
+
+- `ios-app/app.json` owns the Expo `ios.bundleIdentifier` value.
+- Staging and later production inject the same value as `APPLE_BUNDLE_ID`; the Apple Team ID is not the JWT audience.
+- Sign in with Apple remains a required capability and entitlement.
+
+### Reversal condition
+
+Change the identifier only if Apple registration is invalidated before any distributed build; otherwise treat it as permanent.

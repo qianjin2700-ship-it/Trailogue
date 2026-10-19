@@ -1,10 +1,10 @@
 ## Handoff Checkpoint
 
-**Updated**: 2026-10-18 +08:00
+**Updated**: 2026-10-19 +08:00
 **Current objective**: Deliver Trailogue as an iOS-first product on a maintainable long-term backend.
-**Current stage**: Phase B authenticated read path complete locally; live deployment and real-device Apple verification remain.
+**Current stage**: Phase B.1 staging integration; Apple identifier configuration complete, deployment and real-device verification remain.
 **Branch**: `feature/ios-app`
-**HEAD**: `74f6e55`
+**HEAD**: `e8b51b4`
 
 ### Completed
 
@@ -18,6 +18,9 @@
 - Kept the existing Expo iOS SecureStore/auth restore/API repository/Trip UI path; it now matches the active backend contract without additional screen expansion.
 - Removed the unimplemented refresh token from the shared session DTO.
 - Updated OpenAPI and added `docs/25-phase-b-authenticated-data.md`.
+- Synchronized `feature/ios-app` with GitHub at `f2430d5` before Phase B.1 changes.
+- Registered the explicit Apple App ID and configured Expo/backend templates with `com.qianjin2700.trailogue`.
+- Verified Expo config produces the `com.apple.developer.applesignin = Default` entitlement.
 - Commits:
   - `3c08f9c feat(data): add identity and owner-scoped trip access`
   - `84f3944 feat(auth): verify Apple identity and expose protected data`
@@ -35,11 +38,11 @@
 
 ### Next
 
-1. Choose and register the final iOS bundle identifier; set the same value as `APPLE_BUNDLE_ID`.
-2. Deploy the API and PostgreSQL to an explicitly approved Alibaba Cloud US environment and configure `EXPO_PUBLIC_API_BASE_URL` with HTTPS.
-3. Run the live real-iPhone Sign in with Apple smoke test, verify first and returning login, session restore, `/v1/users/me`, Trip list and detail.
-4. Then implement active Trip create/update before photo upload and AI organization.
-5. Add explicit server-side sign-out/session revocation and decide authorization-code exchange/Apple revocation policy before production release.
+1. Confirm in Apple Developer that Sign in with Apple is enabled for `com.qianjin2700.trailogue` as a primary App ID.
+2. Audit the purchased Alibaba Cloud US host, choose the staging PostgreSQL placement and configure a user-controlled HTTPS API domain.
+3. Deploy without production seed data, execute the empty-database migration, and verify health/readiness and authenticated APIs.
+4. Run the real-iPhone Sign in with Apple smoke test, including first and returning login, session restore, 401 cleanup, `/v1/users/me`, and owner-scoped Trip list/detail.
+5. Enter Phase C only after every Phase B.1 gate passes.
 
 ### Recovery entry
 
@@ -49,7 +52,7 @@
 
 ### Blockers / external prerequisites
 
-- A real Apple end-to-end token cannot be obtained on this Windows host without the final Apple Developer bundle identifier, entitlement, credentials, and a real iPhone.
-- Alibaba Cloud account/project, final US Region, monthly budget, public API domain and deployment credentials are not yet provided; no billable resources were created.
+- Apple App ID registration and the Expo entitlement are verified, but the Apple Developer capability state and a real signed iPhone build are not yet verified.
+- The purchased Alibaba Cloud host is reachable on SSH, but product type, US Region, specifications, login method, database placement, and public API domain are not yet confirmed; no resources were changed.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL remain unconfigured.
 - Current implementation issues one opaque session and does not yet exchange Apple authorization codes, refresh sessions, revoke Apple grants, or expose a server sign-out endpoint.
