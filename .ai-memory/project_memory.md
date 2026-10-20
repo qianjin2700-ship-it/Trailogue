@@ -223,3 +223,24 @@ User architecture decision and `docs/22-alibaba-cloud-us-architecture.md`.
 ### Reversal condition
 
 Change the identifier only if Apple registration is invalidated before any distributed build; otherwise treat it as permanent.
+
+## Decision Record: Phase B.1 managed staging topology
+
+**Date**: 2026-10-20
+**Scope**: Phase B.1 staging only
+
+### Decision
+
+Use Railway for the existing Fastify API and an isolated, empty Neon PostgreSQL project for Phase B.1. Do not use the purchased Alibaba Cloud ECS, deploy the Worker, attach object storage, or create production resources in this phase.
+
+### Deployment convention
+
+- Railway builds the repository-root API Dockerfile so shared TypeScript packages remain available without installing the iOS app or Worker.
+- Railway's pre-deploy command is `npm run db:migrate`; staging never runs `npm run db:seed`.
+- Railway readiness uses `/ready` so PostgreSQL connectivity is part of the deployment gate.
+- The real Neon connection string and session secret exist only in Railway staging variables.
+- `NODE_ENV=staging` is an accepted runtime value and uses info-level API logging.
+
+### Reversal condition
+
+This does not select the final production host. Revisit production hosting only after Phase B.1 real-device verification and a separate production decision.

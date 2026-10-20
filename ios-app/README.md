@@ -41,9 +41,9 @@ Wave 2 uses these public values:
 - `EXPO_PUBLIC_PRIVACY_URL`: published privacy policy.
 - `EXPO_PUBLIC_TERMS_URL`: published terms of service.
 
-The long-term backend is an Alibaba Cloud US deployment with a standard TypeScript
-HTTPS API, ApsaraDB RDS for PostgreSQL, private OSS storage, and an independent
-worker. The current
+Phase B.1 staging uses the standard TypeScript HTTPS API on Railway with an empty,
+isolated Neon PostgreSQL database. Worker and object storage deployment remain
+deferred, and the production hosting decision is separate. The current
 [`docs/MOBILE_API_CONTRACT.md`](docs/MOBILE_API_CONTRACT.md) is Wave 2 scaffolding,
 not an approved production contract. Production screens never fall back to fixture
 data.

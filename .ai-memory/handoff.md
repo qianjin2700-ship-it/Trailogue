@@ -1,10 +1,10 @@
 ## Handoff Checkpoint
 
-**Updated**: 2026-10-19 +08:00
+**Updated**: 2026-10-20 +08:00
 **Current objective**: Deliver Trailogue as an iOS-first product on a maintainable long-term backend.
 **Current stage**: Phase B.1 staging integration; Apple identifier configuration complete, deployment and real-device verification remain.
 **Branch**: `feature/ios-app`
-**HEAD**: `e8b51b4`
+**HEAD**: `d0e092c` before the documentation checkpoint commit
 
 ### Completed
 
@@ -22,16 +22,19 @@
 - Registered the explicit Apple App ID and configured Expo/backend templates with `com.qianjin2700.trailogue`.
 - Verified that Sign in with Apple is enabled as a primary App ID in Apple Developer.
 - Verified Expo config produces the `com.apple.developer.applesignin = Default` entitlement.
+- Replaced the Phase B.1 host plan with Railway Fastify API plus an isolated Neon PostgreSQL staging database; Alibaba ECS is not used for this phase.
+- Added a root API-only Dockerfile, deterministic `npm ci` install path, staging runtime support, and Railway/Neon deployment runbook.
 - Commits:
   - `3c08f9c feat(data): add identity and owner-scoped trip access`
   - `84f3944 feat(auth): verify Apple identity and expose protected data`
   - `74f6e55 docs(backend): record Phase B authenticated data flow`
+  - `d0e092c chore(staging): prepare Railway API deployment`
 
 ### Verification
 
 - Root `lint`: pass.
 - Root `typecheck`: pass.
-- Root `test`: pass (config 2, database 3, API 18 including subtests, worker 3, iOS 13).
+- Root `test`: pass (config 3, database 3, API 18 including subtests, worker 3, iOS 13).
 - Root backend `build`: pass.
 - iOS `expo export --platform ios`: pass after redirecting Hermes temp files to a writable repository cache.
 - Expo Doctor: 21/21 pass.
@@ -39,21 +42,23 @@
 
 ### Next
 
-1. Audit the purchased Alibaba Cloud US host, choose the staging PostgreSQL placement and configure a user-controlled HTTPS API domain.
-2. Confirm the Expo account/EAS project and create a signed development build for the registered App ID.
-3. Deploy without production seed data, execute the empty-database migration, and verify health/readiness and authenticated APIs.
-4. Run the real-iPhone Sign in with Apple smoke test, including first and returning login, session restore, 401 cleanup, `/v1/users/me`, and owner-scoped Trip list/detail.
-5. Enter Phase C only after every Phase B.1 gate passes.
+1. Create the empty `trailogue-staging` Neon project and retain its TLS connection string only as a Railway secret.
+2. Create the `Trailogue Staging` Railway project from `feature/ios-app`, use the root Dockerfile, configure `npm run db:migrate` as pre-deploy, and use `/ready` as the healthcheck.
+3. Generate the Railway HTTPS domain and verify `/health`, `/ready`, and the eight migrated tables without running a seed.
+4. Configure the EAS preview environment and create a signed real-device build for the registered App ID.
+5. Run first/returning Apple login, session restore, 401 cleanup, `/v1/users/me`, and owner-scoped Trip list/detail on a real iPhone.
+6. Enter Phase C only after every Phase B.1 gate passes.
 
 ### Recovery entry
 
-- Read: `docs/25-phase-b-authenticated-data.md`, `docs/openapi.yaml`, `docs/22-alibaba-cloud-us-architecture.md`, `ios-app/README.md`.
+- Read: `docs/25-phase-b-authenticated-data.md`, `docs/26-phase-b1-staging-integration.md`, `docs/openapi.yaml`, and `ios-app/README.md`.
 - Verify from repository root: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 - Verify iOS from `ios-app/`: set `TEMP` and `TMP` to a writable ignored folder, then run `npm run build` and `npm run doctor`.
 
 ### Blockers / external prerequisites
 
 - Apple App ID registration, primary Sign in with Apple capability, and Expo entitlement are verified; a real signed iPhone build is not yet verified.
-- The purchased Alibaba Cloud host is reachable on SSH, but product type, US Region, specifications, login method, database placement, and public API domain are not yet confirmed; no resources were changed.
+- Neon and Railway projects have not yet been created or connected, and no real Secret or database credential has been handled.
+- The Dockerfile command path is verified locally, but the image itself is not locally built because Docker Desktop is unavailable; Railway's first build remains the image-level gate.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL remain unconfigured.
 - Current implementation issues one opaque session and does not yet exchange Apple authorization codes, refresh sessions, revoke Apple grants, or expose a server sign-out endpoint.

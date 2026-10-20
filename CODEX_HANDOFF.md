@@ -1,5 +1,7 @@
 # Codex 交接文档
 
+> **2026-10-20 current-state override:** Trailogue is now iOS-first. The Mini Program and CloudBase material below is retained only as historical business reference. Phase B.1 staging uses Railway for the Fastify API and an isolated Neon PostgreSQL database; see `docs/26-phase-b1-staging-integration.md`. Do not use the legacy deployment instructions below for the active iOS product.
+
 > 本文档以「下一位开发者完全不知道 WorkBuddy 历史」为标准编写，目标是让你克隆本仓库后即可理解并继续开发。
 > 项目当前是小程序，下一步计划基于同一套后端与业务逻辑开发 iOS App。**本仓库当前不包含任何 iOS 代码。**
 
