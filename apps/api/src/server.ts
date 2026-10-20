@@ -33,7 +33,7 @@ const app = await buildApp({
     trips: new TripRepository(database.executor),
   },
   logger: {
-    level: config.NODE_ENV === 'production' ? 'info' : 'debug',
+    level: config.NODE_ENV === 'development' || config.NODE_ENV === 'test' ? 'debug' : 'info',
     redact: ['req.headers.authorization'],
   },
 });
