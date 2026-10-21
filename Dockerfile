@@ -5,6 +5,7 @@ FROM node:22.22.1-bookworm-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY tsconfig.base.json ./
 COPY scripts/node-runtime-bootstrap.mjs scripts/node-runtime-bootstrap.mjs
 COPY packages/domain packages/domain
 COPY packages/contracts packages/contracts
