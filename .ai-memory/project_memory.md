@@ -244,3 +244,24 @@ Use Railway for the existing Fastify API and an isolated, empty Neon PostgreSQL 
 ### Reversal condition
 
 This does not select the final production host. Revisit production hosting only after Phase B.1 real-device verification and a separate production decision.
+
+## Deployment Record: Phase B.1 managed staging activated
+
+**Date**: 2026-10-21
+**Scope**: Phase B.1 staging only
+
+### Verified state
+
+- Railway serves the API at `https://trailogue-staging.up.railway.app`; `/health` and the PostgreSQL-backed `/ready` both return 200.
+- Railway deployment `11d2ec60-1a2f-445e-b96b-8c12f4a17518` is active from commit `bce2a51`.
+- The empty Neon migration created the eight expected tables; no staging seed was run.
+- Anonymous protected-route calls return generic 401 responses, and a deliberately invalid Apple identity token returns `INVALID_APPLE_TOKEN` without leaking credentials.
+- The Railway service explicitly sets non-secret `PORT=3000` to align the runtime listener with the generated public-domain target port.
+
+### Known issue
+
+The current PostgreSQL driver warns that a future major version may change the semantics of `sslmode=require`. TLS is working now, but production configuration must explicitly select full certificate verification or the provider-recommended libpq compatibility mode and repeat readiness tests.
+
+### Remaining gate
+
+This deployment does not complete Phase B.1. A signed real-iPhone build must still verify first and returning Apple login, correct/wrong audience, authenticated user/Trip reads, session persistence and restart restore, 401 cleanup, and cross-user Trip isolation.
