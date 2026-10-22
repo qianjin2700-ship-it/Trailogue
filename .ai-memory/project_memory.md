@@ -265,3 +265,14 @@ The current PostgreSQL driver warns that a future major version may change the s
 ### Remaining gate
 
 This deployment does not complete Phase B.1. A signed real-iPhone build must still verify first and returning Apple login, correct/wrong audience, authenticated user/Trip reads, session persistence and restart restore, 401 cleanup, and cross-user Trip isolation.
+
+## Deployment Record: EAS project linkage
+
+**Date**: 2026-10-22
+**Scope**: Phase B.1 iOS staging
+
+- Expo owner is the team account `hardworkgirls-team`.
+- The linked EAS project is `@hardworkgirls-team/trailogue` with ID `aef33182-1a9a-4807-83a0-e5b2d2096654`.
+- `ios-app/app.json` stores the owner and EAS-issued project ID; neither value is a secret.
+- The app continues to use Bundle ID `com.qianjin2700.trailogue` with Sign in with Apple enabled.
+- The preview API URL and signed real-device build remain pending; linking the EAS project alone does not make Phase C ready.

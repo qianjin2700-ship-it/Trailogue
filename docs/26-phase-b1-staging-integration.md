@@ -19,8 +19,7 @@ Phase B.1 deploys the existing authenticated read path to a staging-only environ
 
 ## Apple integration still to verify
 
-- Confirm that the Expo account can create or access the EAS project for this bundle identifier.
-- Link the local Expo app to that EAS project; `app.json` does not yet contain `extra.eas.projectId`.
+- The Expo team project `@hardworkgirls-team/trailogue` is linked to this repository. EAS generated project ID `aef33182-1a9a-4807-83a0-e5b2d2096654`, which is recorded in `app.json` together with owner `hardworkgirls-team`.
 - Generate a development build with the matching provisioning profile and install it on a real iPhone.
 - Do not create a Services ID or Sign in with Apple private key for the current native-token verification path.
 
@@ -118,7 +117,6 @@ The PostgreSQL client currently emits a compatibility warning about the future i
 ## Pending real-device gates
 
 - Configure the EAS preview environment's `EXPO_PUBLIC_API_BASE_URL` as `https://trailogue-staging.up.railway.app`.
-- Link the repository's Expo app to the intended EAS project without inventing or manually copying an unverified project ID.
 - Create a signed preview/development build for the registered App ID and install it on a real iPhone.
 - Verify first-time and returning Sign in with Apple behavior with the correct audience.
 - Verify a wrong-audience Apple token is rejected by staging.
@@ -127,7 +125,7 @@ The PostgreSQL client currently emits a compatibility warning about the future i
 
 ## Current result
 
-Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, readiness, bearer enforcement, and invalid-token rejection are complete. EAS signing and every real-iPhone authenticated/session/isolation gate remain open.
+Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, readiness, bearer enforcement, invalid-token rejection, and EAS project linkage are complete. The preview API environment value, EAS signing, and every real-iPhone authenticated/session/isolation gate remain open.
 
 ## Sources
 

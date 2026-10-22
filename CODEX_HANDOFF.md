@@ -1,6 +1,6 @@
 # Codex 交接文档
 
-> **2026-10-21 current-state override:** Trailogue is now iOS-first. The Mini Program and CloudBase material below is retained only as historical business reference. Phase B.1 now has an active Railway Fastify API at `https://trailogue-staging.up.railway.app` and an isolated, migrated Neon PostgreSQL database. Public health/readiness, anonymous bearer enforcement, and invalid Apple-token rejection pass. EAS signing and the real-iPhone Apple login/session/Trip isolation checks remain mandatory, so Phase C is not ready. See `docs/26-phase-b1-staging-integration.md`; do not use the legacy deployment instructions below for the active iOS product.
+> **2026-10-22 current-state override:** Trailogue is now iOS-first. The Mini Program and CloudBase material below is retained only as historical business reference. Phase B.1 has an active Railway Fastify API at `https://trailogue-staging.up.railway.app`, an isolated migrated Neon PostgreSQL database, and a linked Expo team project at `@hardworkgirls-team/trailogue`. Public health/readiness, anonymous bearer enforcement, invalid Apple-token rejection, and EAS project linkage pass. Preview environment configuration, EAS signing, and the real-iPhone Apple login/session/Trip isolation checks remain mandatory, so Phase C is not ready. See `docs/26-phase-b1-staging-integration.md`; do not use the legacy deployment instructions below for the active iOS product.
 
 > 本文档以「下一位开发者完全不知道 WorkBuddy 历史」为标准编写，目标是让你克隆本仓库后即可理解并继续开发。
 > 项目当前是小程序，下一步计划基于同一套后端与业务逻辑开发 iOS App。**本仓库当前不包含任何 iOS 代码。**

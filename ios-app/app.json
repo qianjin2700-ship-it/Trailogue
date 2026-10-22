@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Trailogue",
+    "owner": "hardworkgirls-team",
     "slug": "trailogue",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -28,6 +29,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "aef33182-1a9a-4807-83a0-e5b2d2096654"
+      }
     }
   }
 }

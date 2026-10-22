@@ -1,11 +1,11 @@
 ## Handoff Checkpoint
 
-**Updated**: 2026-10-21 +08:00
+**Updated**: 2026-10-22 +08:00
 **Current objective**: Complete Trailogue Phase B.1 real-device staging integration without adding business features.
-**Current stage**: Railway/Neon infrastructure verification complete; EAS preview signing and real-iPhone authentication/session verification remain.
+**Current stage**: Railway/Neon infrastructure verification and EAS project linkage complete; preview environment configuration, signing, and real-iPhone authentication/session verification remain.
 **Completion**: Infrastructure gates complete; Phase C Ready remains NO.
 **Branch**: `feature/ios-app`
-**Baseline HEAD**: `bce2a51` before this documentation checkpoint commit
+**Baseline HEAD**: `4dfb169` before this EAS linkage checkpoint commit
 
 ### Completed
 
@@ -19,11 +19,11 @@
 - Kept database credentials, session secrets, Apple tokens, and session tokens out of Git and documentation.
 - Re-ran root lint, typecheck, all 40 tests, and backend build; exported the iOS bundle and passed Expo Doctor 21/21.
 - Bound the `development`, `preview`, and `production` EAS build profiles to their matching EAS environments; no environment value or credential was committed.
+- Linked the app to Expo team project `@hardworkgirls-team/trailogue`; `app.json` now contains the EAS-issued project ID `aef33182-1a9a-4807-83a0-e5b2d2096654` and owner `hardworkgirls-team`.
 
 ### Not completed
 
 - Configure the EAS preview environment with the public staging API base URL.
-- Link the local Expo app to the intended EAS project; `app.json` does not yet contain a verified `extra.eas.projectId`.
 - Produce and install a signed build on a real iPhone.
 - Verify first-time and returning Apple login, correct audience, wrong-audience rejection, session persistence, restart restore, and 401 cleanup.
 - Verify authenticated `/v1/users/me`, `/v1/trips`, `/v1/trips/{id}`, and Trip isolation between two identities.
@@ -43,6 +43,6 @@
 ### Blockers / external prerequisites
 
 - A physical iPhone and Apple/Expo signing flow are required for the remaining acceptance gates.
-- EAS CLI installation hit a local Windows `EPERM` while creating its temporary dependency tree. Retry from a normal local terminal or use the Expo dashboard; do not invent `extra.eas.projectId`.
+- EAS CLI works from the user's normal PowerShell, but the managed Windows sandbox can still hit `EPERM` while unpacking its temporary dependency tree. Use the normal terminal for remaining EAS environment/build commands when this recurs.
 - `EXPO_PUBLIC_API_BASE_URL`, privacy URL, and terms URL remain unconfigured for the distributed iOS build.
 - The current API issues one opaque session and does not yet exchange Apple authorization codes, refresh sessions, revoke Apple grants, or expose server sign-out; these remain outside Phase B.1 unless required by an acceptance failure.
