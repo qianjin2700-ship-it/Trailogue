@@ -3,11 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppError } from '@/api/errors';
+import { useAuth } from '@/auth/AuthProvider';
+import { handleProtectedError } from '@/auth/handleProtectedError';
 import { tripRepository } from '@/composition/services';
 import type { LoadState } from '@/contracts/common';
 import type { Trip } from '@/domain/trip/trip';
 
 export default function TripDetailScreen() {
+  const { signOut } = useAuth();
   const params = useLocalSearchParams<{ id?: string }>();
   const id = params.id;
   const [state, setState] = useState<LoadState<Trip>>({ status: 'loading' });
@@ -18,12 +21,13 @@ export default function TripDetailScreen() {
     try {
       setState({ status: 'success', data: await tripRepository.getTrip(id) });
     } catch (error) {
+      if (await handleProtectedError(error, signOut)) return;
       setState({
         status: 'error',
         error: error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error),
       });
     }
-  }, [id]);
+  }, [id, signOut]);
 
   useEffect(() => {
     if (!id) return;
@@ -31,17 +35,17 @@ export default function TripDetailScreen() {
     void tripRepository
       .getTrip(id)
       .then((data) => active && setState({ status: 'success', data }))
-      .catch((error: unknown) =>
-        active &&
-        setState({
+      .catch(async (error: unknown) => {
+        if (!active || (await handleProtectedError(error, signOut))) return;
+        if (active) setState({
           status: 'error',
           error: error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error),
-        })
-      );
+        });
+      });
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, signOut]);
 
   if (!id) return <StateMessage title="Trip not found" />;
   if (state.status === 'idle' || state.status === 'loading') {
