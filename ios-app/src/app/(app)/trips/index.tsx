@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppError } from '@/api/errors';
 import { useAuth } from '@/auth/AuthProvider';
@@ -62,6 +62,11 @@ export default function TripListScreen() {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.toolbar}>
+        <Pressable accessibilityRole="button" onPress={() => void signOut()}>
+          <Text style={styles.signOut}>Sign out</Text>
+        </Pressable>
+      </View>
       <TripListContent
         onCreateTrip={() => router.push('/trips/new')}
         onOpenTrip={(id) => router.push({ pathname: '/trips/[id]', params: { id } })}
@@ -74,5 +79,9 @@ export default function TripListScreen() {
   );
 }
 
-const styles = StyleSheet.create({ screen: { backgroundColor: '#F7F4EE', flex: 1 } });
+const styles = StyleSheet.create({
+  screen: { backgroundColor: '#F7F4EE', flex: 1 },
+  toolbar: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 12 },
+  signOut: { color: '#655F57', fontSize: 14, fontWeight: '600', padding: 8 },
+});
 

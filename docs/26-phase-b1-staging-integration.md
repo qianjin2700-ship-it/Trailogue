@@ -134,8 +134,8 @@ Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, read
 - The local branch is `feature/ios-app`; the pre-fix checkpoint was `d9bcd71` with a clean worktree and one unpushed commit. `git push origin feature/ios-app` failed with `Could not resolve host: github.com`. No Git configuration or history was changed.
 - `ios-app/app.json` declares Expo owner `hardworkgirls-team`, slug `trailogue`, project ID `aef33182-1a9a-4807-83a0-e5b2d2096654`, Bundle ID `com.qianjin2700.trailogue`, `usesAppleSignIn: true`, and the Apple authentication plugin. `ios-app/eas.json` maps `preview` to the EAS preview environment and internal distribution.
 - The iOS API client reads `EXPO_PUBLIC_API_BASE_URL`; it does not hardcode a backend address. When missing, it returns a configuration error.
-- A protected Trip list/detail 401 previously left the active app authenticated. Commit `81eab46` now clears the local session for those responses; network errors still retain it. This is automated behavior only, not a real-device result.
-- After the fix: root lint, typecheck, 42 tests (config 3, database 3, API 18, worker 3, iOS 15), and backend build passed. The iOS JavaScript export passed; this is **not** a signed native build.
+- A protected Trip list/detail 401 previously left the active app authenticated. Commit `81eab46` now clears the local session for those responses; network errors still retain it. The Trip list also gained a small Sign out action so the repeat-login acceptance step is accessible. These are automated behaviors only, not real-device results.
+- After these changes: root lint, typecheck, 43 tests (config 3, database 3, API 18, worker 3, iOS 16), and backend build passed. The iOS JavaScript export passed; this is **not** a signed native build.
 - Expo Doctor passed 19 of 21 checks locally. Its two online checks could not complete because `exp.host` was not resolvable in the managed environment; the result is not a clean 21/21 pass.
 
 ### Railway/Neon Verified
