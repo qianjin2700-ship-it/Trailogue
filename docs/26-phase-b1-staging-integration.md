@@ -116,7 +116,6 @@ The PostgreSQL client currently emits a compatibility warning about the future i
 
 ## Pending real-device gates
 
-- Configure the EAS preview environment's `EXPO_PUBLIC_API_BASE_URL` as `https://trailogue-staging.up.railway.app`.
 - Create a signed preview/development build for the registered App ID and install it on a real iPhone.
 - Verify first-time and returning Sign in with Apple behavior with the correct audience.
 - Verify a wrong-audience Apple token is rejected by staging.
@@ -125,7 +124,7 @@ The PostgreSQL client currently emits a compatibility warning about the future i
 
 ## Current result
 
-Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, readiness, bearer enforcement, invalid-token rejection, and EAS project linkage are complete. The preview API environment value, EAS signing, and every real-iPhone authenticated/session/isolation gate remain open.
+Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, readiness, bearer enforcement, invalid-token rejection, EAS project linkage, and preview API environment configuration are complete. EAS signing and every real-iPhone authenticated/session/isolation gate remain open.
 
 ## 2026-10-23 final-acceptance checkpoint
 
@@ -149,7 +148,7 @@ Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, read
 
 ### Not Verified
 
-- The EAS project environment-variables page for `@hardworkgirls-team/trailogue` displayed no variables on 2026-10-23. `EXPO_PUBLIC_API_BASE_URL` must be added for `preview` with the public value `https://trailogue-staging.up.railway.app`, then read back before building. No secret belongs in Expo.
+- The EAS project environment-variables page initially displayed no variables on 2026-10-23; the user subsequently configured `EXPO_PUBLIC_API_BASE_URL` for `preview`, and the value was read back from the Expo dashboard. No secret belongs in Expo.
 - Current Railway runtime audience (`APPLE_BUNDLE_ID`) has not been re-read from its staging dashboard in this checkpoint; the local expected value remains `com.qianjin2700.trailogue`.
 - Current Neon table rows, authenticated API responses, first/repeat Apple login, private-relay email, name retention, session persistence, in-app 401 cleanup, offline recovery, and two-user Trip isolation still need live validation.
 - EAS signing, device registration, preview build, installation, logs review, and final Git remote-head equality remain open.
@@ -166,6 +165,13 @@ Phase C Ready: **NO**. Railway deployment, HTTPS, the empty Neon migration, read
 | Signed build / installed on iPhone | No / No |
 
 Phase B.1 Complete: **NO**. Phase C Ready: **NO**.
+
+## 2026-10-23 preview configuration confirmation
+
+- The Expo dashboard for `@hardworkgirls-team/trailogue` now visibly lists `EXPO_PUBLIC_API_BASE_URL` with value `https://trailogue-staging.up.railway.app`, environment `preview`, and visibility `Plain text`. This supersedes the earlier missing-variable observation; it is public client configuration, not a secret.
+- A fresh browser request to `https://trailogue-staging.up.railway.app/health` returned `{"data":{"status":"ok"}}`; `/ready` returned `{"data":{"status":"ready"}}`. The managed terminal still cannot resolve the host, so these checks were performed through the browser.
+- Local `feature/ios-app` and its `origin/feature/ios-app` tracking ref both resolve to `0b62d2831219c57034207061654a8cb071efe886` after the user's out-of-band push. The managed terminal still cannot fetch GitHub, so server-side ref equality could not be independently rechecked.
+- The user confirmed a real iPhone is available. Device registration, EAS signing, a preview Build ID, installation, and all real-device authenticated gates are still pending.
 
 ## Sources
 
