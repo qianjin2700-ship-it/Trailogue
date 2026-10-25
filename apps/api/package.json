@@ -20,5 +20,8 @@
     "@trailogue/domain": "file:../../packages/domain",
     "fastify": "^5.12.7",
     "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11"
   }
 }
