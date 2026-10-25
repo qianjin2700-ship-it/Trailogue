@@ -74,7 +74,7 @@ where id = (select id from existing_fixture);
 commit;
 ```
 
-Expected result: exactly one row owned by `TARGET_USER_ID`, with title **Wave 2.5B — Pacific Coast**. If it returns zero rows, stop and investigate: the UUID did not identify an active Staging user. The transaction has made no data change in that case.
+Expected result: exactly one row owned by `TARGET_USER_ID`, with title **Wave 2.5B — Pacific Coast**. Record its returned `id` as `FIXTURE_TRIP_ID` before leaving the SQL editor. If it returns zero rows, stop and investigate: the UUID did not identify an active Staging user. The transaction has made no data change in that case.
 
 ## Device verification after the row exists
 
@@ -85,13 +85,15 @@ Expected result: exactly one row owned by `TARGET_USER_ID`, with title **Wave 2.
 
 ## Cleanup — requires explicit approval
 
-Run only in the same verified Staging project after acceptance is complete. It deletes only the marker row for the selected user and leaves the user, Apple identity, and sessions intact.
+Run only in the same verified Staging project after acceptance is complete. Replace both placeholders with the exact values returned by the fixture transaction. It deletes only that fixture row for the selected user and leaves the user, Apple identity, and sessions intact.
 
 ```sql
 begin;
 
 delete from trips
-where user_id = 'TARGET_USER_ID'::uuid
+where id = 'FIXTURE_TRIP_ID'::uuid
+  and user_id = 'TARGET_USER_ID'::uuid
+  and title = 'Wave 2.5B — Pacific Coast'
   and description = 'Trailogue staging acceptance fixture: wave-2-5b'
 returning id, title;
 
