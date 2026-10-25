@@ -71,6 +71,7 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
     sessions: { verify: async (token) => (token === bearerToken ? session : null) },
     users: { findById: async (id) => (id === userId ? user : null) },
     trips: {
+      create: async () => trip,
       findByIdForUser: async (id, ownerId) =>
         id === tripId && ownerId === userId ? trip : null,
       listForUser: async ({ userId: ownerId }) => (ownerId === userId ? [trip] : []),
@@ -168,12 +169,37 @@ test('POST /v1/auth/apple maps invalid identity tokens to a safe 401', async () 
 
 test('authenticated user and trip routes reject a missing bearer token', async () => {
   const app = await createApp();
-  for (const url of ['/v1/users/me', '/v1/trips', `/v1/trips/${tripId}`]) {
-    const response = await app.inject({ method: 'GET', url });
+  for (const request of [{ method: 'GET', url: '/v1/users/me' }, { method: 'GET', url: '/v1/trips' }, { method: 'POST', url: '/v1/trips', payload: {} }, { method: 'GET', url: `/v1/trips/${tripId}` }]) {
+    const response = await app.inject(request);
     assert.equal(response.statusCode, 401);
     assert.equal(response.json().error.code, 'UNAUTHORIZED');
   }
   await app.close();
+});
+
+test('POST /v1/trips creates an owner-scoped draft with a reusable idempotency key', async () => {
+  let input: Record<string, unknown> | undefined;
+  const services = createServices();
+  services.trips.create = async (value) => {
+    input = value;
+    return { ...trip, title: value.title, destinationName: value.destinationName ?? null, description: value.description ?? null, startDate: value.startDate ?? null, endDate: value.endDate ?? null };
+  };
+  const app = await createApp(services);
+  const payload = { title: 'New coast', destinationName: 'California', description: 'Created by the API', startDate: '2026-10-01', endDate: '2026-10-07' };
+  const headers = { authorization: `Bearer ${bearerToken}`, 'idempotency-key': '50000000-0000-4000-8000-000000000005' };
+  const first = await app.inject({ method: 'POST', url: '/v1/trips', headers, payload });
+  const retry = await app.inject({ method: 'POST', url: '/v1/trips', headers, payload });
+  await app.close();
+  assert.equal(first.statusCode, 201); assert.equal(retry.statusCode, 201);
+  assert.equal(first.json().data.status, 'draft');
+  assert.deepEqual(input, { userId, ...payload, idempotencyKey: headers['idempotency-key'] });
+});
+
+test('POST /v1/trips rejects invalid date ranges', async () => {
+  const app = await createApp();
+  const response = await app.inject({ method: 'POST', url: '/v1/trips', headers: { authorization: `Bearer ${bearerToken}`, 'idempotency-key': '50000000-0000-4000-8000-000000000005' }, payload: { title: 'Invalid', destinationName: 'Here', startDate: '2026-10-08', endDate: '2026-10-07' } });
+  await app.close();
+  assert.equal(response.statusCode, 400); assert.equal(response.json().error.code, 'VALIDATION_ERROR');
 });
 
 test('GET /v1/users/me returns the authenticated user', async () => {
@@ -260,6 +286,7 @@ test('trip list and detail never expose one authenticated user\'s trips to anoth
       },
     },
     trips: {
+      create: async () => trip,
       findByIdForUser: async (id, ownerId) => {
         if (id === tripId && ownerId === userId) return trip;
         if (id === secondTripId && ownerId === secondUserId) return secondTrip;

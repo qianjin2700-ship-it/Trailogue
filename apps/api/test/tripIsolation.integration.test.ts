@@ -103,3 +103,18 @@ test('authenticated trip routes isolate two persisted users through bearer middl
     await fixture.client.close();
   }
 });
+
+test('POST /v1/trips persists one draft across an idempotent retry', async () => {
+  const fixture = await createIntegrationFixture();
+  try {
+    const headers = { authorization: `Bearer ${fixture.aliceSession.token}`, 'idempotency-key': '60000000-0000-4000-8000-000000000006' };
+    const payload = { title: 'Created through HTTP', destinationName: 'Oregon', description: 'Persisted test trip', startDate: '2026-11-01', endDate: '2026-11-04' };
+    const first = await fixture.app.inject({ method: 'POST', url: '/v1/trips', headers, payload });
+    const retry = await fixture.app.inject({ method: 'POST', url: '/v1/trips', headers, payload });
+    const list = await fixture.app.inject({ method: 'GET', url: '/v1/trips', headers: { authorization: headers.authorization } });
+    assert.equal(first.statusCode, 201); assert.equal(retry.statusCode, 201);
+    assert.equal(first.json().data.id, retry.json().data.id);
+    assert.equal(first.json().data.status, 'draft');
+    assert.equal(list.json().data.filter((trip: { title: string }) => trip.title === payload.title).length, 1);
+  } finally { await fixture.app.close(); await fixture.client.close(); }
+});

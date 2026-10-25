@@ -1,9 +1,11 @@
+import type { CreateTripRequest } from '@/contracts/trip';
 import type { TripsApi } from '@/api/trips';
 import { mapTripDTO, type Trip, type TripSummary } from '@/domain/trip/trip';
 
 export interface TripRepository {
   getTrips(): Promise<TripSummary[]>;
   getTrip(id: string): Promise<Trip>;
+  createTrip(input: CreateTripRequest, idempotencyKey: string): Promise<Trip>;
 }
 
 export function createTripRepository(api: TripsApi): TripRepository {
@@ -14,6 +16,9 @@ export function createTripRepository(api: TripsApi): TripRepository {
     },
     async getTrip(id) {
       return mapTripDTO(await api.getTrip(id));
+    },
+    async createTrip(input, idempotencyKey) {
+      return mapTripDTO(await api.createTrip(input, idempotencyKey));
     },
   };
 }

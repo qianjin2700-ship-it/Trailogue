@@ -101,12 +101,14 @@ export const trips = pgTable(
     coverPhotoId: uuid('cover_photo_id'),
     startDate: date('start_date'),
     endDate: date('end_date'),
+    idempotencyKey: varchar('idempotency_key', { length: 64 }),
     status: tripStatusEnum('status').default('draft').notNull(),
     ...timestamps,
   },
   (table) => [
     index('trips_user_updated_idx').on(table.userId, table.updatedAt),
     index('trips_user_status_idx').on(table.userId, table.status),
+    uniqueIndex('trips_user_idempotency_key_uq').on(table.userId, table.idempotencyKey),
   ],
 );
 

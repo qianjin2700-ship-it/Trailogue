@@ -171,16 +171,22 @@ export class TripRepository {
     title: string;
     description?: string | null;
     destinationName?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    idempotencyKey?: string | null;
   }): Promise<TripRecord> {
     const result = await this.database.query<TripRecord>(
-      `insert into trips (user_id, title, description, destination_name)
-       values ($1, $2, $3, $4)
+      `insert into trips (user_id, title, description, destination_name, start_date, end_date, idempotency_key)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       on conflict (user_id, idempotency_key)
+       do update set idempotency_key = excluded.idempotency_key
        returning id, user_id as "userId", title, description,
          destination_name as "destinationName", status,
          cover_photo_id as "coverPhotoId", 0::int as "photoCount",
          start_date as "startDate", end_date as "endDate",
          created_at as "createdAt", updated_at as "updatedAt"`,
-      [input.userId, input.title, input.description ?? null, input.destinationName ?? null],
+      [input.userId, input.title, input.description ?? null, input.destinationName ?? null,
+        input.startDate ?? null, input.endDate ?? null, input.idempotencyKey ?? null],
     );
     return requireRow(result.rows[0]);
   }

@@ -17,7 +17,7 @@ import { registerUserRoutes } from './routes/users.js';
 export interface ApiServices {
   authentication: AuthenticationService;
   sessions: Pick<SessionService, 'verify'>;
-  trips: Pick<TripRepository, 'findByIdForUser' | 'listForUser'>;
+  trips: Pick<TripRepository, 'create' | 'findByIdForUser' | 'listForUser'>;
   users: Pick<UserRepository, 'findById'>;
 }
 

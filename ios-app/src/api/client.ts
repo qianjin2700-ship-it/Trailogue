@@ -16,6 +16,7 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   authenticated?: boolean;
+  headers?: Record<string, string>;
 }
 
 export interface ApiClient {
@@ -43,7 +44,7 @@ export function createApiClient({
 
       try {
         const token = options.authenticated === false ? null : await getToken();
-        const headers: Record<string, string> = { Accept: 'application/json' };
+        const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
         if (options.body !== undefined) headers['Content-Type'] = 'application/json';
         if (token) headers.Authorization = `Bearer ${token}`;
 

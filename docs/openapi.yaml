@@ -54,6 +54,30 @@ paths:
                   data: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /v1/trips:
+    post:
+      operationId: createTrip
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTripRequest' }
+      responses:
+        '201':
+          description: Owner-scoped draft trip created or returned for the same idempotency key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties: { data: { $ref: '#/components/schemas/Trip' } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
     get:
       operationId: listTrips
       security: [{ bearerAuth: [] }]
@@ -159,6 +183,16 @@ components:
         endDate: { type: string, format: date, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    CreateTripRequest:
+      type: object
+      additionalProperties: false
+      required: [title, destinationName, startDate, endDate]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        destinationName: { type: string, minLength: 1, maxLength: 240 }
+        description: { type: string, nullable: true, maxLength: 10000 }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
     Error:
       type: object
       required: [error]

@@ -38,7 +38,7 @@ CREATE TABLE "trips" (
   "destination_name" varchar(240), "destination_country" varchar(2),
   "destination_region" varchar(160), "destination_city" varchar(160),
   "destination_latitude" double precision, "destination_longitude" double precision,
-  "cover_photo_id" uuid, "start_date" date, "end_date" date,
+  "cover_photo_id" uuid, "start_date" date, "end_date" date, "idempotency_key" varchar(64),
   "status" "trip_status" DEFAULT 'draft' NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -121,6 +121,8 @@ CREATE INDEX "sessions_active_idx" ON "sessions" ("expires_at", "revoked_at");
 CREATE INDEX "trips_user_updated_idx" ON "trips" ("user_id", "updated_at");
 --> statement-breakpoint
 CREATE INDEX "trips_user_status_idx" ON "trips" ("user_id", "status");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "trips_user_idempotency_key_uq" ON "trips" ("user_id", "idempotency_key");
 --> statement-breakpoint
 CREATE UNIQUE INDEX "photos_storage_key_uq" ON "photos" ("storage_key");
 --> statement-breakpoint

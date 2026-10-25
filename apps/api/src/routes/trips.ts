@@ -1,4 +1,4 @@
-import type { TripSummaryDTO } from '@trailogue/contracts';
+import type { CreateTripRequest, TripSummaryDTO } from '@trailogue/contracts';
 import type { TripRecord, TripRepository } from '@trailogue/database';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
@@ -19,11 +19,55 @@ const tripListQuerySchema = {
   },
 } as const;
 
+const createTripBodySchema = {
+  type: 'object', additionalProperties: false,
+  required: ['title', 'destinationName', 'startDate', 'endDate'],
+  properties: {
+    title: { type: 'string', minLength: 1, maxLength: 200 },
+    destinationName: { type: 'string', minLength: 1, maxLength: 240 },
+    description: { type: ['string', 'null'], maxLength: 10_000 },
+    startDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+    endDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+  },
+} as const;
+
+const idempotencyHeadersSchema = {
+  type: 'object', required: ['idempotency-key'],
+  properties: { 'idempotency-key': { type: 'string', format: 'uuid' } },
+} as const;
+
 export async function registerTripRoutes(
   app: FastifyInstance,
   authenticate: preHandlerHookHandler,
-  trips: Pick<TripRepository, 'findByIdForUser' | 'listForUser'>,
+  trips: Pick<TripRepository, 'create' | 'findByIdForUser' | 'listForUser'>,
 ) {
+  app.post(
+    '/v1/trips',
+    {
+      bodyLimit: 32 * 1024,
+      schema: {
+        tags: ['trips'], security: [{ bearerAuth: [] }],
+        body: createTripBodySchema, headers: idempotencyHeadersSchema,
+      },
+      onRequest: authenticate,
+    },
+    async (request, reply) => {
+      const body = request.body as CreateTripRequest;
+      const title = body.title.trim();
+      const destinationName = body.destinationName.trim();
+      const description = body.description?.trim() || null;
+      if (!title || !destinationName || !isValidDate(body.startDate) || !isValidDate(body.endDate) || body.startDate > body.endDate) {
+        throw new HttpError(400, 'VALIDATION_ERROR', 'Trip details are invalid');
+      }
+      const trip = await trips.create({
+        userId: request.authentication!.userId,
+        title, destinationName, description,
+        startDate: body.startDate, endDate: body.endDate,
+        idempotencyKey: request.headers['idempotency-key'] as string,
+      });
+      return reply.code(201).send({ data: toTripDto(trip) });
+    },
+  );
   app.get(
     '/v1/trips',
     {
@@ -61,6 +105,11 @@ export async function registerTripRoutes(
       return { data: toTripDto(trip) };
     },
   );
+}
+
+function isValidDate(value: string): boolean {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function toTripDto(trip: TripRecord): TripSummaryDTO {

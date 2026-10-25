@@ -13,6 +13,8 @@ export interface TripSummary {
 export interface Trip extends TripSummary {
   description: string | null;
   createdAt: Date;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export function mapTripDTO(dto: TripDTO): Trip {
@@ -25,6 +27,8 @@ export function mapTripDTO(dto: TripDTO): Trip {
     destinationName: dto.destinationName,
     description: dto.description,
     createdAt: new Date(dto.createdAt),
+    startDate: dto.startDate,
+    endDate: dto.endDate,
     updatedAt: new Date(dto.updatedAt),
   };
 }

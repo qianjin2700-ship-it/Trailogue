@@ -24,6 +24,8 @@ describe('trip mappers', () => {
       coverUrl: null,
       destinationName: 'Kyoto',
       description: 'Temples and food',
+      startDate: '2026-10-01',
+      endDate: '2026-10-14',
       createdAt: new Date('2026-10-01T08:30:00.000Z'),
       updatedAt: new Date('2026-10-14T08:30:00.000Z'),
     });

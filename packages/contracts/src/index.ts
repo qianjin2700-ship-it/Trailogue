@@ -70,7 +70,16 @@ export interface TripSummaryDTO {
   updatedAt: string;
 }
 
+export interface CreateTripRequest {
+  title: string;
+  destinationName: string;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+}
+
 export type TripDTO = TripSummaryDTO;
 
 export type TripListResponse = ApiListResponse<TripSummaryDTO>;
 export type TripDetailResponse = ApiDataResponse<TripDTO>;
+export type CreateTripResponse = ApiDataResponse<TripDTO>;
