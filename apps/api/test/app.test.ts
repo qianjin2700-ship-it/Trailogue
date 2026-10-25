@@ -10,6 +10,9 @@ const now = new Date('2026-10-18T00:00:00.000Z');
 const userId = '10000000-0000-4000-8000-000000000001';
 const tripId = '20000000-0000-4000-8000-000000000002';
 const bearerToken = 'a'.repeat(48);
+const secondUserId = '10000000-0000-4000-8000-000000000005';
+const secondTripId = '20000000-0000-4000-8000-000000000006';
+const secondBearerToken = 'b'.repeat(48);
 
 const user: UserRecord = {
   id: userId,
@@ -33,6 +36,22 @@ const trip: TripRecord = {
   endDate: '2026-10-07',
   createdAt: now,
   updatedAt: now,
+};
+
+const secondUser: UserRecord = {
+  id: secondUserId,
+  displayName: 'Second Trailogue Traveler',
+  avatarUrl: null,
+  email: 'second-traveler@example.com',
+  createdAt: now,
+  updatedAt: now,
+};
+
+const secondTrip: TripRecord = {
+  ...trip,
+  id: secondTripId,
+  userId: secondUserId,
+  title: 'Private Second Trip',
 };
 
 function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
@@ -207,6 +226,77 @@ test('GET /v1/trips/:id is owner-scoped and returns NOT_FOUND safely', async () 
 
   assert.equal(response.statusCode, 404);
   assert.equal(response.json().error.code, 'NOT_FOUND');
+});
+
+test('trip list and detail never expose one authenticated user\'s trips to another', async () => {
+  const firstSession: SessionRecord = {
+    id: '30000000-0000-4000-8000-000000000003',
+    userId,
+    tokenHash: 'hash-a',
+    expiresAt: new Date('2026-11-18T00:00:00.000Z'),
+    revokedAt: null,
+    createdAt: now,
+    lastUsedAt: now,
+  };
+  const secondSession: SessionRecord = {
+    ...firstSession,
+    id: '30000000-0000-4000-8000-000000000007',
+    userId: secondUserId,
+    tokenHash: 'hash-b',
+  };
+  const services = createServices({
+    sessions: {
+      verify: async (token) => {
+        if (token === bearerToken) return firstSession;
+        if (token === secondBearerToken) return secondSession;
+        return null;
+      },
+    },
+    users: {
+      findById: async (id) => {
+        if (id === userId) return user;
+        if (id === secondUserId) return secondUser;
+        return null;
+      },
+    },
+    trips: {
+      findByIdForUser: async (id, ownerId) => {
+        if (id === tripId && ownerId === userId) return trip;
+        if (id === secondTripId && ownerId === secondUserId) return secondTrip;
+        return null;
+      },
+      listForUser: async ({ userId: ownerId }) => {
+        if (ownerId === userId) return [trip];
+        if (ownerId === secondUserId) return [secondTrip];
+        return [];
+      },
+    },
+  });
+  const app = await createApp(services);
+
+  const firstUserList = await app.inject({
+    method: 'GET',
+    url: '/v1/trips',
+    headers: { authorization: `Bearer ${bearerToken}` },
+  });
+  const crossUserDetail = await app.inject({
+    method: 'GET',
+    url: `/v1/trips/${secondTripId}`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+  });
+  const secondUserDetail = await app.inject({
+    method: 'GET',
+    url: `/v1/trips/${secondTripId}`,
+    headers: { authorization: `Bearer ${secondBearerToken}` },
+  });
+  await app.close();
+
+  assert.equal(firstUserList.statusCode, 200);
+  assert.deepEqual(firstUserList.json().data.map((item: { id: string }) => item.id), [tripId]);
+  assert.equal(crossUserDetail.statusCode, 404);
+  assert.equal(crossUserDetail.json().error.code, 'NOT_FOUND');
+  assert.equal(secondUserDetail.statusCode, 200);
+  assert.equal(secondUserDetail.json().data.id, secondTripId);
 });
 
 test('invalid trip id returns VALIDATION_ERROR before repository access', async () => {

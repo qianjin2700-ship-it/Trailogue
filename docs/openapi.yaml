@@ -152,7 +152,7 @@ components:
         title: { type: string }
         description: { type: string, nullable: true }
         destinationName: { type: string, nullable: true }
-        status: { type: string, enum: [draft, organizing, ready, archived] }
+        status: { type: string, enum: [draft, published, archived] }
         coverPhotoId: { type: string, format: uuid, nullable: true }
         photoCount: { type: integer, minimum: 0 }
         startDate: { type: string, format: date, nullable: true }
