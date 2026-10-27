@@ -12,7 +12,13 @@ jest.mock('@/auth/AuthProvider', () => ({
 jest.mock('@/composition/services', () => ({
   tripRepository: { getTrips: (...args: unknown[]) => mockGetTrips(...args) },
 }));
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  return {
+    router: { push: jest.fn() },
+    useFocusEffect: (effect: React.EffectCallback) => React.useEffect(effect, [effect]),
+  };
+});
 
 describe('<TripListScreen /> session expiry', () => {
   beforeEach(() => {

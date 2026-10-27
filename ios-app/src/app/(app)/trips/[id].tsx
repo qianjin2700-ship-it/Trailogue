@@ -8,6 +8,7 @@ import { handleProtectedError } from '@/auth/handleProtectedError';
 import { tripRepository } from '@/composition/services';
 import type { LoadState } from '@/contracts/common';
 import type { Trip } from '@/domain/trip/trip';
+import { formatTripDateRange } from '@/features/trips/formatTripDateRange';
 
 export default function TripDetailScreen() {
   const { signOut } = useAuth();
@@ -56,11 +57,13 @@ export default function TripDetailScreen() {
   }
 
   const trip = state.data;
+  const travelDates = formatTripDateRange(trip.startDate, trip.endDate);
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
       <Text accessibilityRole="header" style={styles.title}>{trip.title}</Text>
       <Text style={styles.meta}>{trip.photoCount} {trip.photoCount === 1 ? 'photo' : 'photos'} · {trip.status}</Text>
       {trip.destinationName ? <Section label="Destination" value={trip.destinationName} /> : null}
+      {travelDates ? <Section label="Travel dates" value={travelDates} /> : null}
       {trip.description ? <Section label="About this trip" value={trip.description} /> : null}
       <Section label="Last updated" value={trip.updatedAt.toLocaleDateString()} />
     </ScrollView>

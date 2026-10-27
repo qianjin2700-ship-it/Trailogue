@@ -7,6 +7,7 @@ import { AppError } from '@/api/errors';
 import { useAuth } from '@/auth/AuthProvider';
 import { handleProtectedError } from '@/auth/handleProtectedError';
 import { tripRepository } from '@/composition/services';
+import { invalidateTripList } from '@/features/trips/tripListInvalidation';
 
 export default function NewTripScreen() {
   const { signOut } = useAuth();
@@ -28,6 +29,7 @@ export default function NewTripScreen() {
     setSubmitting(true); setError(null);
     try {
       const trip = await tripRepository.createTrip(input, idempotencyKey.current);
+      invalidateTripList();
       router.replace({ pathname: '/trips/[id]', params: { id: trip.id } });
     } catch (cause) {
       if (await handleProtectedError(cause, signOut)) return;

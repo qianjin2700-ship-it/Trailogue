@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppError } from '@/api/errors';
@@ -9,52 +9,72 @@ import { tripRepository } from '@/composition/services';
 import type { LoadState } from '@/contracts/common';
 import type { TripSummary } from '@/domain/trip/trip';
 import { TripListContent } from '@/features/trips/TripListContent';
+import { getTripListRevision } from '@/features/trips/tripListInvalidation';
 
 export default function TripListScreen() {
   const { signOut } = useAuth();
   const [state, setState] = useState<LoadState<TripSummary[]>>({ status: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<AppError | null>(null);
+  const loadedRevision = useRef<number | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    void tripRepository
-      .getTrips()
-      .then((data) => active && setState({ status: 'success', data }))
-      .catch(async (error: unknown) => {
-        if (!active || (await handleProtectedError(error, signOut))) return;
-        if (active) setState({
-          status: 'error',
-          error: error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error),
+  useFocusEffect(
+    useCallback(() => {
+      const targetRevision = getTripListRevision();
+      if (loadedRevision.current === targetRevision) return;
+
+      let active = true;
+      const preserveExistingData = loadedRevision.current !== null;
+      setRefreshError(null);
+      if (preserveExistingData) setRefreshing(true);
+      else setState({ status: 'loading' });
+
+      void tripRepository
+        .getTrips()
+        .then((data) => {
+          if (!active) return;
+          loadedRevision.current = targetRevision;
+          setState({ status: 'success', data });
+        })
+        .catch(async (error: unknown) => {
+          if (!active || (await handleProtectedError(error, signOut)) || !active) return;
+          const appError = normalizeError(error);
+          if (preserveExistingData) setRefreshError(appError);
+          else setState({ status: 'error', error: appError });
+        })
+        .finally(() => {
+          if (active) setRefreshing(false);
         });
-      });
-    return () => {
-      active = false;
-    };
-  }, [signOut]);
+
+      return () => {
+        active = false;
+      };
+    }, [signOut])
+  );
 
   const reload = useCallback(async () => {
+    const targetRevision = getTripListRevision();
     setState({ status: 'loading' });
+    setRefreshError(null);
     try {
       setState({ status: 'success', data: await tripRepository.getTrips() });
+      loadedRevision.current = targetRevision;
     } catch (error) {
       if (await handleProtectedError(error, signOut)) return;
-      setState({
-        status: 'error',
-        error: error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error),
-      });
+      setState({ status: 'error', error: normalizeError(error) });
     }
   }, [signOut]);
 
   const refresh = useCallback(async () => {
+    const targetRevision = getTripListRevision();
     setRefreshing(true);
+    setRefreshError(null);
     try {
       setState({ status: 'success', data: await tripRepository.getTrips() });
+      loadedRevision.current = targetRevision;
     } catch (error) {
       if (await handleProtectedError(error, signOut)) return;
-      setState({
-        status: 'error',
-        error: error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error),
-      });
+      setRefreshError(normalizeError(error));
     } finally {
       setRefreshing(false);
     }
@@ -75,11 +95,16 @@ export default function TripListScreen() {
         onOpenTrip={(id) => router.push({ pathname: '/trips/[id]', params: { id } })}
         onRefresh={() => void refresh()}
         onRetry={() => void reload()}
+        refreshError={refreshError}
         refreshing={refreshing}
         state={state}
       />
     </View>
   );
+}
+
+function normalizeError(error: unknown): AppError {
+  return error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error);
 }
 
 const styles = StyleSheet.create({

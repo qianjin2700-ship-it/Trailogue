@@ -30,4 +30,23 @@ describe('trip mappers', () => {
       updatedAt: new Date('2026-10-14T08:30:00.000Z'),
     });
   });
+
+  it('preserves missing travel dates as null', () => {
+    const trip = mapTripDTO({
+      id: 'trip-2',
+      title: 'Undated notes',
+      description: null,
+      destinationName: null,
+      status: 'draft',
+      coverPhotoId: null,
+      photoCount: 0,
+      startDate: null,
+      endDate: null,
+      createdAt: '2026-10-01T08:30:00.000Z',
+      updatedAt: '2026-10-01T08:30:00.000Z',
+    });
+
+    expect(trip.startDate).toBeNull();
+    expect(trip.endDate).toBeNull();
+  });
 });

@@ -6,6 +6,7 @@ import type { TripSummary } from '@/domain/trip/trip';
 interface TripListContentProps {
   state: LoadState<TripSummary[]>;
   refreshing: boolean;
+  refreshError?: Error | null;
   onRefresh(): void;
   onRetry(): void;
   onCreateTrip(): void;
@@ -15,6 +16,7 @@ interface TripListContentProps {
 export function TripListContent({
   state,
   refreshing,
+  refreshError,
   onRefresh,
   onRetry,
   onCreateTrip,
@@ -44,6 +46,19 @@ export function TripListContent({
       contentContainerStyle={state.data.length === 0 ? styles.emptyList : styles.list}
       data={state.data}
       keyExtractor={(trip) => trip.id}
+      ListHeaderComponent={
+        refreshError ? (
+          <View accessibilityRole="alert" style={styles.refreshError}>
+            <View style={styles.refreshErrorCopy}>
+              <Text style={styles.refreshErrorTitle}>Couldn&apos;t refresh trips</Text>
+              <Text style={styles.refreshErrorDetail}>{refreshError.message}</Text>
+            </View>
+            <Pressable accessibilityLabel="Retry refresh" accessibilityRole="button" onPress={onRefresh}>
+              <Text style={styles.retryRefresh}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : null
+      }
       ListEmptyComponent={
         <View style={styles.centered}>
           <Text style={styles.stateTitle}>No trips yet</Text>
@@ -116,5 +131,10 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#24211D', fontSize: 21, fontWeight: '700' },
   cardMeta: { color: '#655F57', fontSize: 14, lineHeight: 20, marginTop: 8 },
   status: { color: '#7D5C3C', fontSize: 12, fontWeight: '700', marginTop: 12, textTransform: 'uppercase' },
+  refreshError: { alignItems: 'center', backgroundColor: '#F4E5DF', borderRadius: 12, flexDirection: 'row', gap: 12, justifyContent: 'space-between', padding: 14 },
+  refreshErrorCopy: { flex: 1 },
+  refreshErrorTitle: { color: '#7A2E22', fontSize: 14, fontWeight: '700' },
+  refreshErrorDetail: { color: '#7A2E22', fontSize: 13, marginTop: 4 },
+  retryRefresh: { color: '#7A2E22', fontSize: 14, fontWeight: '700', padding: 6 },
 });
 

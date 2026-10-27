@@ -12,7 +12,12 @@ export function createTripRepository(api: TripsApi): TripRepository {
   return {
     async getTrips() {
       const page = await api.getTrips();
-      return page.data.map(mapTripDTO);
+      const seen = new Set<string>();
+      return page.data.map(mapTripDTO).filter((trip) => {
+        if (seen.has(trip.id)) return false;
+        seen.add(trip.id);
+        return true;
+      });
     },
     async getTrip(id) {
       return mapTripDTO(await api.getTrip(id));

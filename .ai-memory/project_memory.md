@@ -276,3 +276,41 @@ This deployment does not complete Phase B.1. A signed real-iPhone build must sti
 - `ios-app/app.json` stores the owner and EAS-issued project ID; neither value is a secret.
 - The app continues to use Bundle ID `com.qianjin2700.trailogue` with Sign in with Apple enabled.
 - The preview API URL and signed real-device build remain pending; linking the EAS project alone does not make Phase C ready.
+
+## Decision Record: Trip list mutation invalidation
+
+**Date**: 2026-10-27
+**Problem**: Expo Router keeps the My Trips screen mounted while create and detail routes are pushed, so a mount-only effect does not reload after Trip creation.
+
+### Decision
+
+Use a process-local Trip-list revision marker. Successful Trip mutations increment the revision, and My Trips compares it inside Expo Router `useFocusEffect`. Initial focus and a changed revision load data; ordinary focus changes do not. Automatic refresh failures preserve the last successful list and expose Retry.
+
+**Trade-offs**: Remote changes from another device are not pushed into the process-local marker and continue to rely on manual pull-to-refresh.
+
+### Reversal condition
+
+Replace this marker with shared query-cache invalidation when multiple Trip mutation screens, background synchronization, or optimistic updates make process-local revision tracking insufficient.
+
+## Decision Record: Wave 3B private photo storage
+
+**Date**: 2026-10-27
+**Problem**: Store owner-scoped iPhone photos at low cost without exposing object-storage credentials or making the bucket public.
+
+### Decision
+
+Plan Wave 3B around a private Cloudflare R2 Standard bucket. Railway authenticates and authorizes upload intents, generates short-lived object-specific presigned PUT/GET URLs, verifies completed uploads with R2 HEAD, and stores only verified metadata/state in Neon. The iOS client uploads directly and never receives R2 access keys.
+
+**Trade-offs**: Completed single-part orphan objects require database-aware scheduled cleanup; R2 lifecycle rules alone only cover incomplete multipart uploads. Cloudflare bucket jurisdiction must be selected before creation and cannot later be changed.
+
+### Reversal condition
+
+Reconsider the storage/gateway design if video or >100 MB originals enter scope, strict pre-transfer byte enforcement is mandatory, edge transformation/scanning is required, or legal review rejects the selected R2 jurisdiction.
+
+## Known Issue: Railway connected-branch deploy scope is unverified
+
+**Discovered**: 2026-10-27
+**Type**: deployment risk
+**Severity**: major
+
+The Railway staging service follows GitHub branch `feature/ios-app`, and the repository contains no Railway path-filter configuration. Although `.dockerignore` excludes `ios-app` and `docs` from the API image, pushing an iOS/docs-only commit may still start a Railway build/deployment webhook. Do not push without confirming dashboard watch paths or obtaining explicit approval for a possible staging redeploy.
