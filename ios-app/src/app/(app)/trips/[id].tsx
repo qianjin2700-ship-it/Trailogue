@@ -9,12 +9,19 @@ import { tripRepository } from '@/composition/services';
 import type { LoadState } from '@/contracts/common';
 import type { Trip } from '@/domain/trip/trip';
 import { formatTripDateRange } from '@/features/trips/formatTripDateRange';
+import { PhotoSection } from '@/features/photos/PhotoSection';
 
 export default function TripDetailScreen() {
   const { signOut } = useAuth();
   const params = useLocalSearchParams<{ id?: string }>();
   const id = params.id;
   const [state, setState] = useState<LoadState<Trip>>({ status: 'loading' });
+
+  const updatePhotoCount = useCallback((photoCount: number) => {
+    setState((current) => current.status === 'success'
+      ? { status: 'success', data: { ...current.data, photoCount } }
+      : current);
+  }, []);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -65,6 +72,7 @@ export default function TripDetailScreen() {
       {trip.destinationName ? <Section label="Destination" value={trip.destinationName} /> : null}
       {travelDates ? <Section label="Travel dates" value={travelDates} /> : null}
       {trip.description ? <Section label="About this trip" value={trip.description} /> : null}
+      <PhotoSection onPhotoCountChange={updatePhotoCount} tripId={trip.id} />
       <Section label="Last updated" value={trip.updatedAt.toLocaleDateString()} />
     </ScrollView>
   );

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -27,10 +27,16 @@ class PGliteExecutor implements QueryExecutor {
 
 async function createIntegrationFixture() {
   const client = new PGlite();
-  const migrationPath = fileURLToPath(
-    new URL('../../../packages/database/drizzle/0000_initial.sql', import.meta.url),
+  const migrationsFolder = fileURLToPath(
+    new URL('../../../packages/database/drizzle', import.meta.url),
   );
-  await client.exec((await readFile(migrationPath, 'utf8')).replaceAll('--> statement-breakpoint', ''));
+  const migrationFiles = (await readdir(migrationsFolder))
+    .filter((name) => /^\d+.*\.sql$/.test(name))
+    .sort();
+  for (const migrationFile of migrationFiles) {
+    const sql = await readFile(`${migrationsFolder}/${migrationFile}`, 'utf8');
+    await client.exec(sql.replaceAll('--> statement-breakpoint', ''));
+  }
 
   const executor = new PGliteExecutor(client);
   const users = new UserRepository(executor);
@@ -56,7 +62,17 @@ async function createIntegrationFixture() {
   };
   const app = await buildApp({
     readiness: { healthCheck: async () => void (await executor.query('select 1')) },
-    services: { authentication, sessions, users, trips },
+    services: {
+      authentication,
+      sessions,
+      users,
+      trips,
+      photos: {
+        createUploadIntent: async () => { throw new Error('Not used by trip isolation tests'); },
+        completeUpload: async () => { throw new Error('Not used by trip isolation tests'); },
+        listPhotos: async () => [],
+      },
+    },
   });
 
   return { alice, aliceSession, aliceTrip, app, bob, bobSession, client };

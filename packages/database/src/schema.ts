@@ -18,6 +18,7 @@ import {
   bookStatuses,
   identityProviders,
   jobStatuses,
+  photoStatuses,
   storySources,
   tripStatuses,
 } from '@trailogue/domain';
@@ -27,6 +28,7 @@ export const tripStatusEnum = pgEnum('trip_status', tripStatuses);
 export const storySourceEnum = pgEnum('story_source', storySources);
 export const bookStatusEnum = pgEnum('book_status', bookStatuses);
 export const jobStatusEnum = pgEnum('job_status', jobStatuses);
+export const photoStatusEnum = pgEnum('photo_status', photoStatuses);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -133,11 +135,22 @@ export const photos = pgTable(
     latitude: doublePrecision('latitude'),
     longitude: doublePrecision('longitude'),
     sortOrder: integer('sort_order').default(0).notNull(),
+    status: photoStatusEnum('status').default('ready').notNull(),
+    clientUploadId: uuid('client_upload_id'),
+    uploadExpiresAt: timestamp('upload_expires_at', { withTimezone: true }),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    etag: varchar('etag', { length: 160 }),
+    failureCode: varchar('failure_code', { length: 80 }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex('photos_storage_key_uq').on(table.storageKey),
+    uniqueIndex('photos_user_client_upload_uq').on(table.userId, table.clientUploadId),
     index('photos_trip_sort_idx').on(table.tripId, table.sortOrder),
+    index('photos_trip_status_sort_idx').on(table.tripId, table.status, table.sortOrder),
+    index('photos_status_expiry_idx').on(table.status, table.uploadExpiresAt),
     index('photos_user_id_idx').on(table.userId),
   ],
 );

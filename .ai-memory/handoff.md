@@ -1,37 +1,37 @@
 ## Handoff Checkpoint
 
 **Updated**: 2026-10-27 +08:00
-**Current objective**: Deliver Wave 3A.1 list refresh/date fixes and prepare the Wave 3B private photo-upload design without starting upload implementation.
-**Current stage**: Wave 3A.1 implemented and fully verified; Wave 3B design complete; GitHub push intentionally paused for Railway deployment-risk confirmation.
-**Completion**: Wave 3A.1 100%; Wave 3B planning 100%; Wave 3B implementation 0%.
+**Current objective**: Deliver the Wave 3B MVP private R2 photo upload and Trip-detail gallery as a local commit, then pause for manual cloud configuration/migration/deployment.
+**Current stage**: Wave 3B MVP code, migration, tests, OpenAPI, and runbook complete and fully verified; local commit pending at this checkpoint.
+**Completion**: Wave 3B MVP local implementation 100%; cloud provisioning/deployment/real-device acceptance 0%.
 **Branch**: `feature/ios-app`
 **Commit**: the local commit containing this checkpoint; resolve with `git log -1 --oneline`
 
 ### Completed
 
-- Successful Trip creation invalidates My Trips while keeping navigation to the new detail screen.
-- My Trips uses Expo Router focus handling but only fetches when its revision is stale; ordinary focus changes do not request again.
-- Automatic/manual refresh failures preserve the previous list and show Retry; repository results are deduplicated by Trip id.
-- Trip detail displays timezone-stable start/end dates and safely handles missing/same/cross-year values.
-- Added regression coverage for empty/non-empty refresh, creation invalidation, failed refresh retry, duplicate ids, mapping, formatting, detail rendering, auth restore, and protected-route 401 sign-out.
-- Added `docs/28-wave-3b-photo-upload-plan.md` covering private R2, presigned PUT/GET, Railway authorization, Neon metadata, iOS normalization/progress, cleanup, security, costs, manual configuration, and phased delivery.
-- Verification passed: root lint, root typecheck, all 64 tests, root backend/worker build, Expo Doctor 21/21, and iOS export.
+- Added authenticated, owner-scoped photo upload-intent/completion/list APIs, private R2 signer/HEAD adapter, server-generated keys, idempotency, validation, and signed reads.
+- Added photo-state migration/repository and ready-only Trip counts without applying anything to Neon Staging.
+- Added iOS 1-5 system selection, HEIC/JPEG/PNG normalization to compressed JPEG, native PUT progress, user retry with stable clientUploadId, automatic gallery/count refresh, and signed-image thumbnails.
+- Updated Expo config, shared contracts/domain/config, checked-in OpenAPI, mobile contract, environment template, and Wave 3B plan/status.
+- Added integration/regression coverage for 401, cross-user 404, type/size rejection, upload/completion idempotency, missing/mismatched object, Trip association, iOS retry/gallery, and all prior authentication/Trip behavior.
+- Verification passed: root lint/typecheck, 73 automated tests, root build, Expo Doctor 21/21, iOS export, migration on ephemeral PGlite, OpenAPI parse, and secret scan.
 - No Railway variable, Neon data/migration, Cloudflare resource, Apple configuration, or EAS build was changed.
 
 ### Key decisions
 
-- Use a process-local invalidation revision plus `useFocusEffect` for the current Trip-list scale; manual pull-to-refresh remains the remote-change fallback.
-- Parse `YYYY-MM-DD` as calendar components rather than local `Date` values.
-- Plan Wave 3B around a private R2 Standard bucket with Railway-generated short-lived URLs and server-side `HEAD` finalization.
-- Do not push automatically: Railway follows GitHub branch `feature/ios-app`, and no path-filter configuration is present in the repository. Even an iOS/docs-only push may trigger staging deployment.
+- Keep the R2 bucket private and credentials only in Railway; iOS receives per-object short-lived PUT/GET URLs.
+- Normalize selected images sequentially to cap device memory use and remove original HEIC/EXIF from the uploaded derivative.
+- Missing objects stay pending so a retry can re-PUT; metadata mismatch marks the intent failed.
+- Do not push: the user explicitly requested a local commit only because a push can auto-deploy Railway.
 
 ### Recovery entry
 
-- **First read**: `docs/28-wave-3b-photo-upload-plan.md`, `ios-app/src/app/(app)/trips/index.tsx`, `ios-app/src/features/trips/formatTripDateRange.ts`, and this checkpoint.
+- **First read**: `docs/28-wave-3b-photo-upload-plan.md`, `apps/api/src/modules/photos/photoService.ts`, `packages/database/drizzle/0002_photo_upload_mvp.sql`, `ios-app/src/features/photos/PhotoSection.tsx`, and this checkpoint.
 - **Verification commands**: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; then in `ios-app`, `npm run doctor` and `npm run build`.
-- **Push gate**: confirm Railway dashboard watch paths or explicitly approve a possible staging redeploy, then run `git push origin feature/ios-app`.
+- **Next gate**: manually create/configure private R2, set Railway variables, review/apply Neon migration, then explicitly authorize push/deploy and a new EAS Preview build.
 
 ### Blockers / external prerequisites
 
-- GitHub push is waiting on the Railway deployment-risk decision.
-- Wave 3B implementation requires manual creation of the private R2 staging bucket/token and approved Railway variables, Neon migration, photo permission wording, and a later authorized EAS Preview build.
+- Create a private R2 Standard staging bucket/token and set the seven documented Railway variables.
+- Review/apply `0002_photo_upload_mvp.sql` to Neon Staging, deploy Railway, verify `/health` and `/ready`, then build a new iOS Preview binary because native Expo modules were added.
+- GitHub push and EAS Build remain prohibited until the user explicitly starts those steps.

@@ -1,6 +1,6 @@
 # Trailogue mobile API contract
 
-Status: active Phase A contract. Runtime auth/user/trip handlers remain explicitly unimplemented until Phase B.
+Status: active Wave 3B MVP contract. Authentication, trip, and private photo handlers are implemented.
 
 ## Shared behavior
 
@@ -18,19 +18,31 @@ Canonical DTOs live in `packages/contracts`; the iOS transport layer re-exports 
 
 ### `POST /v1/auth/apple`
 
-Accepts `identityToken`, `authorizationCode`, `nonce`, and the optional first-login profile. Phase B must verify Apple's signature, issuer, audience, expiry, and nonce before linking the Apple subject and issuing a Trailogue session. Phase A returns `501 NOT_IMPLEMENTED`.
+Accepts `identityToken`, `authorizationCode`, `nonce`, and the optional first-login profile. The API verifies Apple's signature, issuer, audience, expiry, and nonce before linking the Apple subject and issuing a Trailogue session.
 
 ### `GET /v1/users/me`
 
-Returns the canonical `UserDTO` for the authenticated Trailogue user. Phase A returns `501 NOT_IMPLEMENTED`.
+Returns the canonical `UserDTO` for the authenticated Trailogue user.
 
 ### `GET /v1/trips?limit=20&cursor=...`
 
-Returns `TripListResponse` using canonical Trip fields and cursor metadata. Phase A returns `501 NOT_IMPLEMENTED`.
+Returns `TripListResponse` using canonical Trip fields and cursor metadata.
 
 ### `GET /v1/trips/{id}`
 
-Returns `{ data: TripDTO }` only when the authenticated user owns the trip. Phase A validates the UUID and then returns `501 NOT_IMPLEMENTED`.
+Returns `{ data: TripDTO }` only when the authenticated user owns the trip.
+
+### `POST /v1/trips/{tripId}/photos/uploads`
+
+Requires a bearer session and matching UUID `Idempotency-Key`/`clientUploadId`. Returns a server-generated photo ID, exact headers, and a five-minute presigned private-R2 `PUT` URL. JPEG and PNG are allowed; the default maximum normalized size is 15 MiB.
+
+### `POST /v1/trips/{tripId}/photos/{photoId}/complete`
+
+Checks trip ownership and verifies the private R2 object with `HEAD` before marking the pending photo ready. Repeating completion for a ready photo is safe.
+
+### `GET /v1/trips/{tripId}/photos`
+
+Returns only verified ready photos for the owned trip, each with a short-lived presigned read URL. Storage keys and R2 credentials are never returned.
 
 ## Sources of truth
 

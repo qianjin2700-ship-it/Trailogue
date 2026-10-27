@@ -3,12 +3,16 @@ import { render, waitFor } from '@testing-library/react-native';
 import TripDetailScreen from '@/app/(app)/trips/[id]';
 
 const mockGetTrip = jest.fn();
+const mockGetPhotos = jest.fn().mockResolvedValue([]);
+const mockSignOut = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('@/auth/AuthProvider', () => ({
-  useAuth: () => ({ signOut: jest.fn().mockResolvedValue(undefined) }),
+  useAuth: () => ({ signOut: mockSignOut }),
 }));
 jest.mock('@/composition/services', () => ({
   tripRepository: { getTrip: (...args: unknown[]) => mockGetTrip(...args) },
+  photoRepository: { getPhotos: (...args: unknown[]) => mockGetPhotos(...args) },
+  photoUploadService: { upload: jest.fn() },
 }));
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'trip-1' }),

@@ -314,3 +314,16 @@ Reconsider the storage/gateway design if video or >100 MB originals enter scope,
 **Severity**: major
 
 The Railway staging service follows GitHub branch `feature/ios-app`, and the repository contains no Railway path-filter configuration. Although `.dockerignore` excludes `ios-app` and `docs` from the API image, pushing an iOS/docs-only commit may still start a Railway build/deployment webhook. Do not push without confirming dashboard watch paths or obtaining explicit approval for a possible staging redeploy.
+
+## Implementation Record: Wave 3B photo-upload MVP
+
+**Date**: 2026-10-27
+
+- API endpoints are `/v1/trips/{tripId}/photos/uploads`, `/v1/trips/{tripId}/photos/{photoId}/complete`, and `/v1/trips/{tripId}/photos`.
+- The client-generated `clientUploadId` must match `Idempotency-Key`; uniqueness is `(user_id, client_upload_id)`. A retry keeps the existing Photo/storage key and refreshes upload expiry.
+- Storage keys are generated only on Railway as `users/{userId}/trips/{tripId}/photos/{photoId}/original.{jpg|png}`.
+- The production adapter uses the AWS SDK v3 against private Cloudflare R2. Upload and read URL defaults are 300 and 600 seconds. Normalized uploads allow JPEG/PNG up to 15 MiB.
+- Completion is ready-only after R2 `HEAD` matches expected bytes and content type; missing objects remain pending for retry, while mismatches become failed.
+- iOS normalizes every selected image, including HEIC, to JPEG with longest edge 4096 and quality 0.82, uploads with native progress, retains the prepared file/id for user retry, and reloads owner-scoped signed gallery URLs after completion.
+- Migration `0002_photo_upload_mvp.sql` has only been applied to ephemeral PGlite. R2 creation, Railway variables/deploy, Neon staging migration, push, and EAS build require later explicit/manual action.
+- Automated orphan cleanup, delete, thumbnails, quotas/rate limits, background restoration, and multipart uploads remain post-MVP work.

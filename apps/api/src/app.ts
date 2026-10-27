@@ -9,7 +9,9 @@ import { HttpError, sendError } from './errors/httpError.js';
 import type { AuthenticationService } from './modules/auth/authService.js';
 import { createBearerAuthenticator } from './modules/auth/bearerAuthentication.js';
 import type { SessionService } from './modules/auth/sessionService.js';
+import type { PhotoService } from './modules/photos/photoService.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerPhotoRoutes } from './routes/photos.js';
 import { registerSystemRoutes, type ReadinessDependency } from './routes/system.js';
 import { registerTripRoutes } from './routes/trips.js';
 import { registerUserRoutes } from './routes/users.js';
@@ -17,6 +19,7 @@ import { registerUserRoutes } from './routes/users.js';
 export interface ApiServices {
   authentication: AuthenticationService;
   sessions: Pick<SessionService, 'verify'>;
+  photos: Pick<PhotoService, 'createUploadIntent' | 'completeUpload' | 'listPhotos'>;
   trips: Pick<TripRepository, 'create' | 'findByIdForUser' | 'listForUser'>;
   users: Pick<UserRepository, 'findById'>;
 }
@@ -43,6 +46,7 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
         { name: 'auth' },
         { name: 'users' },
         { name: 'trips' },
+        { name: 'photos' },
       ],
       components: {
         securitySchemes: {
@@ -78,5 +82,6 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
   await registerAuthRoutes(app, services.authentication);
   await registerUserRoutes(app, authenticate, services.users);
   await registerTripRoutes(app, authenticate, services.trips);
+  await registerPhotoRoutes(app, authenticate, services.photos);
   return app;
 }

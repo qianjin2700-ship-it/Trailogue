@@ -24,7 +24,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Trailogue uses photos you select to add them to your trip."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

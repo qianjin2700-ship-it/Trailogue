@@ -1,4 +1,4 @@
-import type { IdentityProvider, JobStatus, TripStatus } from '@trailogue/domain';
+import type { IdentityProvider, JobStatus, PhotoStatus, TripStatus } from '@trailogue/domain';
 
 import type { QueryExecutor } from './executor.js';
 
@@ -40,6 +40,28 @@ export interface TripRecord {
   photoCount: number;
   startDate: string | null;
   endDate: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PhotoRecord {
+  id: string;
+  userId: string;
+  tripId: string;
+  storageKey: string;
+  originalFilename: string;
+  mimeType: string;
+  width: number | null;
+  height: number | null;
+  fileSize: number;
+  capturedAt: Date | null;
+  sortOrder: number;
+  status: PhotoStatus;
+  clientUploadId: string | null;
+  uploadExpiresAt: Date | null;
+  uploadedAt: Date | null;
+  etag: string | null;
+  failureCode: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -199,7 +221,7 @@ export class TripRepository {
          t.start_date as "startDate", t.end_date as "endDate",
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from trips t
-       left join photos p on p.trip_id = t.id
+       left join photos p on p.trip_id = t.id and p.status = 'ready'
        where t.id = $1 and t.user_id = $2
        group by t.id`,
       [id, userId],
@@ -219,13 +241,105 @@ export class TripRepository {
          t.start_date as "startDate", t.end_date as "endDate",
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from trips t
-       left join photos p on p.trip_id = t.id
+       left join photos p on p.trip_id = t.id and p.status = 'ready'
        where t.user_id = $1
          and ($2::timestamptz is null or (t.updated_at, t.id) < ($2::timestamptz, $3::uuid))
        group by t.id
        order by t.updated_at desc, t.id desc
        limit $4`,
       [input.userId, input.cursor?.updatedAt ?? null, input.cursor?.id ?? null, input.limit],
+    );
+    return result.rows;
+  }
+}
+
+export class PhotoRepository {
+  constructor(private readonly database: QueryExecutor) {}
+
+  async createUploadIntent(input: {
+    id: string;
+    userId: string;
+    tripId: string;
+    clientUploadId: string;
+    storageKey: string;
+    originalFilename: string;
+    mimeType: string;
+    fileSize: number;
+    width: number;
+    height: number;
+    uploadExpiresAt: Date;
+  }): Promise<PhotoRecord> {
+    const result = await this.database.query<PhotoRecord>(
+      `insert into photos (
+         id, user_id, trip_id, storage_key, original_filename, mime_type,
+         width, height, file_size, status, client_upload_id, upload_expires_at
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11)
+       on conflict (user_id, client_upload_id)
+         do update set upload_expires_at = excluded.upload_expires_at, updated_at = now()
+       returning ${PHOTO_RETURNING}`,
+      [
+        input.id, input.userId, input.tripId, input.storageKey, input.originalFilename,
+        input.mimeType, input.width, input.height, input.fileSize, input.clientUploadId,
+        input.uploadExpiresAt,
+      ],
+    );
+    return requireRow(result.rows[0]);
+  }
+
+  async findByIdForUserAndTrip(
+    id: string,
+    userId: string,
+    tripId: string,
+  ): Promise<PhotoRecord | null> {
+    const result = await this.database.query<PhotoRecord>(
+      `select ${PHOTO_RETURNING}
+       from photos
+       where id = $1 and user_id = $2 and trip_id = $3 and deleted_at is null`,
+      [id, userId, tripId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async markReady(input: {
+    id: string;
+    userId: string;
+    tripId: string;
+    etag?: string | null;
+    uploadedAt: Date;
+  }): Promise<PhotoRecord | null> {
+    const result = await this.database.query<PhotoRecord>(
+      `update photos
+       set status = 'ready', etag = $4, uploaded_at = $5, failure_code = null, updated_at = $5
+       where id = $1 and user_id = $2 and trip_id = $3 and status = 'pending'
+       returning ${PHOTO_RETURNING}`,
+      [input.id, input.userId, input.tripId, input.etag ?? null, input.uploadedAt],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async markFailed(input: {
+    id: string;
+    userId: string;
+    tripId: string;
+    failureCode: string;
+    updatedAt: Date;
+  }): Promise<void> {
+    await this.database.query(
+      `update photos
+       set status = 'failed', failure_code = $4, updated_at = $5
+       where id = $1 and user_id = $2 and trip_id = $3 and status = 'pending'`,
+      [input.id, input.userId, input.tripId, input.failureCode, input.updatedAt],
+    );
+  }
+
+  async listReadyForTrip(userId: string, tripId: string, limit: number): Promise<PhotoRecord[]> {
+    const result = await this.database.query<PhotoRecord>(
+      `select ${PHOTO_RETURNING}
+       from photos
+       where user_id = $1 and trip_id = $2 and status = 'ready' and deleted_at is null
+       order by sort_order asc, created_at asc, id asc
+       limit $3`,
+      [userId, tripId, limit],
     );
     return result.rows;
   }
@@ -310,6 +424,13 @@ const JOB_RETURNING = `id, user_id as "userId", type, payload, status, attempts,
   max_attempts as "maxAttempts", run_after as "runAfter", locked_at as "lockedAt",
   locked_by as "lockedBy", last_error as "lastError", idempotency_key as "idempotencyKey",
   created_at as "createdAt", updated_at as "updatedAt"`;
+
+const PHOTO_RETURNING = `id, user_id as "userId", trip_id as "tripId",
+  storage_key as "storageKey", original_filename as "originalFilename", mime_type as "mimeType",
+  width, height, file_size::int as "fileSize", captured_at as "capturedAt",
+  sort_order as "sortOrder", status, client_upload_id as "clientUploadId",
+  upload_expires_at as "uploadExpiresAt", uploaded_at as "uploadedAt", etag,
+  failure_code as "failureCode", created_at as "createdAt", updated_at as "updatedAt"`;
 
 function requireRow<T>(row: T | undefined): T {
   if (!row) throw new Error('Database did not return the expected row');

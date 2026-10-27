@@ -129,6 +129,73 @@ paths:
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /v1/trips/{tripId}/photos/uploads:
+    post:
+      operationId: createPhotoUpload
+      description: Creates or refreshes an idempotent upload intent for an owned trip.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: tripId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePhotoUploadRequest' }
+      responses:
+        '201':
+          description: Pending photo and short-lived R2 PUT URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties: { data: { $ref: '#/components/schemas/PhotoUploadIntent' } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/trips/{tripId}/photos/{photoId}/complete:
+    post:
+      operationId: completePhotoUpload
+      description: Verifies the R2 object metadata and marks the photo ready.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: tripId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: photoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Verified ready photo with a short-lived read URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties: { data: { $ref: '#/components/schemas/Photo' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/trips/{tripId}/photos:
+    get:
+      operationId: listTripPhotos
+      description: Lists only verified ready photos for an owned trip.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: tripId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Ready photos with short-lived read URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Photo' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     bearerAuth:
@@ -193,6 +260,49 @@ components:
         description: { type: string, nullable: true, maxLength: 10000 }
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
+    CreatePhotoUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [clientUploadId, originalFilename, mimeType, fileSize, width, height]
+      properties:
+        clientUploadId: { type: string, format: uuid }
+        originalFilename: { type: string, minLength: 1, maxLength: 255 }
+        mimeType: { type: string, enum: [image/jpeg, image/png] }
+        fileSize: { type: integer, minimum: 1, maximum: 15728640 }
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
+    PhotoUploadIntent:
+      type: object
+      required: [photoId, uploadUrl, method, headers, expiresAt, maxBytes, allowedMimeTypes]
+      properties:
+        photoId: { type: string, format: uuid }
+        uploadUrl: { type: string, format: uri }
+        method: { type: string, enum: [PUT] }
+        headers:
+          type: object
+          required: [Content-Type]
+          properties: { Content-Type: { type: string, enum: [image/jpeg, image/png] } }
+        expiresAt: { type: string, format: date-time }
+        maxBytes: { type: integer, minimum: 1 }
+        allowedMimeTypes:
+          type: array
+          items: { type: string, enum: [image/jpeg, image/png] }
+    Photo:
+      type: object
+      required: [id, tripId, status, url, originalFilename, mimeType, fileSize, width, height, capturedAt, createdAt, uploadedAt]
+      properties:
+        id: { type: string, format: uuid }
+        tripId: { type: string, format: uuid }
+        status: { type: string, enum: [ready] }
+        url: { type: string, format: uri }
+        originalFilename: { type: string }
+        mimeType: { type: string, enum: [image/jpeg, image/png] }
+        fileSize: { type: integer, minimum: 1 }
+        width: { type: integer, nullable: true, minimum: 1 }
+        height: { type: integer, nullable: true, minimum: 1 }
+        capturedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        uploadedAt: { type: string, format: date-time, nullable: true }
     Error:
       type: object
       required: [error]
@@ -222,6 +332,11 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     NotFound:
       description: The owner-scoped resource does not exist
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Upload state or verified object metadata conflicts with the intent
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

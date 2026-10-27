@@ -5,6 +5,8 @@ export type ApiErrorCode =
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
+  | 'INVALID_REQUEST'
+  | 'CONFLICT'
   | 'SERVER_ERROR'
   | 'UNKNOWN';
 
@@ -15,6 +17,8 @@ const USER_MESSAGES: Record<ApiErrorCode, string> = {
   UNAUTHORIZED: 'Your session has expired. Please sign in again.',
   FORBIDDEN: 'You do not have access to this item.',
   NOT_FOUND: 'This item could not be found.',
+  INVALID_REQUEST: 'This request is not valid. Check the photo and try again.',
+  CONFLICT: 'This upload can no longer be completed. Please try again.',
   SERVER_ERROR: 'The service is unavailable right now. Please try again.',
   UNKNOWN: 'Something went wrong. Please try again.',
 };
@@ -38,6 +42,8 @@ export function mapHttpStatus(status: number): ApiErrorCode {
   if (status === 401) return 'UNAUTHORIZED';
   if (status === 403) return 'FORBIDDEN';
   if (status === 404) return 'NOT_FOUND';
+  if (status === 400) return 'INVALID_REQUEST';
+  if (status === 409) return 'CONFLICT';
   if (status >= 500) return 'SERVER_ERROR';
   return 'UNKNOWN';
 }
@@ -46,6 +52,8 @@ export function mapBackendCode(code: string): ApiErrorCode {
   if (code === 'UNAUTHORIZED' || code === 'INVALID_APPLE_TOKEN') return 'UNAUTHORIZED';
   if (code === 'FORBIDDEN') return 'FORBIDDEN';
   if (code === 'NOT_FOUND') return 'NOT_FOUND';
+  if (code === 'VALIDATION_ERROR') return 'INVALID_REQUEST';
+  if (code === 'CONFLICT') return 'CONFLICT';
   if (code === 'INTERNAL_ERROR') return 'SERVER_ERROR';
   return 'UNKNOWN';
 }

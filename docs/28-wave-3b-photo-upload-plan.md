@@ -1,6 +1,8 @@
 # Wave 3B Photo Upload Technical Plan
 
-**Status:** design only; no photo upload code, migration, Cloudflare resource, Railway variable, or deployment was created in Wave 3A.1.
+**Status:** Wave 3B MVP implemented locally on 2026-10-27. Code, tests, OpenAPI, and migration `0002_photo_upload_mvp.sql` are present. Cloudflare resources, Railway variables/deployment, Neon staging migration, EAS build, and remote push remain intentionally pending manual action.
+
+The implemented MVP covers upload intent, direct single-part upload, object verification, metadata persistence, owner-scoped reads, iOS normalization/progress/retry, and the Trip gallery. Automated orphan deletion, photo deletion, thumbnails, background queue restoration, quotas/rate limits, and multipart upload remain hardening work; pending/failed rows and expiry indexes are in place so cleanup can be added safely before production launch.
 
 ## 1. Recommendation
 
@@ -122,7 +124,7 @@ On success, store verified metadata and mark the row `ready` in one database tra
 
 Returns only ready photos for an owned Trip, ordered by `sortOrder, createdAt`. Each response includes a short-lived display URL or a batch token that resolves to one. Do not return raw R2 credentials or permanent public URLs.
 
-### `DELETE /v1/trips/{tripId}/photos/{photoId}`
+### Later: `DELETE /v1/trips/{tripId}/photos/{photoId}`
 
 Owner-scoped and idempotent. Mark deletion in Neon, remove original and derivatives from R2, clear `coverPhotoId` if needed, and make retry safe if either side temporarily fails.
 
@@ -136,7 +138,7 @@ Owner-scoped and idempotent. Mark deletion in Neon, remove original and derivati
 
 The existing `photos` table already has the right core ownership and media fields: `user_id`, `trip_id`, `storage_key`, `thumbnail_key`, filename, MIME type, dimensions, size, capture time, coordinates, sort order, and creation time.
 
-Recommended additions for Wave 3B:
+Implemented additions for the Wave 3B MVP:
 
 | Field | Purpose |
 |---|---|
@@ -232,8 +234,10 @@ Do these only after Wave 3B implementation is approved:
 
 ### Railway
 
-- Add secret R2 credential variables and non-secret account/bucket/endpoint settings to staging.
-- Add upload/read TTL, MIME allow-list, size limit, and quota settings.
+- Add `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` as staging secrets.
+- Add `R2_ENDPOINT` and `R2_BUCKET` for the private staging bucket.
+- Optionally override `R2_UPLOAD_URL_TTL_SECONDS` (default 300), `R2_READ_URL_TTL_SECONDS` (default 600), and `PHOTO_MAX_BYTES` (default 15728640).
+- The implemented MIME allow-list is `image/jpeg` and `image/png`; changing it requires code and contract changes rather than an environment-only override.
 - Add the cleanup worker/cron only when the cleanup code exists and has dry-run verification.
 - Confirm whether GitHub auto-deploy has path filters before pushing backend/schema work.
 

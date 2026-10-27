@@ -10,6 +10,7 @@ import type { QueryExecutor, QueryResult } from '../src/executor.js';
 import {
   IdentityRepository,
   JobRepository,
+  PhotoRepository,
   SessionRepository,
   TripRepository,
   UserRepository,
@@ -101,6 +102,56 @@ test('job claims are atomic, skip locked work, and retry safely', async () => {
     assert.equal(retry?.id, queued.id);
     assert.equal(retry?.attempts, 2);
     assert.equal(await jobs.complete(queued.id, 'worker-b'), true);
+  } finally {
+    await client.close();
+  }
+});
+
+test('photo upload intents are idempotent and ready photos stay trip-scoped', async () => {
+  const { client, executor } = await createTestDatabase();
+  try {
+    const users = new UserRepository(executor);
+    const trips = new TripRepository(executor);
+    const photos = new PhotoRepository(executor);
+    const alice = await users.create({ displayName: 'Alice' });
+    const bob = await users.create({ displayName: 'Bob' });
+    const trip = await trips.create({ userId: alice.id, title: 'Photo trip' });
+    const input = {
+      id: '70000000-0000-4000-8000-000000000007',
+      userId: alice.id,
+      tripId: trip.id,
+      clientUploadId: '71000000-0000-4000-8000-000000000007',
+      storageKey: `users/${alice.id}/trips/${trip.id}/photos/photo.jpg`,
+      originalFilename: 'photo.jpg',
+      mimeType: 'image/jpeg',
+      fileSize: 1_024,
+      width: 1200,
+      height: 800,
+      uploadExpiresAt: new Date('2026-10-27T08:05:00.000Z'),
+    };
+
+    const first = await photos.createUploadIntent(input);
+    const retry = await photos.createUploadIntent({
+      ...input,
+      id: '72000000-0000-4000-8000-000000000007',
+      storageKey: 'must-not-replace-the-original-key.jpg',
+      uploadExpiresAt: new Date('2026-10-27T08:10:00.000Z'),
+    });
+    assert.equal(retry.id, first.id);
+    assert.equal(retry.storageKey, input.storageKey);
+    assert.equal(retry.uploadExpiresAt?.toISOString(), '2026-10-27T08:10:00.000Z');
+    assert.deepEqual(await photos.listReadyForTrip(alice.id, trip.id, 100), []);
+
+    const ready = await photos.markReady({
+      id: first.id,
+      userId: alice.id,
+      tripId: trip.id,
+      etag: 'etag-1',
+      uploadedAt: new Date('2026-10-27T08:01:00.000Z'),
+    });
+    assert.equal(ready?.status, 'ready');
+    assert.equal((await photos.listReadyForTrip(alice.id, trip.id, 100))[0]?.id, first.id);
+    assert.deepEqual(await photos.listReadyForTrip(bob.id, trip.id, 100), []);
   } finally {
     await client.close();
   }

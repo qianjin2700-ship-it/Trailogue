@@ -69,6 +69,11 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
       signInWithApple: async () => ({ accessToken: bearerToken, expiresAt: session.expiresAt, user }),
     },
     sessions: { verify: async (token) => (token === bearerToken ? session : null) },
+    photos: {
+      createUploadIntent: async () => { throw new Error('Not used by this test'); },
+      completeUpload: async () => { throw new Error('Not used by this test'); },
+      listPhotos: async () => [],
+    },
     users: { findById: async (id) => (id === userId ? user : null) },
     trips: {
       create: async () => trip,
@@ -339,7 +344,7 @@ test('invalid trip id returns VALIDATION_ERROR before repository access', async 
   assert.equal(response.json().error.code, 'VALIDATION_ERROR');
 });
 
-test('OpenAPI exposes authentication and active user and trip routes', async () => {
+test('OpenAPI exposes authentication, trip, and photo routes', async () => {
   const app = await createApp();
   await app.ready();
   const specification = app.swagger();
@@ -350,4 +355,7 @@ test('OpenAPI exposes authentication and active user and trip routes', async () 
   assert.ok(specification.paths?.['/v1/users/me']);
   assert.ok(specification.paths?.['/v1/trips']);
   assert.ok(specification.paths?.['/v1/trips/{id}']);
+  assert.ok(specification.paths?.['/v1/trips/{tripId}/photos/uploads']);
+  assert.ok(specification.paths?.['/v1/trips/{tripId}/photos/{photoId}/complete']);
+  assert.ok(specification.paths?.['/v1/trips/{tripId}/photos']);
 });

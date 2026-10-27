@@ -1,4 +1,4 @@
-import type { TripStatus } from '@trailogue/domain';
+import type { PhotoStatus, TripStatus } from '@trailogue/domain';
 
 export type ApiErrorCode =
   | 'VALIDATION_ERROR'
@@ -78,8 +78,47 @@ export interface CreateTripRequest {
   endDate: string;
 }
 
+export type PhotoMimeType = 'image/jpeg' | 'image/png';
+
+export interface CreatePhotoUploadRequest {
+  clientUploadId: string;
+  originalFilename: string;
+  mimeType: PhotoMimeType;
+  fileSize: number;
+  width: number;
+  height: number;
+}
+
+export interface PhotoUploadIntentDTO {
+  photoId: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: { 'Content-Type': PhotoMimeType };
+  expiresAt: string;
+  maxBytes: number;
+  allowedMimeTypes: PhotoMimeType[];
+}
+
+export interface PhotoDTO {
+  id: string;
+  tripId: string;
+  status: PhotoStatus;
+  url: string;
+  originalFilename: string;
+  mimeType: PhotoMimeType;
+  fileSize: number;
+  width: number | null;
+  height: number | null;
+  capturedAt: string | null;
+  createdAt: string;
+  uploadedAt: string | null;
+}
+
 export type TripDTO = TripSummaryDTO;
 
 export type TripListResponse = ApiListResponse<TripSummaryDTO>;
 export type TripDetailResponse = ApiDataResponse<TripDTO>;
 export type CreateTripResponse = ApiDataResponse<TripDTO>;
+export type CreatePhotoUploadResponse = ApiDataResponse<PhotoUploadIntentDTO>;
+export type CompletePhotoUploadResponse = ApiDataResponse<PhotoDTO>;
+export type PhotoListResponse = ApiDataResponse<PhotoDTO[]>;

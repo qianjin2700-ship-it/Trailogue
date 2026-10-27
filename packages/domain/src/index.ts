@@ -4,6 +4,9 @@ export type IdentityProvider = (typeof identityProviders)[number];
 export const tripStatuses = ['draft', 'published', 'archived'] as const;
 export type TripStatus = (typeof tripStatuses)[number];
 
+export const photoStatuses = ['pending', 'ready', 'failed', 'deleting'] as const;
+export type PhotoStatus = (typeof photoStatuses)[number];
+
 export const storySources = ['user', 'ai', 'mixed'] as const;
 export type StorySource = (typeof storySources)[number];
 

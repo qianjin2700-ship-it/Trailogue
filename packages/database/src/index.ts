@@ -3,10 +3,12 @@ export { PgQueryExecutor, type QueryExecutor, type QueryResult } from './executo
 export {
   IdentityRepository,
   JobRepository,
+  PhotoRepository,
   SessionRepository,
   TripRepository,
   UserRepository,
   type JobRecord,
+  type PhotoRecord,
   type IdentityRecord,
   type SessionRecord,
   type TripRecord,
