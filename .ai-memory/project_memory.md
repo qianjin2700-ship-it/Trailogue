@@ -327,3 +327,12 @@ The Railway staging service follows GitHub branch `feature/ios-app`, and the rep
 - iOS normalizes every selected image, including HEIC, to JPEG with longest edge 4096 and quality 0.82, uploads with native progress, retains the prepared file/id for user retry, and reloads owner-scoped signed gallery URLs after completion.
 - Migration `0002_photo_upload_mvp.sql` has only been applied to ephemeral PGlite. R2 creation, Railway variables/deploy, Neon staging migration, push, and EAS build require later explicit/manual action.
 - Automated orphan cleanup, delete, thumbnails, quotas/rate limits, background restoration, and multipart uploads remain post-MVP work.
+
+## Build Fix Record: Railway API lockfile completeness
+
+**Date**: 2026-10-27
+
+- Railway deployment `381a5ba1` stopped after the database build banner because the following silent `apps/api npm ci` lock validation failed; the database TypeScript build itself was not the root cause.
+- `apps/api/package-lock.json` omitted transitive runtime packages supplied by local `file:` dependencies, including `zod`, `drizzle-orm`, `pg`, and their PostgreSQL dependencies.
+- Regenerate and validate the API lockfile with Railway's Node 22.22.1 / npm 10.9.4 and `--install-links` whenever local package dependency metadata changes.
+- A clean source export must pass the Dockerfile sequence (`npm ci`, `npm run install:api`, API build) before a Railway-triggering push.
