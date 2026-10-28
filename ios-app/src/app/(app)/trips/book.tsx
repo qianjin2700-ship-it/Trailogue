@@ -11,6 +11,7 @@ import { photoRepository, sharesApi, storyRepository } from '@/composition/servi
 import type { BookPreviewDTO, ShareLinkDTO } from '@/contracts/story';
 import type { Photo } from '@/domain/photo/photo';
 import { buildBookLayout, makePdfFilename, renderBookHtml, type BookPage } from '@/features/books/bookLayout';
+import { materializeBookPhotos, withTimeout } from '@/features/books/pdfExport';
 
 export default function BookPreviewScreen() {
   const { signOut } = useAuth();
@@ -19,6 +20,7 @@ export default function BookPreviewScreen() {
   const [photos, setPhotos] = useState<Map<string, Photo>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportStage, setExportStage] = useState<string | null>(null);
   const [activeShare, setActiveShare] = useState<ShareLinkDTO | null>(null);
   useEffect(() => {
     if (!id) return;
@@ -38,14 +40,39 @@ export default function BookPreviewScreen() {
   const exportPdf = async () => {
     setExporting(true); setError(null);
     try {
-      const printed = await Print.printToFileAsync({ html: renderBookHtml(document, photos), base64: false });
+      if (!id) throw new Error('Trip not found');
+      setExportStage('Preparing photos…');
+      const freshPhotos = await withTimeout(
+        photoRepository.getPhotos(id),
+        20_000,
+        'Refreshing the photos took too long. Check your connection and try again.',
+      );
+      const freshPhotoMap = new Map(freshPhotos.map((photo) => [photo.id, photo]));
+      const usedPhotoIds = new Set(document.pages.flatMap((page) => page.photoIds));
+      const usedPhotos = new Map([...freshPhotoMap].filter(([photoId]) => usedPhotoIds.has(photoId)));
+      const prepared = await withTimeout(
+        materializeBookPhotos(usedPhotos),
+        60_000,
+        'Preparing the photos took too long. Check your connection and try again.',
+      );
+      if (usedPhotos.size > 0 && prepared.photos.size === 0) {
+        throw new Error('The photos could not be prepared. Check your connection and try again.');
+      }
+      setExportStage('Creating PDF…');
+      const printed = await withTimeout(
+        Print.printToFileAsync({ html: renderBookHtml(document, prepared.photos), base64: false }),
+        60_000,
+        'Creating the PDF took too long. Please try again.',
+      );
       const named = new File(Paths.cache, makePdfFilename(book.tripTitle, book.startDate));
       if (named.exists) named.delete();
       await new File(printed.uri).copy(named);
       if (!await Sharing.isAvailableAsync()) throw new Error('File sharing is not available');
+      setExportStage('Opening share sheet…');
       await Sharing.shareAsync(named.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: named.name });
+      if (prepared.skippedCount > 0) setError(`${prepared.skippedCount} photo could not be included in this PDF.`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not export this book'); }
-    finally { setExporting(false); }
+    finally { setExporting(false); setExportStage(null); }
   };
   const shareLink = async () => {
     if (!id) return;
@@ -69,7 +96,7 @@ export default function BookPreviewScreen() {
     {document.pages.map((page, index) => <PagePreview key={page.id} page={page} photos={photos} pageNumber={index + 1} />)}
     {error ? <Text style={styles.error}>{error}</Text> : null}
     <View style={styles.actions}>
-      <Pressable accessibilityRole="button" disabled={exporting} onPress={() => void exportPdf()} style={styles.secondaryButton}><Text style={styles.secondaryLabel}>{exporting ? 'Preparing…' : 'Export PDF'}</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={exporting} onPress={() => void exportPdf()} style={styles.secondaryButton}><Text style={styles.secondaryLabel}>{exportStage ?? 'Export PDF'}</Text></Pressable>
       <Pressable accessibilityRole="button" disabled={exporting} onPress={() => void shareLink()} style={styles.shareButton}><Text style={styles.shareLabel}>Create private share link</Text></Pressable>
       {activeShare ? <><Text selectable style={styles.activeLink}>{activeShare.url}</Text><Pressable accessibilityRole="button" disabled={exporting} onPress={() => void revokeShare()} style={styles.revokeButton}><Text style={styles.revokeLabel}>Revoke this share link</Text></Pressable></> : null}
     </View>

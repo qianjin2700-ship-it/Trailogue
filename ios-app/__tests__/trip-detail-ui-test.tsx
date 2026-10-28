@@ -57,5 +57,6 @@ describe('<TripDetailScreen />', () => {
     const screen = render(<TripDetailScreen />);
 
     await waitFor(() => expect(screen.getByText('2026.11.01 — 2026.11.05')).toBeTruthy());
+    expect(screen.queryByText('Last updated')).toBeNull();
   });
 });

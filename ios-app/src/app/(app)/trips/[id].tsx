@@ -130,7 +130,6 @@ export default function TripDetailScreen() {
       <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/trips/story', params: { id: trip.id } })} style={styles.secondaryStoryButton}>
         <Text style={styles.secondaryStoryLabel}>Open current story</Text>
       </Pressable>
-      <Section label="Last updated" value={trip.updatedAt.toLocaleDateString()} />
     </ScrollView>
   );
 }
