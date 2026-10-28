@@ -5,6 +5,8 @@ export interface User {
   name: string | null;
   avatarUrl: string | null;
   email: string | null;
+  privacyAgreedAt: Date | null;
+  retentionDays: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +17,8 @@ export function mapUserDTO(dto: UserDTO): User {
     name: dto.displayName,
     avatarUrl: dto.avatarUrl,
     email: dto.email,
+    privacyAgreedAt: dto.privacyAgreedAt ? new Date(dto.privacyAgreedAt) : null,
+    retentionDays: dto.retentionDays,
     createdAt: new Date(dto.createdAt),
     updatedAt: new Date(dto.updatedAt),
   };

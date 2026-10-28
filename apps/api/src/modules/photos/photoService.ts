@@ -5,6 +5,7 @@ import type {
   PhotoDTO,
   PhotoMimeType,
   PhotoUploadIntentDTO,
+  UpdatePhotoRequest,
 } from '@trailogue/contracts';
 import type { PhotoRecord, PhotoRepository, TripRepository } from '@trailogue/database';
 
@@ -26,12 +27,14 @@ export interface PhotoObjectStorage {
   }): Promise<string>;
   headObject(key: string): Promise<PhotoObjectHead | null>;
   createReadUrl(key: string, expiresInSeconds: number): Promise<string>;
+  deleteObject(key: string): Promise<void>;
 }
 
 interface PhotoServiceDependencies {
   photos: Pick<
     PhotoRepository,
-    'createUploadIntent' | 'findByIdForUserAndTrip' | 'markFailed' | 'markReady' | 'listReadyForTrip'
+    'createUploadIntent' | 'findByIdForUserAndTrip' | 'markFailed' | 'markReady' |
+    'listReadyForTrip' | 'reorderForTrip' | 'deleteForUserAndTrip' | 'updateDetails'
   >;
   trips: Pick<TripRepository, 'findByIdForUser'>;
   storage: PhotoObjectStorage;
@@ -72,6 +75,7 @@ export class PhotoService {
       fileSize: input.fileSize,
       width: input.width,
       height: input.height,
+      capturedAt: input.capturedAt ? new Date(input.capturedAt) : null,
       uploadExpiresAt: new Date(now.getTime() + this.dependencies.uploadUrlTtlSeconds * 1_000),
     });
 
@@ -152,6 +156,55 @@ export class PhotoService {
     return Promise.all(photos.map((photo) => this.toPhotoDto(photo)));
   }
 
+  async reorderPhotos(userId: string, tripId: string, photoIds: string[]): Promise<void> {
+    await this.requireOwnedTrip(userId, tripId);
+    if (photoIds.length === 0 || photoIds.length > 50 || new Set(photoIds).size !== photoIds.length) {
+      throw new HttpError(400, 'VALIDATION_ERROR', 'Photo order is invalid');
+    }
+    if (!await this.dependencies.photos.reorderForTrip(userId, tripId, photoIds)) {
+      throw new HttpError(404, 'NOT_FOUND', 'One or more photos were not found');
+    }
+  }
+
+  async deletePhoto(userId: string, tripId: string, photoId: string): Promise<void> {
+    await this.requireOwnedTrip(userId, tripId);
+    const photo = await this.dependencies.photos.findByIdForUserAndTrip(photoId, userId, tripId);
+    if (!photo) throw new HttpError(404, 'NOT_FOUND', 'Photo not found');
+    await this.dependencies.storage.deleteObject(photo.storageKey);
+    if (photo.thumbnailKey) await this.dependencies.storage.deleteObject(photo.thumbnailKey);
+    const deleted = await this.dependencies.photos.deleteForUserAndTrip(photoId, userId, tripId);
+    if (!deleted) throw new HttpError(409, 'CONFLICT', 'Photo could not be deleted');
+  }
+
+  async updatePhoto(
+    userId: string,
+    tripId: string,
+    photoId: string,
+    input: UpdatePhotoRequest,
+  ): Promise<PhotoDTO> {
+    await this.requireOwnedTrip(userId, tripId);
+    const current = await this.dependencies.photos.findByIdForUserAndTrip(photoId, userId, tripId);
+    if (!current || current.status !== 'ready') throw new HttpError(404, 'NOT_FOUND', 'Photo not found');
+    const capturedAt = input.capturedAt === undefined
+      ? current.capturedAt
+      : input.capturedAt ? new Date(input.capturedAt) : null;
+    if (capturedAt && !Number.isFinite(capturedAt.getTime())) {
+      throw new HttpError(400, 'VALIDATION_ERROR', 'Photo capture time is invalid');
+    }
+    const updated = await this.dependencies.photos.updateDetails({
+      id: photoId,
+      userId,
+      tripId,
+      caption: input.caption === undefined ? current.caption : input.caption?.trim() || null,
+      locationName: input.locationName === undefined
+        ? current.locationName
+        : input.locationName?.trim() || null,
+      capturedAt,
+    });
+    if (!updated) throw new HttpError(404, 'NOT_FOUND', 'Photo not found');
+    return this.toPhotoDto(updated);
+  }
+
   private async requireOwnedTrip(userId: string, tripId: string): Promise<void> {
     const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
     if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
@@ -169,6 +222,12 @@ export class PhotoService {
     }
     if (input.width <= 0 || input.height <= 0) {
       throw new HttpError(400, 'VALIDATION_ERROR', 'Photo dimensions are invalid');
+    }
+    if (input.capturedAt !== undefined && input.capturedAt !== null) {
+      const capturedAt = new Date(input.capturedAt);
+      if (!Number.isFinite(capturedAt.getTime())) {
+        throw new HttpError(400, 'VALIDATION_ERROR', 'Photo capture time is invalid');
+      }
     }
   }
 
@@ -190,6 +249,8 @@ export class PhotoService {
       capturedAt: photo.capturedAt?.toISOString() ?? null,
       createdAt: photo.createdAt.toISOString(),
       uploadedAt: photo.uploadedAt?.toISOString() ?? null,
+      caption: photo.caption,
+      locationName: photo.locationName,
     };
   }
 }
@@ -210,7 +271,10 @@ function matchesUploadIntent(
     ) &&
     photo.fileSize === input.fileSize &&
     photo.width === input.width &&
-    photo.height === input.height;
+    photo.height === input.height &&
+    (input.capturedAt === undefined || input.capturedAt === null
+      ? photo.capturedAt === null
+      : photo.capturedAt?.toISOString() === new Date(input.capturedAt).toISOString());
 }
 
 function sanitizeFilename(filename: string, fallbackExtension: string): string {

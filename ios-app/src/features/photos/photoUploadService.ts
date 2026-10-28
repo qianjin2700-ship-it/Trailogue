@@ -10,6 +10,7 @@ export interface PreparedPhoto {
   fileSize: number;
   width: number;
   height: number;
+  capturedAt?: string | null;
 }
 
 export interface PhotoTransfer {
@@ -33,6 +34,27 @@ export interface PhotoUploadService {
   ): Promise<Photo>;
 }
 
+export async function runUploadQueue<T>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new Error('Upload concurrency must be a positive integer');
+  }
+  let nextIndex = 0;
+  const runWorker = async () => {
+    while (nextIndex < items.length) {
+      const item = items[nextIndex];
+      nextIndex += 1;
+      if (item !== undefined) await worker(item);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker()),
+  );
+}
+
 export function createPhotoUploadService(input: {
   repository: PhotoRepository;
   transfer: PhotoTransfer;
@@ -49,6 +71,7 @@ export function createPhotoUploadService(input: {
           fileSize: photo.fileSize,
           width: photo.width,
           height: photo.height,
+          capturedAt: photo.capturedAt ?? null,
         },
       );
       if (photo.fileSize > intent.maxBytes || !intent.allowedMimeTypes.includes(photo.mimeType)) {

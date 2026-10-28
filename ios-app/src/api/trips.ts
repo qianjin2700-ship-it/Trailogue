@@ -1,4 +1,4 @@
-import type { CreateTripRequest, TripDTO, TripListResponse } from '@/contracts/trip';
+import type { CreateTripRequest, TripDTO, TripListResponse, UpdateTripRequest } from '@/contracts/trip';
 
 import type { ApiClient } from './client';
 
@@ -6,6 +6,9 @@ export interface TripsApi {
   getTrips(cursor?: string, limit?: number): Promise<TripListResponse>;
   getTrip(id: string): Promise<TripDTO>;
   createTrip(input: CreateTripRequest, idempotencyKey: string): Promise<TripDTO>;
+  updateTrip(id: string, input: UpdateTripRequest): Promise<TripDTO>;
+  setCoverPhoto(id: string, photoId: string | null): Promise<void>;
+  deleteTrip(id: string): Promise<void>;
 }
 
 export function createTripsApi(client: ApiClient): TripsApi {
@@ -25,6 +28,21 @@ export function createTripsApi(client: ApiClient): TripsApi {
         headers: { 'Idempotency-Key': idempotencyKey },
       });
       return response.data;
+    },
+    async updateTrip(id, input) {
+      const response = await client.request<{ data: TripDTO }>(
+        `/v1/trips/${encodeURIComponent(id)}`,
+        { method: 'PATCH', body: input },
+      );
+      return response.data;
+    },
+    async setCoverPhoto(id, photoId) {
+      await client.request(`/v1/trips/${encodeURIComponent(id)}/cover`, {
+        method: 'PUT', body: { photoId },
+      });
+    },
+    async deleteTrip(id) {
+      await client.request(`/v1/trips/${encodeURIComponent(id)}`, { method: 'DELETE' });
     },
   };
 }

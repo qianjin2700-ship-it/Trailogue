@@ -1,4 +1,4 @@
-import type { CreateTripRequest } from '@/contracts/trip';
+import type { CreateTripRequest, UpdateTripRequest } from '@/contracts/trip';
 import type { TripsApi } from '@/api/trips';
 import { mapTripDTO, type Trip, type TripSummary } from '@/domain/trip/trip';
 
@@ -6,6 +6,9 @@ export interface TripRepository {
   getTrips(): Promise<TripSummary[]>;
   getTrip(id: string): Promise<Trip>;
   createTrip(input: CreateTripRequest, idempotencyKey: string): Promise<Trip>;
+  updateTrip(id: string, input: UpdateTripRequest): Promise<Trip>;
+  setCoverPhoto(id: string, photoId: string | null): Promise<void>;
+  deleteTrip(id: string): Promise<void>;
 }
 
 export function createTripRepository(api: TripsApi): TripRepository {
@@ -24,6 +27,15 @@ export function createTripRepository(api: TripsApi): TripRepository {
     },
     async createTrip(input, idempotencyKey) {
       return mapTripDTO(await api.createTrip(input, idempotencyKey));
+    },
+    async updateTrip(id, input) {
+      return mapTripDTO(await api.updateTrip(id, input));
+    },
+    setCoverPhoto(id, photoId) {
+      return api.setCoverPhoto(id, photoId);
+    },
+    deleteTrip(id) {
+      return api.deleteTrip(id);
     },
   };
 }

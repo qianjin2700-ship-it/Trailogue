@@ -6,5 +6,7 @@ export type {
   PhotoListResponse,
   PhotoMimeType,
   PhotoUploadIntentDTO,
+  ReorderPhotosRequest,
+  UpdatePhotoRequest,
 } from '@trailogue/contracts';
 export type { PhotoStatus } from '@trailogue/domain';

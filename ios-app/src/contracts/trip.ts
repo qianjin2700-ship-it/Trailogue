@@ -2,6 +2,7 @@ export type {
   TripDetailResponse,
   TripDTO,
   CreateTripRequest,
+  UpdateTripRequest,
   TripListResponse,
   TripSummaryDTO,
 } from '@trailogue/contracts';

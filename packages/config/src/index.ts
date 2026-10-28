@@ -18,6 +18,9 @@ const apiEnvironmentSchema = environmentSchema.extend({
   R2_UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
   R2_READ_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(600),
   PHOTO_MAX_BYTES: z.coerce.number().int().positive().max(50 * 1024 * 1024).default(15 * 1024 * 1024),
+  DEEPSEEK_API_KEY: z.string().min(1),
+  DEEPSEEK_BASE_URL: z.string().url(),
+  DEEPSEEK_MODEL: z.string().min(1),
 });
 
 export type AppConfig = z.infer<typeof environmentSchema>;

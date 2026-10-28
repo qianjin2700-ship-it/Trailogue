@@ -52,8 +52,16 @@ export interface UserDTO {
   displayName: string | null;
   avatarUrl: string | null;
   email: string | null;
+  privacyAgreedAt: string | null;
+  retentionDays: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateUserSettingsRequest {
+  displayName?: string | null;
+  retentionDays?: number;
+  privacyAgreed?: boolean;
 }
 
 export interface TripSummaryDTO {
@@ -66,6 +74,14 @@ export interface TripSummaryDTO {
   photoCount: number;
   startDate: string | null;
   endDate: string | null;
+  storyBackground: string | null;
+  peopleNotes: string | null;
+  highlights: string | null;
+  writingStyle: string;
+  customWritingStyle: string | null;
+  avoidExpressions: string | null;
+  contentLength: string;
+  arrangement: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +94,110 @@ export interface CreateTripRequest {
   endDate: string;
 }
 
+export interface UpdateTripRequest {
+  title?: string;
+  destinationName?: string;
+  description?: string | null;
+  startDate?: string;
+  endDate?: string;
+  storyBackground?: string | null;
+  peopleNotes?: string | null;
+  highlights?: string | null;
+  writingStyle?: string;
+  customWritingStyle?: string | null;
+  avoidExpressions?: string | null;
+  contentLength?: string;
+  arrangement?: string;
+}
+
+export interface ReorderPhotosRequest {
+  photoIds: string[];
+}
+
+export interface SetTripCoverRequest {
+  photoId: string | null;
+}
+
+export interface DeletionResultDTO {
+  deleted: true;
+}
+
+export interface StoryChapterDTO {
+  chapterId: string;
+  title: string;
+  dateLabel: string | null;
+  locationLabel: string | null;
+  narrative: string;
+  photoIds: string[];
+  captions: Record<string, string>;
+  locked: boolean;
+  userEdited: boolean;
+}
+
+export interface StoryMetaDTO {
+  model: string;
+  generatedAt: string;
+  degraded: boolean;
+  visionAvailable: boolean;
+  uncertainNotes: string[];
+  totalTokens: number;
+  callCount: number;
+}
+
+export interface StoryContentDTO {
+  title: string;
+  subtitle: string;
+  preface: string;
+  chapters: StoryChapterDTO[];
+  epilogue: string;
+  shareSummary: string | null;
+  meta: StoryMetaDTO;
+}
+
+export interface StoryDTO {
+  id: string;
+  tripId: string;
+  version: number;
+  source: 'user' | 'ai' | 'mixed';
+  degraded: boolean;
+  content: StoryContentDTO;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateStoryRequest {
+  feedback?: string | null;
+}
+
+export interface UpdateStoryRequest {
+  content: StoryContentDTO;
+}
+
+export interface BookPreviewDTO {
+  id: string;
+  tripId: string;
+  storyId: string;
+  title: string;
+  subtitle: string | null;
+  coverPhotoId: string | null;
+  status: 'draft' | 'generating' | 'ready' | 'failed';
+  story: StoryContentDTO;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShareLinkDTO {
+  id: string;
+  url: string;
+  expiresAt: string | null;
+}
+
+export interface SharedStoryDTO {
+  tripTitle: string;
+  story: StoryContentDTO;
+  photos: Array<{ id: string; url: string }>;
+}
+
 export type PhotoMimeType = 'image/jpeg' | 'image/png';
 
 export interface CreatePhotoUploadRequest {
@@ -87,6 +207,13 @@ export interface CreatePhotoUploadRequest {
   fileSize: number;
   width: number;
   height: number;
+  capturedAt?: string | null;
+}
+
+export interface UpdatePhotoRequest {
+  caption?: string | null;
+  locationName?: string | null;
+  capturedAt?: string | null;
 }
 
 export interface PhotoUploadIntentDTO {
@@ -112,6 +239,8 @@ export interface PhotoDTO {
   capturedAt: string | null;
   createdAt: string;
   uploadedAt: string | null;
+  caption: string | null;
+  locationName: string | null;
 }
 
 export type TripDTO = TripSummaryDTO;

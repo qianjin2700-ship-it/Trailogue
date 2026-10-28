@@ -1,6 +1,6 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppError } from '@/api/errors';
 import { useAuth } from '@/auth/AuthProvider';
@@ -10,6 +10,7 @@ import type { LoadState } from '@/contracts/common';
 import type { Trip } from '@/domain/trip/trip';
 import { formatTripDateRange } from '@/features/trips/formatTripDateRange';
 import { PhotoSection } from '@/features/photos/PhotoSection';
+import { invalidateTripList } from '@/features/trips/tripListInvalidation';
 
 export default function TripDetailScreen() {
   const { signOut } = useAuth();
@@ -20,6 +21,12 @@ export default function TripDetailScreen() {
   const updatePhotoCount = useCallback((photoCount: number) => {
     setState((current) => current.status === 'success'
       ? { status: 'success', data: { ...current.data, photoCount } }
+      : current);
+  }, []);
+
+  const updateCoverPhoto = useCallback((coverPhotoId: string | null) => {
+    setState((current) => current.status === 'success'
+      ? { status: 'success', data: { ...current.data, coverPhotoId } }
       : current);
   }, []);
 
@@ -65,6 +72,31 @@ export default function TripDetailScreen() {
 
   const trip = state.data;
   const travelDates = formatTripDateRange(trip.startDate, trip.endDate);
+  const deleteTrip = () => {
+    Alert.alert(
+      'Delete this trip?',
+      'The trip, its photos, stories, and books will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive', onPress: () => {
+            void tripRepository.deleteTrip(trip.id)
+              .then(() => {
+                invalidateTripList();
+                router.replace('/trips');
+              })
+              .catch(async (error: unknown) => {
+                if (await handleProtectedError(error, signOut)) return;
+                setState({
+                  status: 'error',
+                  error: error instanceof AppError ? error : new AppError('UNKNOWN', undefined, error),
+                });
+              });
+          },
+        },
+      ],
+    );
+  };
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
       <Text accessibilityRole="header" style={styles.title}>{trip.title}</Text>
@@ -72,7 +104,29 @@ export default function TripDetailScreen() {
       {trip.destinationName ? <Section label="Destination" value={trip.destinationName} /> : null}
       {travelDates ? <Section label="Travel dates" value={travelDates} /> : null}
       {trip.description ? <Section label="About this trip" value={trip.description} /> : null}
-      <PhotoSection onPhotoCountChange={updatePhotoCount} tripId={trip.id} />
+      <View style={styles.actionRow}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: '/trips/edit', params: { id: trip.id } })}
+          style={styles.secondaryButton}
+        ><Text style={styles.secondaryButtonLabel}>Edit trip</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={deleteTrip} style={styles.deleteButton}>
+          <Text style={styles.deleteButtonLabel}>Delete trip</Text>
+        </Pressable>
+      </View>
+      <PhotoSection
+        coverPhotoId={trip.coverPhotoId}
+        onCoverPhotoChange={updateCoverPhoto}
+        onPhotoCountChange={updatePhotoCount}
+        tripId={trip.id}
+      />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push({ pathname: '/trips/story', params: { id: trip.id } })}
+        style={styles.storyButton}
+      >
+        <Text style={styles.storyButtonLabel}>Create or open travel story</Text>
+      </Pressable>
       <Section label="Last updated" value={trip.updatedAt.toLocaleDateString()} />
     </ScrollView>
   );
@@ -115,5 +169,12 @@ const styles = StyleSheet.create({
   stateDetail: { color: '#655F57', fontSize: 15, lineHeight: 22, marginTop: 10, textAlign: 'center' },
   button: { backgroundColor: '#24211D', borderRadius: 12, marginTop: 22, paddingHorizontal: 22, paddingVertical: 13 },
   buttonLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  actionRow: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  secondaryButton: { borderColor: '#7D5C3C', borderRadius: 10, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 11 },
+  secondaryButtonLabel: { color: '#5D432D', fontSize: 14, fontWeight: '700' },
+  deleteButton: { borderColor: '#B85C4A', borderRadius: 10, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 11 },
+  deleteButtonLabel: { color: '#A33B2B', fontSize: 14, fontWeight: '700' },
+  storyButton: { backgroundColor: '#7D5C3C', borderRadius: 14, marginTop: 28, padding: 16 },
+  storyButtonLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center' },
 });
 

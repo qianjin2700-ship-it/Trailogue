@@ -33,6 +33,7 @@ class PGliteExecutor implements QueryExecutor {
 
 class FakePhotoStorage implements PhotoObjectStorage {
   readonly objects = new Map<string, PhotoObjectHead>();
+  readonly deletedKeys: string[] = [];
 
   async createUploadUrl(input: { key: string; contentType: string }) {
     return `https://uploads.example/${encodeURIComponent(input.key)}?type=${input.contentType}`;
@@ -44,6 +45,11 @@ class FakePhotoStorage implements PhotoObjectStorage {
 
   async createReadUrl(key: string) {
     return `https://reads.example/${encodeURIComponent(key)}`;
+  }
+
+  async deleteObject(key: string) {
+    this.deletedKeys.push(key);
+    this.objects.delete(key);
   }
 }
 
@@ -90,7 +96,27 @@ async function createFixture() {
   };
   const app = await buildApp({
     readiness: { healthCheck: async () => void (await executor.query('select 1')) },
-    services: { authentication, sessions, users, trips, photos: photoService },
+    services: {
+      authentication, sessions,
+      users: {
+        findById: (id) => users.findById(id),
+        update: async () => { throw new Error('Not used by this test'); },
+        deleteAccount: async () => { throw new Error('Not used by this test'); },
+      },
+      trips, photos: photoService,
+      stories: {
+        generate: async () => { throw new Error('Not used by this test'); },
+        update: async () => { throw new Error('Not used by this test'); },
+        latest: async () => { throw new Error('Not used by this test'); },
+        versions: async () => [],
+        bookPreview: async () => { throw new Error('Not used by this test'); },
+      },
+      shares: {
+        create: async () => { throw new Error('Not used by this test'); },
+        revoke: async () => undefined,
+        resolve: async () => { throw new Error('Not used by this test'); },
+      },
+    },
   });
   return { aliceSession, app, bobSession, client, photos, storage, trip };
 }
@@ -212,6 +238,64 @@ test('photo upload intent and completion are idempotent and list the verified tr
     assert.equal(list.json().data[0].id, photoId);
     assert.equal(list.json().data[0].tripId, fixture.trip.id);
     assert.match(list.json().data[0].url, /^https:\/\/reads\.example\//);
+  } finally {
+    await fixture.app.close();
+    await fixture.client.close();
+  }
+});
+
+test('photo management reorders and deletes only owned trip photos', async () => {
+  const fixture = await createFixture();
+  try {
+    const authorization = `Bearer ${fixture.aliceSession.token}`;
+    const ids: string[] = [];
+    for (let index = 0; index < 2; index += 1) {
+      const payload = {
+        ...uploadPayload,
+        clientUploadId: `78000000-0000-4000-8000-00000000000${index}`,
+        originalFilename: `photo-${index}.jpg`,
+      };
+      const intent = await fixture.app.inject({
+        method: 'POST', url: `/v1/trips/${fixture.trip.id}/photos/uploads`,
+        headers: { authorization, 'idempotency-key': payload.clientUploadId }, payload,
+      });
+      const photoId = intent.json().data.photoId as string;
+      ids.push(photoId);
+      const pending = await fixture.photos.findByIdForUserAndTrip(
+        photoId, fixture.trip.userId, fixture.trip.id,
+      );
+      fixture.storage.objects.set(pending!.storageKey, {
+        size: payload.fileSize, contentType: payload.mimeType, etag: `etag-${index}`,
+      });
+      await fixture.app.inject({
+        method: 'POST', url: `/v1/trips/${fixture.trip.id}/photos/${photoId}/complete`,
+        headers: { authorization },
+      });
+    }
+
+    const reordered = await fixture.app.inject({
+      method: 'PUT', url: `/v1/trips/${fixture.trip.id}/photos/order`,
+      headers: { authorization }, payload: { photoIds: [ids[1], ids[0]] },
+    });
+    const annotated = await fixture.app.inject({
+      method: 'PATCH', url: `/v1/trips/${fixture.trip.id}/photos/${ids[0]}`,
+      headers: { authorization }, payload: { caption: 'Sunset on the trail', locationName: 'Kyoto' },
+    });
+    const removed = await fixture.app.inject({
+      method: 'DELETE', url: `/v1/trips/${fixture.trip.id}/photos/${ids[1]}`,
+      headers: { authorization },
+    });
+    const list = await fixture.app.inject({
+      method: 'GET', url: `/v1/trips/${fixture.trip.id}/photos`,
+      headers: { authorization },
+    });
+
+    assert.equal(reordered.statusCode, 200);
+    assert.equal(annotated.statusCode, 200);
+    assert.equal(annotated.json().data.caption, 'Sunset on the trail');
+    assert.equal(removed.statusCode, 200);
+    assert.equal(fixture.storage.deletedKeys.length, 1);
+    assert.deepEqual(list.json().data.map((photo: { id: string }) => photo.id), [ids[0]]);
   } finally {
     await fixture.app.close();
     await fixture.client.close();

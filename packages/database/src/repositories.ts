@@ -1,4 +1,11 @@
-import type { IdentityProvider, JobStatus, PhotoStatus, TripStatus } from '@trailogue/domain';
+import type {
+  BookStatus,
+  IdentityProvider,
+  JobStatus,
+  PhotoStatus,
+  StorySource,
+  TripStatus,
+} from '@trailogue/domain';
 
 import type { QueryExecutor } from './executor.js';
 
@@ -7,6 +14,8 @@ export interface UserRecord {
   displayName: string | null;
   avatarUrl: string | null;
   email: string | null;
+  privacyAgreedAt: Date | null;
+  retentionDays: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +49,14 @@ export interface TripRecord {
   photoCount: number;
   startDate: string | null;
   endDate: string | null;
+  storyBackground: string | null;
+  peopleNotes: string | null;
+  highlights: string | null;
+  writingStyle: string;
+  customWritingStyle: string | null;
+  avoidExpressions: string | null;
+  contentLength: string;
+  arrangement: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +66,7 @@ export interface PhotoRecord {
   userId: string;
   tripId: string;
   storageKey: string;
+  thumbnailKey: string | null;
   originalFilename: string;
   mimeType: string;
   width: number | null;
@@ -62,6 +80,10 @@ export interface PhotoRecord {
   uploadedAt: Date | null;
   etag: string | null;
   failureCode: string | null;
+  caption: string | null;
+  locationName: string | null;
+  userConfirmed: boolean;
+  vision: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,6 +105,48 @@ export interface JobRecord {
   updatedAt: Date;
 }
 
+export interface StoryRecord {
+  id: string;
+  userId: string;
+  tripId: string;
+  title: string;
+  content: Record<string, unknown>;
+  storyType: string;
+  source: StorySource;
+  version: number;
+  degraded: boolean;
+  lockedChapterIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BookRecord {
+  id: string;
+  userId: string;
+  tripId: string;
+  storyId: string | null;
+  title: string;
+  subtitle: string | null;
+  coverPhotoId: string | null;
+  status: BookStatus;
+  pdfStorageKey: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ShareLinkRecord {
+  id: string;
+  userId: string;
+  tripId: string;
+  storyId: string;
+  tokenHash: string;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  visitCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class UserRepository {
   constructor(private readonly database: QueryExecutor) {}
 
@@ -95,6 +159,7 @@ export class UserRepository {
       `insert into users (display_name, avatar_url, email)
        values ($1, $2, $3)
        returning id, display_name as "displayName", avatar_url as "avatarUrl", email,
+         privacy_agreed_at as "privacyAgreedAt", retention_days as "retentionDays",
          created_at as "createdAt", updated_at as "updatedAt"`,
       [input.displayName ?? null, input.avatarUrl ?? null, input.email ?? null],
     );
@@ -104,11 +169,38 @@ export class UserRepository {
   async findById(id: string): Promise<UserRecord | null> {
     const result = await this.database.query<UserRecord>(
       `select id, display_name as "displayName", avatar_url as "avatarUrl", email,
+         privacy_agreed_at as "privacyAgreedAt", retention_days as "retentionDays",
          created_at as "createdAt", updated_at as "updatedAt"
        from users where id = $1 and deleted_at is null`,
       [id],
     );
     return result.rows[0] ?? null;
+  }
+
+  async updateSettings(input: {
+    id: string;
+    displayName: string | null;
+    retentionDays: number;
+    privacyAgreedAt: Date | null;
+  }): Promise<UserRecord | null> {
+    const result = await this.database.query<UserRecord>(
+      `update users set display_name = $2, retention_days = $3, privacy_agreed_at = $4,
+         updated_at = now()
+       where id = $1 and deleted_at is null
+       returning id, display_name as "displayName", avatar_url as "avatarUrl", email,
+         privacy_agreed_at as "privacyAgreedAt", retention_days as "retentionDays",
+         created_at as "createdAt", updated_at as "updatedAt"`,
+      [input.id, input.displayName, input.retentionDays, input.privacyAgreedAt],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteForUser(id: string): Promise<boolean> {
+    const result = await this.database.query<{ id: string }>(
+      'delete from users where id = $1 returning id',
+      [id],
+    );
+    return result.rowCount === 1;
   }
 }
 
@@ -206,6 +298,10 @@ export class TripRepository {
          destination_name as "destinationName", status,
          cover_photo_id as "coverPhotoId", 0::int as "photoCount",
          start_date as "startDate", end_date as "endDate",
+         story_background as "storyBackground", people_notes as "peopleNotes",
+         highlights, writing_style as "writingStyle",
+         custom_writing_style as "customWritingStyle", avoid_expressions as "avoidExpressions",
+         content_length as "contentLength", arrangement,
          created_at as "createdAt", updated_at as "updatedAt"`,
       [input.userId, input.title, input.description ?? null, input.destinationName ?? null,
         input.startDate ?? null, input.endDate ?? null, input.idempotencyKey ?? null],
@@ -219,6 +315,10 @@ export class TripRepository {
          t.destination_name as "destinationName", t.status,
          t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
          t.start_date as "startDate", t.end_date as "endDate",
+         t.story_background as "storyBackground", t.people_notes as "peopleNotes",
+         t.highlights, t.writing_style as "writingStyle",
+         t.custom_writing_style as "customWritingStyle", t.avoid_expressions as "avoidExpressions",
+         t.content_length as "contentLength", t.arrangement,
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from trips t
        left join photos p on p.trip_id = t.id and p.status = 'ready'
@@ -239,6 +339,10 @@ export class TripRepository {
          t.destination_name as "destinationName", t.status,
          t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
          t.start_date as "startDate", t.end_date as "endDate",
+         t.story_background as "storyBackground", t.people_notes as "peopleNotes",
+         t.highlights, t.writing_style as "writingStyle",
+         t.custom_writing_style as "customWritingStyle", t.avoid_expressions as "avoidExpressions",
+         t.content_length as "contentLength", t.arrangement,
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from trips t
        left join photos p on p.trip_id = t.id and p.status = 'ready'
@@ -250,6 +354,83 @@ export class TripRepository {
       [input.userId, input.cursor?.updatedAt ?? null, input.cursor?.id ?? null, input.limit],
     );
     return result.rows;
+  }
+
+  async updateForUser(
+    id: string,
+    userId: string,
+    input: {
+      title: string;
+      description: string | null;
+      destinationName: string | null;
+      startDate: string | null;
+      endDate: string | null;
+      storyBackground: string | null;
+      peopleNotes: string | null;
+      highlights: string | null;
+      writingStyle: string;
+      customWritingStyle: string | null;
+      avoidExpressions: string | null;
+      contentLength: string;
+      arrangement: string;
+    },
+  ): Promise<TripRecord | null> {
+    const result = await this.database.query<TripRecord>(
+      `with updated as (
+         update trips
+         set title = $3, description = $4, destination_name = $5,
+           start_date = $6, end_date = $7, story_background = $8, people_notes = $9,
+           highlights = $10, writing_style = $11, custom_writing_style = $12,
+           avoid_expressions = $13, content_length = $14, arrangement = $15,
+           updated_at = now()
+         where id = $1 and user_id = $2
+         returning *
+       )
+       select t.id, t.user_id as "userId", t.title, t.description,
+         t.destination_name as "destinationName", t.status,
+         t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
+         t.start_date as "startDate", t.end_date as "endDate",
+         t.story_background as "storyBackground", t.people_notes as "peopleNotes",
+         t.highlights, t.writing_style as "writingStyle",
+         t.custom_writing_style as "customWritingStyle", t.avoid_expressions as "avoidExpressions",
+         t.content_length as "contentLength", t.arrangement,
+         t.created_at as "createdAt", t.updated_at as "updatedAt"
+       from updated t
+       left join photos p on p.trip_id = t.id and p.status = 'ready' and p.deleted_at is null
+       group by t.id, t.user_id, t.title, t.description, t.destination_name, t.status,
+         t.cover_photo_id, t.start_date, t.end_date, t.story_background, t.people_notes,
+         t.highlights, t.writing_style, t.custom_writing_style, t.avoid_expressions,
+         t.content_length, t.arrangement, t.created_at, t.updated_at`,
+      [
+        id, userId, input.title, input.description, input.destinationName,
+        input.startDate, input.endDate, input.storyBackground, input.peopleNotes,
+        input.highlights, input.writingStyle, input.customWritingStyle,
+        input.avoidExpressions, input.contentLength, input.arrangement,
+      ],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const result = await this.database.query<{ id: string }>(
+      'delete from trips where id = $1 and user_id = $2 returning id',
+      [id, userId],
+    );
+    return result.rowCount === 1;
+  }
+
+  async setCoverPhoto(id: string, userId: string, photoId: string | null): Promise<boolean> {
+    const result = await this.database.query<{ id: string }>(
+      `update trips set cover_photo_id = $3, updated_at = now()
+       where id = $1 and user_id = $2
+         and ($3::uuid is null or exists (
+           select 1 from photos where photos.id = $3 and photos.trip_id = $1
+             and photos.user_id = $2 and photos.status = 'ready' and photos.deleted_at is null
+         ))
+       returning id`,
+      [id, userId, photoId],
+    );
+    return result.rowCount === 1;
   }
 }
 
@@ -267,20 +448,21 @@ export class PhotoRepository {
     fileSize: number;
     width: number;
     height: number;
+    capturedAt?: Date | null;
     uploadExpiresAt: Date;
   }): Promise<PhotoRecord> {
     const result = await this.database.query<PhotoRecord>(
       `insert into photos (
          id, user_id, trip_id, storage_key, original_filename, mime_type,
-         width, height, file_size, status, client_upload_id, upload_expires_at
-       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11)
+         width, height, file_size, captured_at, status, client_upload_id, upload_expires_at
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11, $12)
        on conflict (user_id, client_upload_id)
          do update set upload_expires_at = excluded.upload_expires_at, updated_at = now()
        returning ${PHOTO_RETURNING}`,
       [
         input.id, input.userId, input.tripId, input.storageKey, input.originalFilename,
-        input.mimeType, input.width, input.height, input.fileSize, input.clientUploadId,
-        input.uploadExpiresAt,
+        input.mimeType, input.width, input.height, input.fileSize, input.capturedAt ?? null,
+        input.clientUploadId, input.uploadExpiresAt,
       ],
     );
     return requireRow(result.rows[0]);
@@ -343,6 +525,100 @@ export class PhotoRepository {
     );
     return result.rows;
   }
+
+  async listStorageKeysForTrip(userId: string, tripId: string): Promise<string[]> {
+    const result = await this.database.query<{ storageKey: string; thumbnailKey: string | null }>(
+      `select storage_key as "storageKey", thumbnail_key as "thumbnailKey"
+       from photos where user_id = $1 and trip_id = $2`,
+      [userId, tripId],
+    );
+    return result.rows.flatMap((photo) =>
+      photo.thumbnailKey ? [photo.storageKey, photo.thumbnailKey] : [photo.storageKey],
+    );
+  }
+
+  async listStorageKeysForUser(userId: string): Promise<string[]> {
+    const result = await this.database.query<{ storageKey: string; thumbnailKey: string | null }>(
+      `select storage_key as "storageKey", thumbnail_key as "thumbnailKey"
+       from photos where user_id = $1`,
+      [userId],
+    );
+    return result.rows.flatMap((photo) =>
+      photo.thumbnailKey ? [photo.storageKey, photo.thumbnailKey] : [photo.storageKey],
+    );
+  }
+
+  async reorderForTrip(userId: string, tripId: string, photoIds: string[]): Promise<boolean> {
+    if (photoIds.length === 0) return false;
+    const result = await this.database.query<{ updatedCount: number }>(
+      `with input as (
+         select id, position
+         from unnest($3::uuid[]) with ordinality as ordered(id, position)
+       ), valid_input as (
+         select count(*)::int = cardinality($3::uuid[]) as valid
+         from input
+         join photos p on p.id = input.id
+         where p.user_id = $1 and p.trip_id = $2 and p.status = 'ready' and p.deleted_at is null
+       ), updated as (
+         update photos p
+         set sort_order = input.position - 1, updated_at = now()
+         from input, valid_input
+         where valid_input.valid and p.id = input.id and p.user_id = $1 and p.trip_id = $2
+         returning p.id
+       )
+       select count(*)::int as "updatedCount" from updated`,
+      [userId, tripId, photoIds],
+    );
+    return result.rows[0]?.updatedCount === photoIds.length;
+  }
+
+  async deleteForUserAndTrip(
+    id: string,
+    userId: string,
+    tripId: string,
+  ): Promise<PhotoRecord | null> {
+    const result = await this.database.query<PhotoRecord>(
+      `delete from photos
+       where id = $1 and user_id = $2 and trip_id = $3
+       returning ${PHOTO_RETURNING}`,
+      [id, userId, tripId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateDetails(input: {
+    id: string;
+    userId: string;
+    tripId: string;
+    caption: string | null;
+    locationName: string | null;
+    capturedAt: Date | null;
+  }): Promise<PhotoRecord | null> {
+    const result = await this.database.query<PhotoRecord>(
+      `update photos set caption = $4, location_name = $5, captured_at = $6,
+         user_confirmed = true, updated_at = now()
+       where id = $1 and user_id = $2 and trip_id = $3 and status = 'ready'
+         and deleted_at is null
+       returning ${PHOTO_RETURNING}`,
+      [input.id, input.userId, input.tripId, input.caption, input.locationName, input.capturedAt],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateVision(input: {
+    id: string;
+    userId: string;
+    tripId: string;
+    vision: Record<string, unknown>;
+  }): Promise<boolean> {
+    const result = await this.database.query<{ id: string }>(
+      `update photos set vision = $4::jsonb, updated_at = now()
+       where id = $1 and user_id = $2 and trip_id = $3 and status = 'ready'
+         and deleted_at is null returning id`,
+      [input.id, input.userId, input.tripId, JSON.stringify(input.vision)],
+    );
+    return result.rowCount === 1;
+  }
 }
 
 export class JobRepository {
@@ -370,6 +646,14 @@ export class JobRepository {
       ],
     );
     return requireRow(result.rows[0]);
+  }
+
+  async findByIdForUser(id: string, userId: string): Promise<JobRecord | null> {
+    const result = await this.database.query<JobRecord>(
+      `select ${JOB_RETURNING} from jobs where id = $1 and user_id = $2`,
+      [id, userId],
+    );
+    return result.rows[0] ?? null;
   }
 
   async claimNext(workerId: string, now = new Date()): Promise<JobRecord | null> {
@@ -420,17 +704,188 @@ export class JobRepository {
   }
 }
 
+export class StoryRepository {
+  constructor(private readonly database: QueryExecutor) {}
+
+  async createVersion(input: {
+    userId: string;
+    tripId: string;
+    title: string;
+    content: Record<string, unknown>;
+    storyType?: string;
+    source?: StorySource;
+    degraded?: boolean;
+    lockedChapterIds?: string[];
+  }): Promise<StoryRecord> {
+    const result = await this.database.query<StoryRecord>(
+      `with locked as (
+         select pg_advisory_xact_lock(hashtext($2::text))
+       ), next_version as (
+         select coalesce(max(version), 0)::int + 1 as version
+         from stories, locked where trip_id = $2::uuid
+       )
+       insert into stories (
+         user_id, trip_id, title, content, story_type, source,
+         version, degraded, locked_chapter_ids
+       )
+       select $1::uuid, $2::uuid, $3, $4::jsonb, $5, $6::story_source,
+         next_version.version, $7, $8::text[]
+       from next_version
+       returning ${STORY_RETURNING}`,
+      [
+        input.userId, input.tripId, input.title, JSON.stringify(input.content),
+        input.storyType ?? 'travel_story', input.source ?? 'ai', input.degraded ?? false,
+        input.lockedChapterIds ?? [],
+      ],
+    );
+    return requireRow(result.rows[0]);
+  }
+
+  async findLatestForTrip(userId: string, tripId: string): Promise<StoryRecord | null> {
+    const result = await this.database.query<StoryRecord>(
+      `select ${STORY_RETURNING} from stories
+       where user_id = $1 and trip_id = $2
+       order by version desc limit 1`,
+      [userId, tripId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async listVersionsForTrip(userId: string, tripId: string): Promise<StoryRecord[]> {
+    const result = await this.database.query<StoryRecord>(
+      `select ${STORY_RETURNING} from stories
+       where user_id = $1 and trip_id = $2 order by version desc`,
+      [userId, tripId],
+    );
+    return result.rows;
+  }
+
+  async findByIdForUser(id: string, userId: string): Promise<StoryRecord | null> {
+    const result = await this.database.query<StoryRecord>(
+      `select ${STORY_RETURNING} from stories where id = $1 and user_id = $2`,
+      [id, userId],
+    );
+    return result.rows[0] ?? null;
+  }
+}
+
+export class BookRepository {
+  constructor(private readonly database: QueryExecutor) {}
+
+  async upsertForTrip(input: {
+    userId: string;
+    tripId: string;
+    storyId: string;
+    title: string;
+    subtitle?: string | null;
+    coverPhotoId?: string | null;
+  }): Promise<BookRecord> {
+    const existing = await this.database.query<BookRecord>(
+      `select ${BOOK_RETURNING} from books where user_id = $1 and trip_id = $2
+       order by updated_at desc limit 1`,
+      [input.userId, input.tripId],
+    );
+    if (existing.rows[0]) {
+      const updated = await this.database.query<BookRecord>(
+        `update books set story_id = $3, title = $4, subtitle = $5, cover_photo_id = $6,
+           status = 'ready', updated_at = now()
+         where id = $1 and user_id = $2 returning ${BOOK_RETURNING}`,
+        [existing.rows[0].id, input.userId, input.storyId, input.title,
+          input.subtitle ?? null, input.coverPhotoId ?? null],
+      );
+      return requireRow(updated.rows[0]);
+    }
+    const created = await this.database.query<BookRecord>(
+      `insert into books (user_id, trip_id, story_id, title, subtitle, cover_photo_id, status)
+       values ($1, $2, $3, $4, $5, $6, 'ready') returning ${BOOK_RETURNING}`,
+      [input.userId, input.tripId, input.storyId, input.title,
+        input.subtitle ?? null, input.coverPhotoId ?? null],
+    );
+    return requireRow(created.rows[0]);
+  }
+
+  async findForTrip(userId: string, tripId: string): Promise<BookRecord | null> {
+    const result = await this.database.query<BookRecord>(
+      `select ${BOOK_RETURNING} from books where user_id = $1 and trip_id = $2
+       order by updated_at desc limit 1`,
+      [userId, tripId],
+    );
+    return result.rows[0] ?? null;
+  }
+}
+
+export class ShareLinkRepository {
+  constructor(private readonly database: QueryExecutor) {}
+
+  async create(input: {
+    userId: string;
+    tripId: string;
+    storyId: string;
+    tokenHash: string;
+    expiresAt: Date | null;
+  }): Promise<ShareLinkRecord> {
+    const result = await this.database.query<ShareLinkRecord>(
+      `insert into share_links (user_id, trip_id, story_id, token_hash, expires_at)
+       values ($1, $2, $3, $4, $5) returning ${SHARE_LINK_RETURNING}`,
+      [input.userId, input.tripId, input.storyId, input.tokenHash, input.expiresAt],
+    );
+    return requireRow(result.rows[0]);
+  }
+
+  async findActiveByTokenHash(tokenHash: string, now = new Date()): Promise<ShareLinkRecord | null> {
+    const result = await this.database.query<ShareLinkRecord>(
+      `select ${SHARE_LINK_RETURNING} from share_links
+       where token_hash = $1 and revoked_at is null
+         and (expires_at is null or expires_at > $2)`,
+      [tokenHash, now],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async revokeForUser(id: string, userId: string): Promise<boolean> {
+    const result = await this.database.query<{ id: string }>(
+      `update share_links set revoked_at = now(), updated_at = now()
+       where id = $1 and user_id = $2 and revoked_at is null returning id`,
+      [id, userId],
+    );
+    return result.rowCount === 1;
+  }
+
+  async incrementVisit(id: string): Promise<void> {
+    await this.database.query(
+      'update share_links set visit_count = visit_count + 1, updated_at = now() where id = $1',
+      [id],
+    );
+  }
+}
+
 const JOB_RETURNING = `id, user_id as "userId", type, payload, status, attempts,
   max_attempts as "maxAttempts", run_after as "runAfter", locked_at as "lockedAt",
   locked_by as "lockedBy", last_error as "lastError", idempotency_key as "idempotencyKey",
   created_at as "createdAt", updated_at as "updatedAt"`;
 
 const PHOTO_RETURNING = `id, user_id as "userId", trip_id as "tripId",
-  storage_key as "storageKey", original_filename as "originalFilename", mime_type as "mimeType",
+  storage_key as "storageKey", thumbnail_key as "thumbnailKey",
+  original_filename as "originalFilename", mime_type as "mimeType",
   width, height, file_size::int as "fileSize", captured_at as "capturedAt",
   sort_order as "sortOrder", status, client_upload_id as "clientUploadId",
   upload_expires_at as "uploadExpiresAt", uploaded_at as "uploadedAt", etag,
-  failure_code as "failureCode", created_at as "createdAt", updated_at as "updatedAt"`;
+  failure_code as "failureCode", caption, location_name as "locationName",
+  user_confirmed as "userConfirmed", vision,
+  created_at as "createdAt", updated_at as "updatedAt"`;
+
+const STORY_RETURNING = `id, user_id as "userId", trip_id as "tripId", title, content,
+  story_type as "storyType", source, version, degraded,
+  locked_chapter_ids as "lockedChapterIds", created_at as "createdAt", updated_at as "updatedAt"`;
+
+const BOOK_RETURNING = `id, user_id as "userId", trip_id as "tripId",
+  story_id as "storyId", title, subtitle, cover_photo_id as "coverPhotoId", status,
+  pdf_storage_key as "pdfStorageKey", created_at as "createdAt", updated_at as "updatedAt"`;
+
+const SHARE_LINK_RETURNING = `id, user_id as "userId", trip_id as "tripId",
+  story_id as "storyId", token_hash as "tokenHash", expires_at as "expiresAt",
+  revoked_at as "revokedAt", visit_count as "visitCount",
+  created_at as "createdAt", updated_at as "updatedAt"`;
 
 function requireRow<T>(row: T | undefined): T {
   if (!row) throw new Error('Database did not return the expected row');

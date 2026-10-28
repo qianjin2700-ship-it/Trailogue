@@ -22,6 +22,13 @@
       "when": 1793060000000,
       "tag": "0002_photo_upload_mvp",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793095200000,
+      "tag": "0003_complete_product",
+      "breakpoints": true
     }
   ]
 }

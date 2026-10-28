@@ -65,12 +65,31 @@ async function createIntegrationFixture() {
     services: {
       authentication,
       sessions,
-      users,
+      users: {
+        findById: (id) => users.findById(id),
+        update: async () => { throw new Error('Not used by this test'); },
+        deleteAccount: async () => { throw new Error('Not used by this test'); },
+      },
       trips,
       photos: {
         createUploadIntent: async () => { throw new Error('Not used by trip isolation tests'); },
         completeUpload: async () => { throw new Error('Not used by trip isolation tests'); },
         listPhotos: async () => [],
+        deletePhoto: async () => undefined,
+        reorderPhotos: async () => undefined,
+        updatePhoto: async () => { throw new Error('Not used by this test'); },
+      },
+      stories: {
+        generate: async () => { throw new Error('Not used by this test'); },
+        update: async () => { throw new Error('Not used by this test'); },
+        latest: async () => { throw new Error('Not used by this test'); },
+        versions: async () => [],
+        bookPreview: async () => { throw new Error('Not used by this test'); },
+      },
+      shares: {
+        create: async () => { throw new Error('Not used by this test'); },
+        revoke: async () => undefined,
+        resolve: async () => { throw new Error('Not used by this test'); },
       },
     },
   });

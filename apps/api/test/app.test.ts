@@ -19,6 +19,8 @@ const user: UserRecord = {
   displayName: 'Trailogue Traveler',
   avatarUrl: null,
   email: 'traveler@example.com',
+  privacyAgreedAt: null,
+  retentionDays: 90,
   createdAt: now,
   updatedAt: now,
 };
@@ -34,6 +36,14 @@ const trip: TripRecord = {
   photoCount: 3,
   startDate: '2026-10-01',
   endDate: '2026-10-07',
+  storyBackground: null,
+  peopleNotes: null,
+  highlights: null,
+  writingStyle: 'warm_documentary',
+  customWritingStyle: null,
+  avoidExpressions: null,
+  contentLength: 'medium',
+  arrangement: 'timeline',
   createdAt: now,
   updatedAt: now,
 };
@@ -43,6 +53,8 @@ const secondUser: UserRecord = {
   displayName: 'Second Trailogue Traveler',
   avatarUrl: null,
   email: 'second-traveler@example.com',
+  privacyAgreedAt: null,
+  retentionDays: 90,
   createdAt: now,
   updatedAt: now,
 };
@@ -73,13 +85,36 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
       createUploadIntent: async () => { throw new Error('Not used by this test'); },
       completeUpload: async () => { throw new Error('Not used by this test'); },
       listPhotos: async () => [],
+      deletePhoto: async () => undefined,
+      reorderPhotos: async () => undefined,
+      updatePhoto: async () => { throw new Error('Not used by this test'); },
     },
-    users: { findById: async (id) => (id === userId ? user : null) },
+    users: {
+      findById: async (id) => (id === userId ? user : null),
+      update: async () => user,
+      deleteAccount: async () => undefined,
+    },
     trips: {
       create: async () => trip,
       findByIdForUser: async (id, ownerId) =>
         id === tripId && ownerId === userId ? trip : null,
       listForUser: async ({ userId: ownerId }) => (ownerId === userId ? [trip] : []),
+      updateForUser: async (id, ownerId, input) =>
+        id === tripId && ownerId === userId ? { ...trip, ...input } : null,
+      deleteForUser: async (id, ownerId) => id === tripId && ownerId === userId,
+      setCoverPhoto: async () => true,
+    },
+    stories: {
+      generate: async () => { throw new Error('Not used by this test'); },
+      update: async () => { throw new Error('Not used by this test'); },
+      latest: async () => { throw new Error('Not used by this test'); },
+      versions: async () => [],
+      bookPreview: async () => { throw new Error('Not used by this test'); },
+    },
+    shares: {
+      create: async () => { throw new Error('Not used by this test'); },
+      revoke: async () => undefined,
+      resolve: async () => { throw new Error('Not used by this test'); },
     },
     ...overrides,
   };
@@ -129,6 +164,19 @@ test('unknown routes use the standard error envelope', async () => {
   assert.equal(response.statusCode, 404);
   assert.equal(response.json().error.code, 'NOT_FOUND');
   assert.equal(response.json().error.requestId, response.headers['x-request-id']);
+});
+
+test('story and book routes require bearer authentication', async () => {
+  const app = await createApp();
+  for (const request of [
+    { method: 'POST' as const, url: `/v1/trips/${tripId}/story/generate`, payload: {} },
+    { method: 'GET' as const, url: `/v1/trips/${tripId}/story` },
+    { method: 'GET' as const, url: `/v1/trips/${tripId}/book` },
+  ]) {
+    const response = await app.inject(request);
+    assert.equal(response.statusCode, 401);
+  }
+  await app.close();
 });
 
 test('POST /v1/auth/apple returns a Trailogue bearer session', async () => {
@@ -207,6 +255,31 @@ test('POST /v1/trips rejects invalid date ranges', async () => {
   assert.equal(response.statusCode, 400); assert.equal(response.json().error.code, 'VALIDATION_ERROR');
 });
 
+test('PATCH and DELETE /v1/trips/:id update and remove an owned trip', async () => {
+  let deleted = false;
+  const services = createServices();
+  services.trips.deleteForUser = async (id, ownerId) => {
+    deleted = id === tripId && ownerId === userId;
+    return deleted;
+  };
+  const app = await createApp(services);
+  const authorization = { authorization: `Bearer ${bearerToken}` };
+  const updated = await app.inject({
+    method: 'PATCH', url: `/v1/trips/${tripId}`, headers: authorization,
+    payload: { title: 'Edited Pacific Coast' },
+  });
+  const removed = await app.inject({
+    method: 'DELETE', url: `/v1/trips/${tripId}`, headers: authorization,
+  });
+  await app.close();
+
+  assert.equal(updated.statusCode, 200);
+  assert.equal(updated.json().data.title, 'Edited Pacific Coast');
+  assert.equal(removed.statusCode, 200);
+  assert.equal(removed.json().data.deleted, true);
+  assert.equal(deleted, true);
+});
+
 test('GET /v1/users/me returns the authenticated user', async () => {
   const app = await createApp();
   const response = await app.inject({
@@ -219,6 +292,37 @@ test('GET /v1/users/me returns the authenticated user', async () => {
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().data.id, userId);
   assert.equal(response.json().data.email, user.email);
+});
+
+test('PATCH and DELETE /v1/users/me manage authenticated account data', async () => {
+  let deleted = false;
+  const app = await createApp(createServices({
+    users: {
+      findById: async () => user,
+      update: async (_id, input) => ({
+        ...user,
+        displayName: input.displayName ?? user.displayName,
+        retentionDays: input.retentionDays ?? user.retentionDays,
+        privacyAgreedAt: input.privacyAgreed ? now : null,
+      }),
+      deleteAccount: async () => { deleted = true; },
+    },
+  }));
+  const headers = { authorization: `Bearer ${bearerToken}` };
+  const updated = await app.inject({
+    method: 'PATCH', url: '/v1/users/me', headers,
+    payload: { displayName: 'Updated Traveler', retentionDays: 365, privacyAgreed: true },
+  });
+  const removed = await app.inject({
+    method: 'DELETE', url: '/v1/users/me', headers, payload: { confirmation: 'DELETE' },
+  });
+  await app.close();
+
+  assert.equal(updated.statusCode, 200);
+  assert.equal(updated.json().data.retentionDays, 365);
+  assert.equal(updated.json().data.privacyAgreedAt, now.toISOString());
+  assert.equal(removed.statusCode, 200);
+  assert.equal(deleted, true);
 });
 
 test('GET /v1/trips returns authenticated user data and a pagination envelope', async () => {
@@ -289,6 +393,8 @@ test('trip list and detail never expose one authenticated user\'s trips to anoth
         if (id === secondUserId) return secondUser;
         return null;
       },
+      update: async () => user,
+      deleteAccount: async () => undefined,
     },
     trips: {
       create: async () => trip,
@@ -302,6 +408,15 @@ test('trip list and detail never expose one authenticated user\'s trips to anoth
         if (ownerId === secondUserId) return [secondTrip];
         return [];
       },
+      updateForUser: async (id, ownerId, input) => {
+        if (id === tripId && ownerId === userId) return { ...trip, ...input };
+        if (id === secondTripId && ownerId === secondUserId) return { ...secondTrip, ...input };
+        return null;
+      },
+      deleteForUser: async (id, ownerId) =>
+        (id === tripId && ownerId === userId) ||
+        (id === secondTripId && ownerId === secondUserId),
+      setCoverPhoto: async () => true,
     },
   });
   const app = await createApp(services);

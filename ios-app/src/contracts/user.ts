@@ -1,2 +1,2 @@
-export type { UserDTO } from '@trailogue/contracts';
+export type { UpdateUserSettingsRequest, UserDTO } from '@trailogue/contracts';
 

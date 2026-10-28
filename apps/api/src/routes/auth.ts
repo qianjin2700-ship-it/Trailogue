@@ -63,6 +63,8 @@ export function toUserDto(user: {
   displayName: string | null;
   avatarUrl: string | null;
   email: string | null;
+  privacyAgreedAt: Date | null;
+  retentionDays: number;
   createdAt: Date;
   updatedAt: Date;
 }): UserDTO {
@@ -71,6 +73,8 @@ export function toUserDto(user: {
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
     email: user.email,
+    privacyAgreedAt: user.privacyAgreedAt?.toISOString() ?? null,
+    retentionDays: user.retentionDays,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };

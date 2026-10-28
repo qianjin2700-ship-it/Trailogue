@@ -18,7 +18,7 @@ const USER_MESSAGES: Record<ApiErrorCode, string> = {
   FORBIDDEN: 'You do not have access to this item.',
   NOT_FOUND: 'This item could not be found.',
   INVALID_REQUEST: 'This request is not valid. Check the photo and try again.',
-  CONFLICT: 'This upload can no longer be completed. Please try again.',
+  CONFLICT: 'This request cannot be completed yet. Check the required details and try again.',
   SERVER_ERROR: 'The service is unavailable right now. Please try again.',
   UNKNOWN: 'Something went wrong. Please try again.',
 };

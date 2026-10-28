@@ -12,7 +12,7 @@ export type RestoredAuthState =
 
 export async function restoreSession(
   storage: AuthStorage,
-  usersApi: UsersApi
+  usersApi: Pick<UsersApi, 'getCurrentUser'>
 ): Promise<RestoredAuthState> {
   const token = await storage.getToken();
   if (!token) return { status: 'unauthenticated', user: null, error: null };

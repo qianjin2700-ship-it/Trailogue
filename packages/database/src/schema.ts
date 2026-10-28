@@ -1,5 +1,6 @@
 import {
   bigint,
+  boolean,
   date,
   doublePrecision,
   index,
@@ -40,6 +41,8 @@ export const users = pgTable('users', {
   displayName: varchar('display_name', { length: 160 }),
   avatarUrl: text('avatar_url'),
   email: varchar('email', { length: 320 }),
+  privacyAgreedAt: timestamp('privacy_agreed_at', { withTimezone: true }),
+  retentionDays: integer('retention_days').default(90).notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   ...timestamps,
 });
@@ -105,6 +108,14 @@ export const trips = pgTable(
     endDate: date('end_date'),
     idempotencyKey: varchar('idempotency_key', { length: 64 }),
     status: tripStatusEnum('status').default('draft').notNull(),
+    storyBackground: text('story_background'),
+    peopleNotes: text('people_notes'),
+    highlights: text('highlights'),
+    writingStyle: varchar('writing_style', { length: 80 }).default('warm_documentary').notNull(),
+    customWritingStyle: text('custom_writing_style'),
+    avoidExpressions: text('avoid_expressions'),
+    contentLength: varchar('content_length', { length: 24 }).default('medium').notNull(),
+    arrangement: varchar('arrangement', { length: 24 }).default('timeline').notNull(),
     ...timestamps,
   },
   (table) => [
@@ -143,6 +154,10 @@ export const photos = pgTable(
     etag: varchar('etag', { length: 160 }),
     failureCode: varchar('failure_code', { length: 80 }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    caption: text('caption'),
+    locationName: varchar('location_name', { length: 240 }),
+    userConfirmed: boolean('user_confirmed').default(false).notNull(),
+    vision: jsonb('vision').$type<Record<string, unknown> | null>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -169,9 +184,15 @@ export const stories = pgTable(
     content: jsonb('content').$type<Record<string, unknown>>().notNull(),
     storyType: varchar('story_type', { length: 80 }).notNull(),
     source: storySourceEnum('source').default('user').notNull(),
+    version: integer('version').default(1).notNull(),
+    degraded: boolean('degraded').default(false).notNull(),
+    lockedChapterIds: text('locked_chapter_ids').array().default([]).notNull(),
     ...timestamps,
   },
-  (table) => [index('stories_trip_updated_idx').on(table.tripId, table.updatedAt)],
+  (table) => [
+    index('stories_trip_updated_idx').on(table.tripId, table.updatedAt),
+    uniqueIndex('stories_trip_version_uq').on(table.tripId, table.version),
+  ],
 );
 
 export const books = pgTable(
@@ -188,9 +209,31 @@ export const books = pgTable(
     title: varchar('title', { length: 200 }).notNull(),
     status: bookStatusEnum('status').default('draft').notNull(),
     pdfStorageKey: text('pdf_storage_key'),
+    subtitle: varchar('subtitle', { length: 240 }),
+    coverPhotoId: uuid('cover_photo_id').references(() => photos.id, { onDelete: 'set null' }),
     ...timestamps,
   },
   (table) => [index('books_trip_updated_idx').on(table.tripId, table.updatedAt)],
+);
+
+export const shareLinks = pgTable(
+  'share_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    tripId: uuid('trip_id').notNull().references(() => trips.id, { onDelete: 'cascade' }),
+    storyId: uuid('story_id').notNull().references(() => stories.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    visitCount: integer('visit_count').default(0).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('share_links_token_hash_uq').on(table.tokenHash),
+    index('share_links_owner_trip_idx').on(table.userId, table.tripId, table.createdAt),
+    index('share_links_active_idx').on(table.expiresAt, table.revokedAt),
+  ],
 );
 
 export const jobs = pgTable(
@@ -226,4 +269,5 @@ export const schema = {
   stories,
   books,
   jobs,
+  shareLinks,
 };

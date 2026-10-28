@@ -13,10 +13,11 @@ interface ApiClientOptions {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   authenticated?: boolean;
   headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
 export interface ApiClient {
@@ -40,7 +41,7 @@ export function createApiClient({
       }
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? timeoutMs);
 
       try {
         const token = options.authenticated === false ? null : await getToken();

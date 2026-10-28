@@ -3,25 +3,40 @@ import { randomUUID } from 'node:crypto';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyServerOptions } from 'fastify';
-import type { TripRepository, UserRepository } from '@trailogue/database';
 
 import { HttpError, sendError } from './errors/httpError.js';
 import type { AuthenticationService } from './modules/auth/authService.js';
 import { createBearerAuthenticator } from './modules/auth/bearerAuthentication.js';
 import type { SessionService } from './modules/auth/sessionService.js';
 import type { PhotoService } from './modules/photos/photoService.js';
+import type { TripService } from './modules/trips/tripService.js';
+import type { UserService } from './modules/users/userService.js';
+import type { StoryService } from './modules/stories/storyService.js';
+import type { ShareService } from './modules/shares/shareService.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPhotoRoutes } from './routes/photos.js';
 import { registerSystemRoutes, type ReadinessDependency } from './routes/system.js';
+import { registerStoryRoutes } from './routes/stories.js';
+import { registerShareRoutes } from './routes/shares.js';
 import { registerTripRoutes } from './routes/trips.js';
 import { registerUserRoutes } from './routes/users.js';
 
 export interface ApiServices {
   authentication: AuthenticationService;
   sessions: Pick<SessionService, 'verify'>;
-  photos: Pick<PhotoService, 'createUploadIntent' | 'completeUpload' | 'listPhotos'>;
-  trips: Pick<TripRepository, 'create' | 'findByIdForUser' | 'listForUser'>;
-  users: Pick<UserRepository, 'findById'>;
+  photos: Pick<
+    PhotoService,
+    'createUploadIntent' | 'completeUpload' | 'listPhotos' | 'deletePhoto' | 'reorderPhotos'
+    | 'updatePhoto'
+  >;
+  trips: Pick<
+    TripService,
+    'create' | 'findByIdForUser' | 'listForUser' | 'updateForUser' | 'deleteForUser'
+    | 'setCoverPhoto'
+  >;
+  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'bookPreview'>;
+  shares: Pick<ShareService, 'create' | 'revoke' | 'resolve'>;
+  users: Pick<UserService, 'findById' | 'update' | 'deleteAccount'>;
 }
 
 interface BuildAppOptions {
@@ -47,6 +62,9 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
         { name: 'users' },
         { name: 'trips' },
         { name: 'photos' },
+        { name: 'stories' },
+        { name: 'books' },
+        { name: 'shares' },
       ],
       components: {
         securitySchemes: {
@@ -83,5 +101,7 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
   await registerUserRoutes(app, authenticate, services.users);
   await registerTripRoutes(app, authenticate, services.trips);
   await registerPhotoRoutes(app, authenticate, services.photos);
+  await registerStoryRoutes(app, authenticate, services.stories);
+  await registerShareRoutes(app, authenticate, services.shares);
   return app;
 }

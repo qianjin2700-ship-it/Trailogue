@@ -29,6 +29,8 @@
 | 21 | [iOS 后端方案对比](./21-ios-backend-selection.md) | Supabase / Firebase / 独立 Node.js + PostgreSQL 的历史比较，已被 22 号 ADR 替代 |
 | 22 | [阿里云美国区后端 ADR](./22-alibaba-cloud-us-architecture.md) | iOS 长期后端正式决策、服务边界、身份、数据、API、部署阶段和验证门槛 |
 | 28 | [Wave 3B 照片上传技术方案](./28-wave-3b-photo-upload-plan.md) | 私有 Cloudflare R2、Railway 预签名直传、Neon 元数据、iOS 上传流程、安全与分阶段计划 |
+| 29 | [完整功能迁移与交付基线](./29-complete-product-implementation.md) | 旧小程序与 iOS/新后端功能对照、真实业务缺口、整体交付顺序和集中配置项 |
+| 30 | [iPhone 整体试用指南](./30-iphone-preview-trial-guide.md) | 从登录、旅行与批量照片，到 DeepSeek 故事、书籍、PDF 与私密分享的集中验收路径 |
 
 ## 技术栈总览
 

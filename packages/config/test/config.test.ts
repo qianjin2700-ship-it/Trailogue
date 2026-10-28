@@ -34,6 +34,9 @@ test('loadApiConfig accepts the staging R2 environment and applies upload defaul
     R2_BUCKET: 'trailogue-staging',
     R2_ACCESS_KEY_ID: 'test-access-key',
     R2_SECRET_ACCESS_KEY: 'test-secret-key',
+    DEEPSEEK_API_KEY: 'test-deepseek-key',
+    DEEPSEEK_BASE_URL: 'https://api.deepseek.com',
+    DEEPSEEK_MODEL: 'deepseek-flash',
   });
 
   assert.equal(config.NODE_ENV, 'staging');
@@ -50,5 +53,8 @@ test('loadApiConfig rejects a missing R2 secret', () => {
     R2_ENDPOINT: 'https://account-id.r2.cloudflarestorage.com',
     R2_BUCKET: 'trailogue-test',
     R2_ACCESS_KEY_ID: 'test-access-key',
+    DEEPSEEK_API_KEY: 'test-deepseek-key',
+    DEEPSEEK_BASE_URL: 'https://api.deepseek.com',
+    DEEPSEEK_MODEL: 'deepseek-flash',
   }), /R2_SECRET_ACCESS_KEY/);
 });

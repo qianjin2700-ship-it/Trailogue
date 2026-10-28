@@ -2,9 +2,12 @@ import { createAuthApi } from '@/api/auth';
 import { createApiClient } from '@/api/client';
 import { createTripsApi } from '@/api/trips';
 import { createPhotosApi } from '@/api/photos';
+import { createStoriesApi } from '@/api/stories';
+import { createSharesApi } from '@/api/shares';
 import { expoPhotoTransfer } from '@/features/photos/expoPhotoTransfer';
 import { createPhotoUploadService } from '@/features/photos/photoUploadService';
 import { createPhotoRepository } from '@/repositories/photoRepository';
+import { createStoryRepository } from '@/repositories/storyRepository';
 import { createUsersApi } from '@/api/users';
 import { createTripRepository } from '@/repositories/tripRepository';
 import { authStorage } from '@/services/authStorage';
@@ -14,8 +17,11 @@ export const authApi = createAuthApi(apiClient);
 export const usersApi = createUsersApi(apiClient);
 export const tripsApi = createTripsApi(apiClient);
 export const photosApi = createPhotosApi(apiClient);
+export const storiesApi = createStoriesApi(apiClient);
+export const sharesApi = createSharesApi(apiClient);
 export const tripRepository = createTripRepository(tripsApi);
 export const photoRepository = createPhotoRepository(photosApi);
+export const storyRepository = createStoryRepository(storiesApi);
 export const photoUploadService = createPhotoUploadService({
   repository: photoRepository,
   transfer: expoPhotoTransfer,

@@ -1,4 +1,4 @@
-import type { CreatePhotoUploadRequest } from '@trailogue/contracts';
+import type { CreatePhotoUploadRequest, ReorderPhotosRequest, UpdatePhotoRequest } from '@trailogue/contracts';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
 import type { PhotoService } from '../modules/photos/photoService.js';
@@ -31,13 +31,18 @@ const uploadBodySchema = {
     fileSize: { type: 'integer', minimum: 1 },
     width: { type: 'integer', minimum: 1 },
     height: { type: 'integer', minimum: 1 },
+    capturedAt: { type: ['string', 'null'], format: 'date-time' },
   },
 } as const;
 
 export async function registerPhotoRoutes(
   app: FastifyInstance,
   authenticate: preHandlerHookHandler,
-  photos: Pick<PhotoService, 'createUploadIntent' | 'completeUpload' | 'listPhotos'>,
+  photos: Pick<
+    PhotoService,
+    'createUploadIntent' | 'completeUpload' | 'listPhotos' | 'deletePhoto' | 'reorderPhotos'
+    | 'updatePhoto'
+  >,
 ) {
   app.post(
     '/v1/trips/:tripId/photos/uploads',
@@ -86,6 +91,73 @@ export async function registerPhotoRoutes(
     async (request) => {
       const { tripId } = request.params as { tripId: string };
       return { data: await photos.listPhotos(request.authentication!.userId, tripId) };
+    },
+  );
+
+  app.put(
+    '/v1/trips/:tripId/photos/order',
+    {
+      schema: {
+        tags: ['photos'], security: [{ bearerAuth: [] }], params: tripParameterSchema,
+        body: {
+          type: 'object', additionalProperties: false, required: ['photoIds'],
+          properties: {
+            photoIds: {
+              type: 'array', minItems: 1, maxItems: 50, uniqueItems: true,
+              items: { type: 'string', format: 'uuid' },
+            },
+          },
+        },
+      },
+      onRequest: authenticate,
+    },
+    async (request) => {
+      const { tripId } = request.params as { tripId: string };
+      const { photoIds } = request.body as ReorderPhotosRequest;
+      await photos.reorderPhotos(request.authentication!.userId, tripId, photoIds);
+      return { data: { reordered: true } };
+    },
+  );
+
+  app.delete(
+    '/v1/trips/:tripId/photos/:photoId',
+    {
+      schema: {
+        tags: ['photos'], security: [{ bearerAuth: [] }], params: photoParameterSchema,
+      },
+      onRequest: authenticate,
+    },
+    async (request) => {
+      const { tripId, photoId } = request.params as { tripId: string; photoId: string };
+      await photos.deletePhoto(request.authentication!.userId, tripId, photoId);
+      return { data: { deleted: true } };
+    },
+  );
+
+  app.patch(
+    '/v1/trips/:tripId/photos/:photoId',
+    {
+      schema: {
+        tags: ['photos'], security: [{ bearerAuth: [] }], params: photoParameterSchema,
+        body: {
+          type: 'object', additionalProperties: false, minProperties: 1,
+          properties: {
+            caption: { type: ['string', 'null'], maxLength: 500 },
+            locationName: { type: ['string', 'null'], maxLength: 240 },
+            capturedAt: { type: ['string', 'null'], format: 'date-time' },
+          },
+        },
+      },
+      onRequest: authenticate,
+    },
+    async (request) => {
+      const { tripId, photoId } = request.params as { tripId: string; photoId: string };
+      return { data: await photos.updatePhoto(
+        request.authentication!.userId,
+        tripId,
+        photoId,
+        request.body as UpdatePhotoRequest,
+      ) };
     },
   );
 }

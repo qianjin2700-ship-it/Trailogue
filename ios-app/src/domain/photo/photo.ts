@@ -13,6 +13,8 @@ export interface Photo {
   capturedAt: Date | null;
   createdAt: Date;
   uploadedAt: Date | null;
+  caption: string | null;
+  locationName: string | null;
 }
 
 export function mapPhotoDTO(dto: PhotoDTO): Photo {

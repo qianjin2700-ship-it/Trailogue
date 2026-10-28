@@ -1,4 +1,4 @@
-import { createPhotoUploadService } from '@/features/photos/photoUploadService';
+import { createPhotoUploadService, runUploadQueue } from '@/features/photos/photoUploadService';
 
 const prepared = {
   clientUploadId: '74000000-0000-4000-8000-000000000007',
@@ -11,6 +11,23 @@ const prepared = {
 };
 
 describe('PhotoUploadService', () => {
+  it('limits batch upload concurrency without dropping items', async () => {
+    const items = Array.from({ length: 20 }, (_, index) => index);
+    let active = 0;
+    let maxActive = 0;
+    const completed: number[] = [];
+    await runUploadQueue(items, 3, async (item) => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      completed.push(item);
+      active -= 1;
+    });
+
+    expect(maxActive).toBe(3);
+    expect(completed.sort((a, b) => a - b)).toEqual(items);
+  });
+
   it('uploads, reports progress, and completes the photo', async () => {
     const createUploadIntent = jest.fn().mockResolvedValue({
       photoId: 'photo-1',
@@ -28,7 +45,10 @@ describe('PhotoUploadService', () => {
     });
     const updates: number[] = [];
     const service = createPhotoUploadService({
-      repository: { createUploadIntent, completeUpload, getPhotos: jest.fn() },
+      repository: {
+        createUploadIntent, completeUpload, getPhotos: jest.fn(),
+        deletePhoto: jest.fn(), reorderPhotos: jest.fn(), updatePhoto: jest.fn(),
+      },
       transfer: { upload },
     });
 
@@ -57,7 +77,10 @@ describe('PhotoUploadService', () => {
       .mockResolvedValueOnce(undefined);
     const completeUpload = jest.fn().mockResolvedValue({ id: 'photo-1' });
     const service = createPhotoUploadService({
-      repository: { createUploadIntent, completeUpload, getPhotos: jest.fn() },
+      repository: {
+        createUploadIntent, completeUpload, getPhotos: jest.fn(),
+        deletePhoto: jest.fn(), reorderPhotos: jest.fn(), updatePhoto: jest.fn(),
+      },
       transfer: { upload },
     });
 

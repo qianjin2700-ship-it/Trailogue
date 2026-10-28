@@ -7,6 +7,8 @@ const userDTO: UserDTO = {
   displayName: 'Avery',
   avatarUrl: null,
   email: 'avery@example.com',
+  privacyAgreedAt: null,
+  retentionDays: 90,
   createdAt: '2026-10-01T00:00:00.000Z',
   updatedAt: '2026-10-01T00:00:00.000Z',
 };

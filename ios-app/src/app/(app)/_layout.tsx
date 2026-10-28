@@ -7,6 +7,10 @@ export default function AppLayout() {
       <Stack.Screen name="trips/index" options={{ title: 'My Trips' }} />
       <Stack.Screen name="trips/[id]" options={{ title: 'Trip' }} />
       <Stack.Screen name="trips/new" options={{ title: 'New Trip' }} />
+      <Stack.Screen name="trips/edit" options={{ title: 'Edit Trip' }} />
+      <Stack.Screen name="trips/story" options={{ title: 'Travel Story' }} />
+      <Stack.Screen name="trips/book" options={{ title: 'Book Preview' }} />
+      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
     </Stack>
   );
 }

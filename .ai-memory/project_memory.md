@@ -336,3 +336,21 @@ The Railway staging service follows GitHub branch `feature/ios-app`, and the rep
 - `apps/api/package-lock.json` omitted transitive runtime packages supplied by local `file:` dependencies, including `zod`, `drizzle-orm`, `pg`, and their PostgreSQL dependencies.
 - Regenerate and validate the API lockfile with Railway's Node 22.22.1 / npm 10.9.4 and `--install-links` whenever local package dependency metadata changes.
 - A clean source export must pass the Dockerfile sequence (`npm ci`, `npm run install:api`, API build) before a Railway-triggering push.
+
+## Decision Record: DeepSeek multimodal story generation
+
+**Date**: 2026-10-27
+
+- Railway server variables are `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL`; no AI credential is exposed to Expo public variables or iOS code.
+- Current official DeepSeek model metadata is authoritative: use `input_modalities` from `/models`; `deepseek-flash` supports image input while `deepseek-v4-pro` does not.
+- The configured model remains the text story model. If it lacks vision and the same account exposes `deepseek-flash`, use that model only for conservative photo facts. If no confirmed vision model exists, generate only from trip/photo metadata and label `visionAvailable=false`.
+- Every photo ID must appear exactly once in generated chapters; unknown or invented IDs, duplicate references, omitted photos, malformed JSON, and empty chapters fail validation and are retried up to three times.
+
+## Implementation Record: Integrated iPhone preview feature set
+
+**Date**: 2026-10-28
+
+- Trip creative preferences, photo notes/place/date/order/cover, DeepSeek vision facts, immutable story versions, book cover/layout, private shares, and user privacy/retention settings are owner-scoped and persisted through the Railway API.
+- iOS supports 1–25 selections per batch, 50 photos per trip, concurrency 3, per-item progress, stable idempotent retry, HEIC-to-JPEG normalization, PDF export, and private share creation/revocation.
+- Model capability and output validity are separate gates: `input_modalities=image` permits a vision call, but the response is accepted only when it returns exactly one conservative fact record per photo. Metadata-only stories are marked degraded.
+- Never enable automated retention/orphan cleanup merely because the preference schema exists; deploying a destructive cleanup policy requires explicit review of staging/production deletion behavior.

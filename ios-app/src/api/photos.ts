@@ -5,6 +5,7 @@ import type {
   PhotoDTO,
   PhotoListResponse,
   PhotoUploadIntentDTO,
+  UpdatePhotoRequest,
 } from '@/contracts/photo';
 
 import type { ApiClient } from './client';
@@ -17,6 +18,9 @@ export interface PhotosApi {
   ): Promise<PhotoUploadIntentDTO>;
   completeUpload(tripId: string, photoId: string): Promise<PhotoDTO>;
   getPhotos(tripId: string): Promise<PhotoDTO[]>;
+  deletePhoto(tripId: string, photoId: string): Promise<void>;
+  reorderPhotos(tripId: string, photoIds: string[]): Promise<void>;
+  updatePhoto(tripId: string, photoId: string, input: UpdatePhotoRequest): Promise<PhotoDTO>;
 }
 
 export function createPhotosApi(client: ApiClient): PhotosApi {
@@ -40,6 +44,23 @@ export function createPhotosApi(client: ApiClient): PhotosApi {
         `/v1/trips/${encodeURIComponent(tripId)}/photos`,
       );
       return response.data;
+    },
+    async deletePhoto(tripId, photoId) {
+      await client.request(
+        `/v1/trips/${encodeURIComponent(tripId)}/photos/${encodeURIComponent(photoId)}`,
+        { method: 'DELETE' },
+      );
+    },
+    async reorderPhotos(tripId, photoIds) {
+      await client.request(`/v1/trips/${encodeURIComponent(tripId)}/photos/order`, {
+        method: 'PUT', body: { photoIds },
+      });
+    },
+    async updatePhoto(tripId, photoId, input) {
+      return (await client.request<CompletePhotoUploadResponse>(
+        `/v1/trips/${encodeURIComponent(tripId)}/photos/${encodeURIComponent(photoId)}`,
+        { method: 'PATCH', body: input },
+      )).data;
     },
   };
 }

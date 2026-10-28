@@ -30,7 +30,8 @@
         {
           "photosPermission": "Trailogue uses photos you select to add them to your trip."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

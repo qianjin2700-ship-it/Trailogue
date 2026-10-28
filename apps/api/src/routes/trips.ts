@@ -1,4 +1,4 @@
-import type { CreateTripRequest, TripSummaryDTO } from '@trailogue/contracts';
+import type { CreateTripRequest, SetTripCoverRequest, TripSummaryDTO, UpdateTripRequest } from '@trailogue/contracts';
 import type { TripRecord, TripRepository } from '@trailogue/database';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
@@ -31,6 +31,25 @@ const createTripBodySchema = {
   },
 } as const;
 
+const updateTripBodySchema = {
+  type: 'object', additionalProperties: false, minProperties: 1,
+  properties: {
+    title: { type: 'string', minLength: 1, maxLength: 200 },
+    destinationName: { type: 'string', minLength: 1, maxLength: 240 },
+    description: { type: ['string', 'null'], maxLength: 10_000 },
+    startDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+    endDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+    storyBackground: { type: ['string', 'null'], maxLength: 10_000 },
+    peopleNotes: { type: ['string', 'null'], maxLength: 5_000 },
+    highlights: { type: ['string', 'null'], maxLength: 5_000 },
+    writingStyle: { type: 'string', enum: ['warm_documentary', 'literary', 'playful', 'concise', 'custom'] },
+    customWritingStyle: { type: ['string', 'null'], maxLength: 1_000 },
+    avoidExpressions: { type: ['string', 'null'], maxLength: 1_000 },
+    contentLength: { type: 'string', enum: ['short', 'medium', 'long'] },
+    arrangement: { type: 'string', enum: ['timeline', 'thematic'] },
+  },
+} as const;
+
 const idempotencyHeadersSchema = {
   type: 'object', required: ['idempotency-key'],
   properties: { 'idempotency-key': { type: 'string', format: 'uuid' } },
@@ -39,7 +58,12 @@ const idempotencyHeadersSchema = {
 export async function registerTripRoutes(
   app: FastifyInstance,
   authenticate: preHandlerHookHandler,
-  trips: Pick<TripRepository, 'create' | 'findByIdForUser' | 'listForUser'>,
+  trips: Pick<
+    TripRepository,
+    'create' | 'findByIdForUser' | 'listForUser' | 'updateForUser' | 'deleteForUser'
+  > & {
+    setCoverPhoto(id: string, userId: string, photoId: string | null): Promise<boolean | void>;
+  },
 ) {
   app.post(
     '/v1/trips',
@@ -105,6 +129,93 @@ export async function registerTripRoutes(
       return { data: toTripDto(trip) };
     },
   );
+
+  app.patch(
+    '/v1/trips/:id',
+    {
+      schema: {
+        tags: ['trips'], security: [{ bearerAuth: [] }], params: uuidParameterSchema,
+        body: updateTripBodySchema,
+      },
+      preHandler: authenticate,
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const userId = request.authentication!.userId;
+      const current = await trips.findByIdForUser(id, userId);
+      if (!current) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
+      const body = request.body as UpdateTripRequest;
+      const update = {
+        title: body.title?.trim() ?? current.title,
+        destinationName: body.destinationName?.trim() ?? current.destinationName,
+        description: body.description === undefined ? current.description : body.description?.trim() || null,
+        startDate: body.startDate ?? current.startDate,
+        endDate: body.endDate ?? current.endDate,
+        storyBackground: body.storyBackground === undefined
+          ? current.storyBackground : body.storyBackground?.trim() || null,
+        peopleNotes: body.peopleNotes === undefined
+          ? current.peopleNotes : body.peopleNotes?.trim() || null,
+        highlights: body.highlights === undefined
+          ? current.highlights : body.highlights?.trim() || null,
+        writingStyle: body.writingStyle ?? current.writingStyle,
+        customWritingStyle: body.customWritingStyle === undefined
+          ? current.customWritingStyle : body.customWritingStyle?.trim() || null,
+        avoidExpressions: body.avoidExpressions === undefined
+          ? current.avoidExpressions : body.avoidExpressions?.trim() || null,
+        contentLength: body.contentLength ?? current.contentLength,
+        arrangement: body.arrangement ?? current.arrangement,
+      };
+      if (
+        !update.title || !update.destinationName ||
+        (update.startDate !== null && !isValidDate(update.startDate)) ||
+        (update.endDate !== null && !isValidDate(update.endDate)) ||
+        (update.startDate !== null && update.endDate !== null && update.startDate > update.endDate)
+      ) {
+        throw new HttpError(400, 'VALIDATION_ERROR', 'Trip details are invalid');
+      }
+      const trip = await trips.updateForUser(id, userId, update);
+      if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
+      return { data: toTripDto(trip) };
+    },
+  );
+
+  app.delete(
+    '/v1/trips/:id',
+    {
+      schema: { tags: ['trips'], security: [{ bearerAuth: [] }], params: uuidParameterSchema },
+      preHandler: authenticate,
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      if (!await trips.deleteForUser(id, request.authentication!.userId)) {
+        throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
+      }
+      return { data: { deleted: true } };
+    },
+  );
+  app.put(
+    '/v1/trips/:id/cover',
+    {
+      schema: {
+        tags: ['trips'], security: [{ bearerAuth: [] }], params: uuidParameterSchema,
+        body: {
+          type: 'object', additionalProperties: false, required: ['photoId'],
+          properties: { photoId: { type: ['string', 'null'], format: 'uuid' } },
+        },
+      },
+      preHandler: authenticate,
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const updated = await trips.setCoverPhoto(
+        id,
+        request.authentication!.userId,
+        (request.body as SetTripCoverRequest).photoId,
+      );
+      if (updated === false) throw new HttpError(404, 'NOT_FOUND', 'Trip or cover photo not found');
+      return { data: { updated: true } };
+    },
+  );
 }
 
 function isValidDate(value: string): boolean {
@@ -123,6 +234,14 @@ function toTripDto(trip: TripRecord): TripSummaryDTO {
     photoCount: trip.photoCount,
     startDate: trip.startDate,
     endDate: trip.endDate,
+    storyBackground: trip.storyBackground,
+    peopleNotes: trip.peopleNotes,
+    highlights: trip.highlights,
+    writingStyle: trip.writingStyle,
+    customWritingStyle: trip.customWritingStyle,
+    avoidExpressions: trip.avoidExpressions,
+    contentLength: trip.contentLength,
+    arrangement: trip.arrangement,
     createdAt: trip.createdAt.toISOString(),
     updatedAt: trip.updatedAt.toISOString(),
   };

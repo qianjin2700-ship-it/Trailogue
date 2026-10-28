@@ -13,6 +13,8 @@ test('Apple sign-in resolves the verified identity and creates an opaque session
     displayName: 'Trail Ogue',
     avatarUrl: null,
     email: 'verified@example.com',
+    privacyAgreedAt: null,
+    retentionDays: 90,
     createdAt: now,
     updatedAt: now,
   };
