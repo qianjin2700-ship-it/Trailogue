@@ -1,4 +1,4 @@
-import { defaultCreativeRequirements, type BookPreviewDTO, type CreativeRequirementsDTO, type StoryContentDTO, type StoryDTO } from '@trailogue/contracts';
+import { normalizeCreativeRequirements, type BookPreviewDTO, type CreativeRequirementsDTO, type StoryContentDTO, type StoryDTO } from '@trailogue/contracts';
 import type { ActualStoryLanguage } from '@trailogue/domain';
 import type {
   BookRecord,
@@ -69,7 +69,7 @@ export class StoryService {
       tripId,
       vision: fact as unknown as Record<string, unknown>,
     })));
-    const creative = { ...defaultCreativeRequirements(), ...trip.creativeRequirements } as CreativeRequirementsDTO;
+    const creative = normalizeCreativeRequirements(trip.creativeRequirements);
     const actualLanguage = resolveStoryLanguage(creative.generationLanguage, [
       trip.title, trip.description, trip.storyBackground, trip.peopleNotes, trip.highlights,
       creative.mainPerson, creative.companions, creative.relationship, creative.focusPerson,
@@ -155,7 +155,7 @@ export class StoryService {
       versionType: 'edited',
       creativeSnapshot: (trip.creativeRequirements ?? {}) as Record<string, unknown>,
     });
-    const creative = { ...defaultCreativeRequirements(), ...trip.creativeRequirements } as CreativeRequirementsDTO;
+    const creative = normalizeCreativeRequirements(trip.creativeRequirements);
     await this.saveBook(userId, tripId, record, edited, null, creative.bookStyle);
     return toStoryDto(record);
   }
@@ -185,7 +185,7 @@ export class StoryService {
       actualLanguage: original.actualLanguage ?? content.meta.actualLanguage ?? 'en',
       versionType: 'restored', creativeSnapshot: original.creativeSnapshot ?? {},
     });
-    const creative = { ...defaultCreativeRequirements(), ...original.creativeSnapshot } as CreativeRequirementsDTO;
+    const creative = normalizeCreativeRequirements(original.creativeSnapshot);
     await this.saveBook(userId, tripId, restored, content, trip.coverPhotoId, creative.bookStyle);
     return toStoryDto(restored);
   }
@@ -252,7 +252,7 @@ function toStoryDto(story: StoryRecord): StoryDTO {
     versionType: story.versionType ?? 'generated',
     languageMode: story.generationLanguageMode ?? 'auto',
     actualLanguage: story.actualLanguage ?? 'en',
-    creativeSnapshot: { ...defaultCreativeRequirements(), ...(story.creativeSnapshot ?? {}) },
+    creativeSnapshot: normalizeCreativeRequirements(story.creativeSnapshot),
     content: story.content as unknown as StoryContentDTO,
     createdAt: story.createdAt.toISOString(),
     updatedAt: story.updatedAt.toISOString(),

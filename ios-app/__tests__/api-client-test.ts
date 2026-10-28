@@ -48,6 +48,20 @@ describe('API client', () => {
     });
   });
 
+  it('uses a form-neutral message for validation failures', async () => {
+    const client = createApiClient({
+      baseUrl: 'https://api.example.com',
+      fetch: jest.fn().mockResolvedValue(response(400, {
+        error: { code: 'VALIDATION_ERROR', message: 'hidden', requestId: 'request-3' },
+      })),
+    });
+
+    await expect(client.request('/v1/example')).rejects.toMatchObject({
+      code: 'INVALID_REQUEST',
+      message: 'Some information is not valid. Review your entries and try again.',
+    });
+  });
+
   it('normalizes a network failure without exposing its details', async () => {
     const client = createApiClient({
       baseUrl: 'https://api.example.com',

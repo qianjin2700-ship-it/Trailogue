@@ -1,4 +1,4 @@
-import { defaultCreativeRequirements, type CreateTripRequest, type SetTripCoverRequest, type TripSummaryDTO, type UpdateTripRequest } from '@trailogue/contracts';
+import { normalizeCreativeRequirements, type CreateTripRequest, type SetTripCoverRequest, type TripSummaryDTO, type UpdateTripRequest } from '@trailogue/contracts';
 import type { TripRecord, TripRepository } from '@trailogue/database';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
@@ -267,10 +267,7 @@ function toTripDto(trip: TripRecord): TripSummaryDTO {
     avoidExpressions: trip.avoidExpressions,
     contentLength: trip.contentLength,
     arrangement: trip.arrangement,
-    creativeRequirements: {
-      ...defaultCreativeRequirements(),
-      ...trip.creativeRequirements,
-    },
+    creativeRequirements: normalizeCreativeRequirements(trip.creativeRequirements),
     createdAt: trip.createdAt.toISOString(),
     updatedAt: trip.updatedAt.toISOString(),
   };

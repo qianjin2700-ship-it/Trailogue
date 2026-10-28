@@ -1,6 +1,6 @@
 import type { CreativeRequirementsDTO, TripDTO } from '@trailogue/contracts';
 import type { TripStatus } from '@trailogue/domain';
-import { defaultCreativeRequirements } from '@/features/stories/creativeRequirements';
+import { normalizeCreativeRequirements } from '@/features/stories/creativeRequirements';
 
 export interface TripSummary {
   id: string;
@@ -50,7 +50,7 @@ export function mapTripDTO(dto: TripDTO): Trip {
     avoidExpressions: dto.avoidExpressions,
     contentLength: dto.contentLength,
     arrangement: dto.arrangement,
-    creativeRequirements: { ...defaultCreativeRequirements(), ...dto.creativeRequirements },
+    creativeRequirements: normalizeCreativeRequirements(dto.creativeRequirements),
     updatedAt: new Date(dto.updatedAt),
   };
 }

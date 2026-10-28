@@ -7,7 +7,7 @@ import { handleProtectedError } from '@/auth/handleProtectedError';
 import { storyRepository, tripRepository } from '@/composition/services';
 import type { CreativeRequirementsDTO } from '@/contracts/trip';
 import type { ActualStoryLanguage } from '@trailogue/domain';
-import { defaultCreativeRequirements } from '@/features/stories/creativeRequirements';
+import { defaultCreativeRequirements, normalizeCreativeRequirements } from '@/features/stories/creativeRequirements';
 
 const stylesList = [
   ['warm_documentary', 'Warm documentary', 'Honest, gentle and grounded in the journey.'],
@@ -42,7 +42,7 @@ export default function CreativeRequirementsScreen() {
     let active = true;
     void tripRepository.getTrip(id).then((trip) => {
       if (!active) return;
-      const next = { ...defaultCreativeRequirements(), ...trip.creativeRequirements };
+      const next = normalizeCreativeRequirements(trip.creativeRequirements);
       setForm(next);
       lastSaved.current = JSON.stringify(next);
       setLoaded(true);
@@ -57,7 +57,8 @@ export default function CreativeRequirementsScreen() {
     if (!id || !loaded || serialized === lastSaved.current) return;
     const timer = setTimeout(() => {
       setSaving(true);
-      void tripRepository.updateTrip(id, { creativeRequirements: form })
+      const normalized = normalizeCreativeRequirements(form);
+      void tripRepository.updateTrip(id, { creativeRequirements: normalized })
         .then(() => { lastSaved.current = serialized; setMessage('Creative requirements saved'); })
         .catch(async (cause: unknown) => {
           if (await handleProtectedError(cause, signOut)) return;
@@ -77,8 +78,9 @@ export default function CreativeRequirementsScreen() {
     setGenerating(true);
     setMessage(null);
     try {
-      await tripRepository.updateTrip(id, { creativeRequirements: form });
-      lastSaved.current = JSON.stringify(form);
+      const normalized = normalizeCreativeRequirements(form);
+      await tripRepository.updateTrip(id, { creativeRequirements: normalized });
+      lastSaved.current = JSON.stringify(normalized);
       await storyRepository.generate(id, { confirmed: true, fallbackLanguage: fallbackLanguage() });
       router.replace({ pathname: '/trips/story', params: { id } });
     } catch (cause) {

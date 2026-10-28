@@ -17,7 +17,7 @@ const USER_MESSAGES: Record<ApiErrorCode, string> = {
   UNAUTHORIZED: 'Your session has expired. Please sign in again.',
   FORBIDDEN: 'You do not have access to this item.',
   NOT_FOUND: 'This item could not be found.',
-  INVALID_REQUEST: 'This request is not valid. Check the photo and try again.',
+  INVALID_REQUEST: 'Some information is not valid. Review your entries and try again.',
   CONFLICT: 'This request cannot be completed yet. Check the required details and try again.',
   SERVER_ERROR: 'The service is unavailable right now. Please try again.',
   UNKNOWN: 'Something went wrong. Please try again.',

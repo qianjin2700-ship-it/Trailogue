@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { SessionRecord, TripRecord, UserRecord } from '@trailogue/database';
+import { defaultCreativeRequirements, normalizeCreativeRequirements } from '@trailogue/contracts';
 
 import { buildApp, type ApiServices } from '../src/app.js';
 import { InvalidAppleIdentityError } from '../src/modules/auth/appleIdentityVerifier.js';
@@ -279,6 +280,61 @@ test('PATCH and DELETE /v1/trips/:id update and remove an owned trip', async () 
   assert.equal(removed.statusCode, 200);
   assert.equal(removed.json().data.deleted, true);
   assert.equal(deleted, true);
+});
+
+test('PATCH /v1/trips/:id accepts the complete creative requirements payload from iOS', async () => {
+  let received: object | undefined;
+  const services = createServices();
+  services.trips.updateForUser = async (id, ownerId, input) => {
+    received = input.creativeRequirements;
+    return id === tripId && ownerId === userId ? { ...trip, ...input } : null;
+  };
+  const app = await createApp(services);
+  const creativeRequirements = {
+    ...defaultCreativeRequirements(),
+    bookStyle: 'minimalist' as const,
+  };
+  const response = await app.inject({
+    method: 'PATCH',
+    url: `/v1/trips/${tripId}`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+    payload: { creativeRequirements },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(received, creativeRequirements);
+});
+
+test('creative requirements normalization strips legacy keys and repairs legacy length values', () => {
+  const normalized = normalizeCreativeRequirements({
+    ...defaultCreativeRequirements(),
+    contentLength: 'medium',
+    legacyBookLayout: 'single-photo',
+  });
+
+  assert.equal(normalized.contentLength, 'standard');
+  assert.equal('legacyBookLayout' in normalized, false);
+});
+
+test('POST /v1/trips/:id/story/generate accepts the confirmed iOS request', async () => {
+  let received: unknown[] | undefined;
+  const services = createServices();
+  services.stories.generate = async (...input) => {
+    received = input;
+    return { id: 'story-1' } as never;
+  };
+  const app = await createApp(services);
+  const response = await app.inject({
+    method: 'POST',
+    url: `/v1/trips/${tripId}/story/generate`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+    payload: { confirmed: true, fallbackLanguage: 'zh-Hans' },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(received, [userId, tripId, null, 'zh-Hans']);
 });
 
 test('GET /v1/users/me returns the authenticated user', async () => {
