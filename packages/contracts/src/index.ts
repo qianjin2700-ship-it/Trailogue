@@ -1,4 +1,49 @@
-import type { PhotoStatus, TripStatus } from '@trailogue/domain';
+import type {
+  ActualStoryLanguage,
+  BookStyle,
+  GenerationLanguage,
+  PhotoStatus,
+  StoryVersionType,
+  TripStatus,
+} from '@trailogue/domain';
+
+export interface CreativeRequirementsDTO {
+  mainPerson: string | null;
+  companions: string | null;
+  relationship: string | null;
+  focusPerson: string | null;
+  writingStyle: 'warm_documentary' | 'literary' | 'playful' | 'parent_child' | 'travel_guide' | 'custom';
+  customWritingStyle: string | null;
+  contentLength: 'short' | 'standard' | 'detailed' | 'custom';
+  customWordCount: number | null;
+  focuses: Array<'scenery' | 'food' | 'people' | 'journey' | 'reflection' | 'culture'>;
+  specialMemories: string | null;
+  emphasis: string | null;
+  avoidExpressions: string | null;
+  otherRequirements: string | null;
+  generationLanguage: GenerationLanguage;
+  bookStyle: BookStyle;
+}
+
+export function defaultCreativeRequirements(): CreativeRequirementsDTO {
+  return {
+    mainPerson: null,
+    companions: null,
+    relationship: null,
+    focusPerson: null,
+    writingStyle: 'warm_documentary',
+    customWritingStyle: null,
+    contentLength: 'standard',
+    customWordCount: null,
+    focuses: ['journey', 'people'],
+    specialMemories: null,
+    emphasis: null,
+    avoidExpressions: null,
+    otherRequirements: null,
+    generationLanguage: 'auto',
+    bookStyle: 'travel_magazine',
+  };
+}
 
 export type ApiErrorCode =
   | 'VALIDATION_ERROR'
@@ -71,6 +116,7 @@ export interface TripSummaryDTO {
   destinationName: string | null;
   status: TripStatus;
   coverPhotoId: string | null;
+  coverPhotoUrl?: string | null;
   photoCount: number;
   startDate: string | null;
   endDate: string | null;
@@ -82,6 +128,7 @@ export interface TripSummaryDTO {
   avoidExpressions: string | null;
   contentLength: string;
   arrangement: string;
+  creativeRequirements?: CreativeRequirementsDTO;
   createdAt: string;
   updatedAt: string;
 }
@@ -108,6 +155,7 @@ export interface UpdateTripRequest {
   avoidExpressions?: string | null;
   contentLength?: string;
   arrangement?: string;
+  creativeRequirements?: CreativeRequirementsDTO;
 }
 
 export interface ReorderPhotosRequest {
@@ -142,6 +190,8 @@ export interface StoryMetaDTO {
   uncertainNotes: string[];
   totalTokens: number;
   callCount: number;
+  languageMode?: GenerationLanguage;
+  actualLanguage?: ActualStoryLanguage;
 }
 
 export interface StoryContentDTO {
@@ -160,6 +210,10 @@ export interface StoryDTO {
   version: number;
   source: 'user' | 'ai' | 'mixed';
   degraded: boolean;
+  versionType: StoryVersionType;
+  languageMode: GenerationLanguage;
+  actualLanguage: ActualStoryLanguage;
+  creativeSnapshot: CreativeRequirementsDTO;
   content: StoryContentDTO;
   createdAt: string;
   updatedAt: string;
@@ -167,6 +221,8 @@ export interface StoryDTO {
 
 export interface GenerateStoryRequest {
   feedback?: string | null;
+  confirmed: true;
+  fallbackLanguage?: ActualStoryLanguage;
 }
 
 export interface UpdateStoryRequest {
@@ -181,6 +237,9 @@ export interface BookPreviewDTO {
   subtitle: string | null;
   coverPhotoId: string | null;
   status: 'draft' | 'generating' | 'ready' | 'failed';
+  tripTitle: string;
+  startDate: string | null;
+  bookStyle: BookStyle;
   story: StoryContentDTO;
   createdAt: string;
   updatedAt: string;

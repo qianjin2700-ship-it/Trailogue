@@ -1,4 +1,4 @@
-import type { PhotoRepository, TripRepository } from '@trailogue/database';
+import type { PhotoRepository, TripRecord, TripRepository } from '@trailogue/database';
 
 import { HttpError } from '../../errors/httpError.js';
 import type { PhotoObjectStorage } from '../photos/photoService.js';
@@ -7,19 +7,20 @@ export class TripService {
   constructor(
     private readonly trips: TripRepository,
     private readonly photos: Pick<PhotoRepository, 'listStorageKeysForTrip'>,
-    private readonly storage: Pick<PhotoObjectStorage, 'deleteObject'>,
+    private readonly storage: Pick<PhotoObjectStorage, 'deleteObject' | 'createReadUrl'>,
   ) {}
 
   create(input: Parameters<TripRepository['create']>[0]) {
     return this.trips.create(input);
   }
 
-  findByIdForUser(id: string, userId: string) {
-    return this.trips.findByIdForUser(id, userId);
+  async findByIdForUser(id: string, userId: string) {
+    const trip = await this.trips.findByIdForUser(id, userId);
+    return trip ? this.withCoverUrl(trip) : null;
   }
 
-  listForUser(input: Parameters<TripRepository['listForUser']>[0]) {
-    return this.trips.listForUser(input);
+  async listForUser(input: Parameters<TripRepository['listForUser']>[0]) {
+    return Promise.all((await this.trips.listForUser(input)).map((trip) => this.withCoverUrl(trip)));
   }
 
   updateForUser(
@@ -47,6 +48,13 @@ export class TripService {
     const deleted = await this.trips.deleteForUser(id, userId);
     if (!deleted) throw new HttpError(409, 'CONFLICT', 'Trip could not be deleted');
     return true;
+  }
+
+  private async withCoverUrl(trip: TripRecord): Promise<TripRecord> {
+    return {
+      ...trip,
+      coverPhotoUrl: trip.coverStorageKey ? await this.storage.createReadUrl(trip.coverStorageKey, 900) : null,
+    };
   }
 }
 

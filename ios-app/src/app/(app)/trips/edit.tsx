@@ -102,33 +102,6 @@ export default function EditTripScreen() {
       <Field label="Start date" value={startDate} onChangeText={setStartDate} />
       <Field label="End date" value={endDate} onChangeText={setEndDate} />
       <Field label="Description (optional)" value={description} onChangeText={setDescription} multiline />
-      <Text style={styles.sectionTitle}>Story preferences</Text>
-      <Field label="Trip background" value={storyBackground} onChangeText={setStoryBackground} multiline />
-      <Field label="People and relationships" value={peopleNotes} onChangeText={setPeopleNotes} multiline />
-      <Field label="Moments to highlight" value={highlights} onChangeText={setHighlights} multiline />
-      <ChoiceRow
-        label="Writing style"
-        onChange={setWritingStyle}
-        options={[
-          ['warm_documentary', 'Warm'], ['literary', 'Literary'], ['playful', 'Playful'],
-          ['concise', 'Concise'], ['custom', 'Custom'],
-        ]}
-        value={writingStyle}
-      />
-      {writingStyle === 'custom' ? (
-        <Field label="Custom writing style" value={customWritingStyle} onChangeText={setCustomWritingStyle} multiline />
-      ) : null}
-      <Field label="Words or expressions to avoid" value={avoidExpressions} onChangeText={setAvoidExpressions} multiline />
-      <ChoiceRow
-        label="Story length" onChange={setContentLength}
-        options={[["short", "Short"], ["medium", "Medium"], ["long", "Long"]]}
-        value={contentLength}
-      />
-      <ChoiceRow
-        label="Chapter arrangement" onChange={setArrangement}
-        options={[["timeline", "Timeline"], ["thematic", "Thematic"]]}
-        value={arrangement}
-      />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       <Pressable
         accessibilityRole="button" disabled={submitting} onPress={() => void submit()}
@@ -153,26 +126,6 @@ function Field({ label, multiline = false, ...props }: {
   );
 }
 
-function ChoiceRow({ label, options, value, onChange }: {
-  label: string; options: string[][]; value: string; onChange(value: string): void;
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.choices}>
-        {options.map(([key, title]) => key && title ? (
-          <Pressable
-            accessibilityRole="button" key={key} onPress={() => onChange(key)}
-            style={[styles.choice, value === key && styles.choiceSelected]}
-          >
-            <Text style={[styles.choiceLabel, value === key && styles.choiceLabelSelected]}>{title}</Text>
-          </Pressable>
-        ) : null)}
-      </View>
-    </View>
-  );
-}
-
 function isDate(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) &&
@@ -184,16 +137,10 @@ const styles = StyleSheet.create({
   message: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center' },
   container: { backgroundColor: '#F7F4EE', flexGrow: 1, padding: 24 },
   title: { color: '#24211D', fontSize: 30, fontWeight: '700' },
-  sectionTitle: { borderTopColor: '#DED6CA', borderTopWidth: StyleSheet.hairlineWidth, color: '#24211D', fontSize: 22, fontWeight: '700', marginTop: 32, paddingTop: 24 },
   field: { marginTop: 22 },
   label: { color: '#655F57', fontSize: 14, fontWeight: '600', marginBottom: 8 },
   input: { backgroundColor: '#FFFDF9', borderColor: '#DED6CA', borderRadius: 10, borderWidth: 1, color: '#24211D', fontSize: 16, padding: 14 },
   textarea: { minHeight: 96, textAlignVertical: 'top' },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { borderColor: '#A8947D', borderRadius: 18, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  choiceSelected: { backgroundColor: '#7D5C3C', borderColor: '#7D5C3C' },
-  choiceLabel: { color: '#684F37', fontSize: 13, fontWeight: '700' },
-  choiceLabelSelected: { color: '#FFFFFF' },
   error: { color: '#A03B2A', lineHeight: 20, marginTop: 18 },
   button: { alignItems: 'center', backgroundColor: '#24211D', borderRadius: 12, marginTop: 24, padding: 15 },
   buttonDisabled: { opacity: 0.6 },

@@ -85,6 +85,7 @@ async function createIntegrationFixture() {
         latest: async () => { throw new Error('Not used by this test'); },
         versions: async () => [],
         bookPreview: async () => { throw new Error('Not used by this test'); },
+        restore: async () => { throw new Error('Not used by this test'); },
       },
       shares: {
         create: async () => { throw new Error('Not used by this test'); },

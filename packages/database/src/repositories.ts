@@ -1,9 +1,13 @@
 import type {
+  ActualStoryLanguage,
+  BookStyle,
+  GenerationLanguage,
   BookStatus,
   IdentityProvider,
   JobStatus,
   PhotoStatus,
   StorySource,
+  StoryVersionType,
   TripStatus,
 } from '@trailogue/domain';
 
@@ -46,6 +50,8 @@ export interface TripRecord {
   destinationName: string | null;
   status: TripStatus;
   coverPhotoId: string | null;
+  coverStorageKey?: string | null;
+  coverPhotoUrl?: string | null;
   photoCount: number;
   startDate: string | null;
   endDate: string | null;
@@ -57,6 +63,7 @@ export interface TripRecord {
   avoidExpressions: string | null;
   contentLength: string;
   arrangement: string;
+  creativeRequirements?: object;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -116,6 +123,10 @@ export interface StoryRecord {
   version: number;
   degraded: boolean;
   lockedChapterIds: string[];
+  generationLanguageMode?: GenerationLanguage;
+  actualLanguage?: ActualStoryLanguage;
+  versionType?: StoryVersionType;
+  creativeSnapshot?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,6 +141,8 @@ export interface BookRecord {
   coverPhotoId: string | null;
   status: BookStatus;
   pdfStorageKey: string | null;
+  bookStyle?: BookStyle;
+  layout?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -297,11 +310,13 @@ export class TripRepository {
        returning id, user_id as "userId", title, description,
          destination_name as "destinationName", status,
          cover_photo_id as "coverPhotoId", 0::int as "photoCount",
+         NULL::text as "coverStorageKey",
          start_date as "startDate", end_date as "endDate",
          story_background as "storyBackground", people_notes as "peopleNotes",
          highlights, writing_style as "writingStyle",
          custom_writing_style as "customWritingStyle", avoid_expressions as "avoidExpressions",
          content_length as "contentLength", arrangement,
+         creative_requirements as "creativeRequirements",
          created_at as "createdAt", updated_at as "updatedAt"`,
       [input.userId, input.title, input.description ?? null, input.destinationName ?? null,
         input.startDate ?? null, input.endDate ?? null, input.idempotencyKey ?? null],
@@ -314,11 +329,13 @@ export class TripRepository {
       `select t.id, t.user_id as "userId", t.title, t.description,
          t.destination_name as "destinationName", t.status,
          t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
+         (select c.storage_key from photos c where c.id = t.cover_photo_id and c.user_id = t.user_id and c.status = 'ready' and c.deleted_at is null) as "coverStorageKey",
          t.start_date as "startDate", t.end_date as "endDate",
          t.story_background as "storyBackground", t.people_notes as "peopleNotes",
          t.highlights, t.writing_style as "writingStyle",
          t.custom_writing_style as "customWritingStyle", t.avoid_expressions as "avoidExpressions",
          t.content_length as "contentLength", t.arrangement,
+         t.creative_requirements as "creativeRequirements",
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from trips t
        left join photos p on p.trip_id = t.id and p.status = 'ready'
@@ -338,11 +355,13 @@ export class TripRepository {
       `select t.id, t.user_id as "userId", t.title, t.description,
          t.destination_name as "destinationName", t.status,
          t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
+         (select c.storage_key from photos c where c.id = t.cover_photo_id and c.user_id = t.user_id and c.status = 'ready' and c.deleted_at is null) as "coverStorageKey",
          t.start_date as "startDate", t.end_date as "endDate",
          t.story_background as "storyBackground", t.people_notes as "peopleNotes",
          t.highlights, t.writing_style as "writingStyle",
          t.custom_writing_style as "customWritingStyle", t.avoid_expressions as "avoidExpressions",
          t.content_length as "contentLength", t.arrangement,
+         t.creative_requirements as "creativeRequirements",
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from trips t
        left join photos p on p.trip_id = t.id and p.status = 'ready'
@@ -373,6 +392,7 @@ export class TripRepository {
       avoidExpressions: string | null;
       contentLength: string;
       arrangement: string;
+      creativeRequirements?: object;
     },
   ): Promise<TripRecord | null> {
     const result = await this.database.query<TripRecord>(
@@ -382,6 +402,7 @@ export class TripRepository {
            start_date = $6, end_date = $7, story_background = $8, people_notes = $9,
            highlights = $10, writing_style = $11, custom_writing_style = $12,
            avoid_expressions = $13, content_length = $14, arrangement = $15,
+           creative_requirements = $16::jsonb,
            updated_at = now()
          where id = $1 and user_id = $2
          returning *
@@ -389,23 +410,26 @@ export class TripRepository {
        select t.id, t.user_id as "userId", t.title, t.description,
          t.destination_name as "destinationName", t.status,
          t.cover_photo_id as "coverPhotoId", count(p.id)::int as "photoCount",
+         (select c.storage_key from photos c where c.id = t.cover_photo_id and c.user_id = t.user_id and c.status = 'ready' and c.deleted_at is null) as "coverStorageKey",
          t.start_date as "startDate", t.end_date as "endDate",
          t.story_background as "storyBackground", t.people_notes as "peopleNotes",
          t.highlights, t.writing_style as "writingStyle",
          t.custom_writing_style as "customWritingStyle", t.avoid_expressions as "avoidExpressions",
          t.content_length as "contentLength", t.arrangement,
+         t.creative_requirements as "creativeRequirements",
          t.created_at as "createdAt", t.updated_at as "updatedAt"
        from updated t
        left join photos p on p.trip_id = t.id and p.status = 'ready' and p.deleted_at is null
        group by t.id, t.user_id, t.title, t.description, t.destination_name, t.status,
          t.cover_photo_id, t.start_date, t.end_date, t.story_background, t.people_notes,
          t.highlights, t.writing_style, t.custom_writing_style, t.avoid_expressions,
-         t.content_length, t.arrangement, t.created_at, t.updated_at`,
+         t.content_length, t.arrangement, t.creative_requirements, t.created_at, t.updated_at`,
       [
         id, userId, input.title, input.description, input.destinationName,
         input.startDate, input.endDate, input.storyBackground, input.peopleNotes,
         input.highlights, input.writingStyle, input.customWritingStyle,
         input.avoidExpressions, input.contentLength, input.arrangement,
+        JSON.stringify(input.creativeRequirements ?? {}),
       ],
     );
     return result.rows[0] ?? null;
@@ -716,6 +740,10 @@ export class StoryRepository {
     source?: StorySource;
     degraded?: boolean;
     lockedChapterIds?: string[];
+    generationLanguageMode?: GenerationLanguage;
+    actualLanguage?: ActualStoryLanguage;
+    versionType?: StoryVersionType;
+    creativeSnapshot?: Record<string, unknown>;
   }): Promise<StoryRecord> {
     const result = await this.database.query<StoryRecord>(
       `with locked as (
@@ -726,16 +754,19 @@ export class StoryRepository {
        )
        insert into stories (
          user_id, trip_id, title, content, story_type, source,
-         version, degraded, locked_chapter_ids
+         version, degraded, locked_chapter_ids, generation_language_mode,
+         actual_language, version_type, creative_snapshot
        )
        select $1::uuid, $2::uuid, $3, $4::jsonb, $5, $6::story_source,
-         next_version.version, $7, $8::text[]
+         next_version.version, $7, $8::text[], $9, $10, $11, $12::jsonb
        from next_version
        returning ${STORY_RETURNING}`,
       [
         input.userId, input.tripId, input.title, JSON.stringify(input.content),
         input.storyType ?? 'travel_story', input.source ?? 'ai', input.degraded ?? false,
-        input.lockedChapterIds ?? [],
+        input.lockedChapterIds ?? [], input.generationLanguageMode ?? 'auto',
+        input.actualLanguage ?? 'en', input.versionType ?? 'generated',
+        JSON.stringify(input.creativeSnapshot ?? {}),
       ],
     );
     return requireRow(result.rows[0]);
@@ -779,6 +810,8 @@ export class BookRepository {
     title: string;
     subtitle?: string | null;
     coverPhotoId?: string | null;
+    bookStyle?: BookStyle;
+    layout?: Record<string, unknown>;
   }): Promise<BookRecord> {
     const existing = await this.database.query<BookRecord>(
       `select ${BOOK_RETURNING} from books where user_id = $1 and trip_id = $2
@@ -788,18 +821,20 @@ export class BookRepository {
     if (existing.rows[0]) {
       const updated = await this.database.query<BookRecord>(
         `update books set story_id = $3, title = $4, subtitle = $5, cover_photo_id = $6,
-           status = 'ready', updated_at = now()
+           book_style = $7, layout = $8::jsonb, status = 'ready', updated_at = now()
          where id = $1 and user_id = $2 returning ${BOOK_RETURNING}`,
         [existing.rows[0].id, input.userId, input.storyId, input.title,
-          input.subtitle ?? null, input.coverPhotoId ?? null],
+          input.subtitle ?? null, input.coverPhotoId ?? null,
+          input.bookStyle ?? 'travel_magazine', JSON.stringify(input.layout ?? {})],
       );
       return requireRow(updated.rows[0]);
     }
     const created = await this.database.query<BookRecord>(
-      `insert into books (user_id, trip_id, story_id, title, subtitle, cover_photo_id, status)
-       values ($1, $2, $3, $4, $5, $6, 'ready') returning ${BOOK_RETURNING}`,
+      `insert into books (user_id, trip_id, story_id, title, subtitle, cover_photo_id, status, book_style, layout)
+       values ($1, $2, $3, $4, $5, $6, 'ready', $7, $8::jsonb) returning ${BOOK_RETURNING}`,
       [input.userId, input.tripId, input.storyId, input.title,
-        input.subtitle ?? null, input.coverPhotoId ?? null],
+        input.subtitle ?? null, input.coverPhotoId ?? null,
+        input.bookStyle ?? 'travel_magazine', JSON.stringify(input.layout ?? {})],
     );
     return requireRow(created.rows[0]);
   }
@@ -876,11 +911,14 @@ const PHOTO_RETURNING = `id, user_id as "userId", trip_id as "tripId",
 
 const STORY_RETURNING = `id, user_id as "userId", trip_id as "tripId", title, content,
   story_type as "storyType", source, version, degraded,
-  locked_chapter_ids as "lockedChapterIds", created_at as "createdAt", updated_at as "updatedAt"`;
+  locked_chapter_ids as "lockedChapterIds", generation_language_mode as "generationLanguageMode",
+  actual_language as "actualLanguage", version_type as "versionType",
+  creative_snapshot as "creativeSnapshot", created_at as "createdAt", updated_at as "updatedAt"`;
 
 const BOOK_RETURNING = `id, user_id as "userId", trip_id as "tripId",
   story_id as "storyId", title, subtitle, cover_photo_id as "coverPhotoId", status,
-  pdf_storage_key as "pdfStorageKey", created_at as "createdAt", updated_at as "updatedAt"`;
+  pdf_storage_key as "pdfStorageKey", book_style as "bookStyle", layout,
+  created_at as "createdAt", updated_at as "updatedAt"`;
 
 const SHARE_LINK_RETURNING = `id, user_id as "userId", trip_id as "tripId",
   story_id as "storyId", token_hash as "tokenHash", expires_at as "expiresAt",

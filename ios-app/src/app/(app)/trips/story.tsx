@@ -21,11 +21,10 @@ export default function StoryScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const [story, setStory] = useState<StoryDTO | null>(null);
   const [draft, setDraft] = useState<StoryContentDTO | null>(null);
-  const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [versions, setVersions] = useState<StoryDTO[] | null>(null);
+  const [versionCount, setVersionCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,6 +34,7 @@ export default function StoryScreen() {
       if (!active) return;
       setStory(result);
       setDraft(result.content);
+      void storyRepository.listVersions(id).then((items) => active && setVersionCount(items.length)).catch(() => undefined);
     }).catch(async (cause: unknown) => {
       if (!active || await handleProtectedError(cause, signOut)) return;
       if (!(cause instanceof AppError && cause.code === 'NOT_FOUND')) {
@@ -43,24 +43,6 @@ export default function StoryScreen() {
     }).finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [id, signOut]);
-
-  const generate = async () => {
-    if (!id) return;
-    setWorking(true);
-    setError(null);
-    try {
-      const result = await storyRepository.generate(id, feedback.trim() || null);
-      setStory(result);
-      setDraft(result.content);
-      setFeedback('');
-      setEditing(false);
-    } catch (cause) {
-      if (await handleProtectedError(cause, signOut)) return;
-      setError(cause instanceof Error ? cause.message : 'Story generation failed');
-    } finally {
-      setWorking(false);
-    }
-  };
 
   const save = async () => {
     if (!id || !draft) return;
@@ -79,31 +61,6 @@ export default function StoryScreen() {
     }
   };
 
-  const toggleVersions = async () => {
-    if (!id) return;
-    if (versions) {
-      setVersions(null);
-      return;
-    }
-    setWorking(true);
-    setError(null);
-    try {
-      setVersions(await storyRepository.listVersions(id));
-    } catch (cause) {
-      if (await handleProtectedError(cause, signOut)) return;
-      setError(cause instanceof Error ? cause.message : 'Could not load story versions');
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const openVersion = (version: StoryDTO) => {
-    setStory(version);
-    setDraft(version.content);
-    setEditing(false);
-    setVersions(null);
-  };
-
   if (!id) return <CenteredMessage text="Trip not found" />;
   if (loading) return <ActivityIndicator accessibilityLabel="Loading story" color="#7D5C3C" style={styles.loader} />;
   if (!draft) {
@@ -112,7 +69,7 @@ export default function StoryScreen() {
         <Text style={styles.emptyTitle}>Turn these photos into a story</Text>
         <Text style={styles.emptyCopy}>Trailogue will analyze visible details and use your trip information without inventing people or events.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <ActionButton disabled={working} label={working ? 'Creating story…' : 'Generate story'} onPress={generate} />
+        <ActionButton label="Set requirements & generate" onPress={() => router.replace({ pathname: '/trips/creative', params: { id } })} />
       </View>
     );
   }
@@ -120,7 +77,7 @@ export default function StoryScreen() {
   const update = (change: Partial<StoryContentDTO>) => setDraft((current) => current ? { ...current, ...change } : current);
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-      <Text style={styles.version}>VERSION {story?.version ?? 1}</Text>
+      <Text style={styles.version}>CURRENT V{story?.version ?? 1} · {versionCount || 1} SAVED {(versionCount || 1) === 1 ? 'VERSION' : 'VERSIONS'}</Text>
       {draft.meta.visionAvailable ? null : (
         <Text style={styles.notice}>This story used trip and photo metadata only because the configured model does not support image input.</Text>
       )}
@@ -163,32 +120,9 @@ export default function StoryScreen() {
           <View style={styles.row}>
             <ActionButton label="Edit story" onPress={() => setEditing(true)} secondary />
             <ActionButton label="Book preview" onPress={() => router.push({ pathname: '/trips/book', params: { id } })} />
-            <ActionButton label={versions ? 'Hide versions' : 'Story versions'} onPress={() => void toggleVersions()} secondary />
+            <ActionButton label="History & compare" onPress={() => router.push({ pathname: '/trips/story-versions', params: { id } })} secondary />
           </View>
-          {versions ? (
-            <View style={styles.versions}>
-              {versions.map((version) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={version.id}
-                  onPress={() => openVersion(version)}
-                  style={styles.versionCard}
-                >
-                  <Text style={styles.versionCardTitle}>Version {version.version} · {version.source}</Text>
-                  <Text style={styles.versionCardDate}>{new Date(version.updatedAt).toLocaleString()}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-          <TextInput
-            accessibilityLabel="Regeneration feedback"
-            multiline
-            onChangeText={setFeedback}
-            placeholder="Optional: what should change in the new version?"
-            style={styles.feedback}
-            value={feedback}
-          />
-          <ActionButton disabled={working} label={working ? 'Regenerating…' : 'Regenerate as a new version'} onPress={generate} secondary />
+          <ActionButton label="Adjust requirements & regenerate" onPress={() => router.push({ pathname: '/trips/creative', params: { id } })} secondary />
         </>
       )}
     </ScrollView>
@@ -242,12 +176,7 @@ const styles = StyleSheet.create({
   chapterTitle: { color: '#24211D', fontSize: 25, fontWeight: '700', marginTop: 6 },
   chapterTitleInput: { ...inputStyle, fontSize: 21, fontWeight: '700', marginTop: 8 },
   photoCount: { color: '#8B8177', fontSize: 13, marginTop: 12 },
-  feedback: { ...inputStyle, minHeight: 78, marginTop: 26, textAlignVertical: 'top' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 28 },
-  versions: { gap: 8, marginTop: 18 },
-  versionCard: { backgroundColor: '#FFFFFF', borderColor: '#D8CDBE', borderRadius: 10, borderWidth: 1, padding: 12 },
-  versionCardTitle: { color: '#24211D', fontSize: 14, fontWeight: '700' },
-  versionCardDate: { color: '#7D746B', fontSize: 12, marginTop: 4 },
   button: { backgroundColor: '#24211D', borderRadius: 12, marginTop: 18, paddingHorizontal: 18, paddingVertical: 13 },
   secondaryButton: { backgroundColor: 'transparent', borderColor: '#7D5C3C', borderWidth: 1 },
   buttonLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', textAlign: 'center' },

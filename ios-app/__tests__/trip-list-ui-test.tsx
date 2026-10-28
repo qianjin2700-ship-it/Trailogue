@@ -42,12 +42,15 @@ describe('<TripListContent />', () => {
         coverPhotoId: null,
         coverUrl: null,
         destinationName: 'Kyoto',
+        startDate: '2026-10-01',
+        endDate: '2026-10-14',
         updatedAt: new Date('2026-10-14T08:30:00.000Z'),
       }],
     });
 
     expect(screen.getByText('Kyoto in Autumn')).toBeTruthy();
     expect(screen.getByText(/18 photos/)).toBeTruthy();
+    expect(screen.getByText('2026.10.01 — 2026.10.14')).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Open Kyoto in Autumn' }));
     expect(callbacks.onOpenTrip).toHaveBeenCalledWith('trip-1');
   });

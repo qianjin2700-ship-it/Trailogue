@@ -1,4 +1,6 @@
 import type { StoryContentDTO } from '@trailogue/contracts';
+import type { ActualStoryLanguage, GenerationLanguage } from '@trailogue/domain';
+import { languageInstruction } from './storyLanguage.js';
 
 export interface StoryPhotoInput {
   id: string;
@@ -139,11 +141,14 @@ The images follow in the same order as these IDs: ${photos.map((photo) => photo.
       avoidExpressions: string | null;
       contentLength: string;
       arrangement: string;
+      creativeRequirements?: Record<string, unknown>;
     };
     photos: StoryPhotoInput[];
     understandings: PhotoUnderstanding[];
     visionAvailable: boolean;
     feedback?: string | null;
+    languageMode?: GenerationLanguage;
+    actualLanguage?: ActualStoryLanguage;
   }): Promise<StoryContentDTO> {
     const photoFacts = input.photos.map((photo) => ({
       photoId: photo.id,
@@ -154,8 +159,14 @@ The images follow in the same order as these IDs: ${photos.map((photo) => photo.
       visibleFacts: input.understandings.find((fact) => fact.photoId === photo.id)?.visibleFacts ?? [],
       inferredLocation: input.understandings.find((fact) => fact.photoId === photo.id)?.inferredLocation ?? null,
     }));
-    const prompt = `Create a Chinese travel story using only the supplied facts. Output JSON only.
-Never invent names, relationships, exact locations, dates, dialogue, events, motives, or emotions. Treat visual observations as uncertain unless confirmed by user metadata.
+    const requirements = input.trip.creativeRequirements ?? { contentLength: input.trip.contentLength };
+    const targetWords = requirements.contentLength === 'custom'
+      ? Number(requirements.customWordCount) || 1_200
+      : ({ short: 600, standard: 1_200, detailed: 2_400 } as const)[String(requirements.contentLength) as 'short' | 'standard' | 'detailed'] ?? 1_200;
+    const prompt = `Create a travel story in ${languageInstruction(input.actualLanguage ?? 'en')} using only the supplied facts. Output JSON only.
+Separate factual photo understanding from narrative writing: weave confirmed facts naturally into a coherent journey instead of listing buildings, roads, clothing colors, or detected objects.
+Prioritize the requested people, relationships, interactions, atmosphere, transitions, and travel meaning, but never invent dialogue, events, motives, emotions, relationships, exact places, or exact times. When time evidence is uncertain or inconsistent, use broad phrases such as morning, later, or toward evening instead of a precise clock time.
+Aim for approximately ${targetWords} words/characters in the target language across the complete story. Apply the requested style and focuses materially.
 Required JSON keys: title, subtitle, preface, chapters, epilogue, shareSummary.
 Each chapter must contain: chapterId, title, dateLabel, locationLabel, narrative, photoIds, captions, locked=false, userEdited=false.
 Every supplied photoId must appear exactly once across chapters. captions is an object keyed by photoId.
@@ -177,6 +188,8 @@ User regeneration feedback: ${JSON.stringify(input.feedback ?? null)}`;
           totalTokens,
           callCount: attempt + (input.visionAvailable ? 1 : 0),
           photoIds: input.photos.map((photo) => photo.id),
+          languageMode: input.languageMode ?? 'auto',
+          actualLanguage: input.actualLanguage ?? 'en',
         });
       } catch (error) {
         lastError = error;
@@ -246,6 +259,8 @@ function validateStoryContent(value: unknown, context: {
   totalTokens: number;
   callCount: number;
   photoIds: string[];
+  languageMode: GenerationLanguage;
+  actualLanguage: ActualStoryLanguage;
 }): StoryContentDTO {
   if (!value || typeof value !== 'object') throw new DeepSeekProviderError('Story response is not an object');
   const record = value as Record<string, unknown>;
@@ -296,6 +311,8 @@ function validateStoryContent(value: unknown, context: {
       uncertainNotes: context.visionAvailable ? [] : ['当前配置模型不支持图片输入，故事仅使用旅行与照片元数据。'],
       totalTokens: context.totalTokens,
       callCount: context.callCount,
+      languageMode: context.languageMode,
+      actualLanguage: context.actualLanguage,
     },
   };
 }

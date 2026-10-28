@@ -78,17 +78,27 @@ test('book preview always reflects the trip cover selected after generation', as
   assert.equal(result.coverPhotoId, photoId);
 });
 
+test('restoring an earlier story creates a new restored version without overwriting history', async () => {
+  let versionType: string | undefined;
+  const service = createService({ onVersionType: (value) => { versionType = value; } });
+  const result = await service.restore(userId, tripId, storyId);
+  assert.equal(versionType, 'restored');
+  assert.equal(result.content.title, content.title);
+});
+
 function createService(options: {
   privacyAgreedAt?: Date | null;
   bookCoverPhotoId?: string | null;
   onVision?: () => void;
   onStory?: () => void;
   onBook?: (cover: string | null | undefined) => void;
+  onVersionType?: (value: string | undefined) => void;
 } = {}) {
   const storyRecord: StoryRecord = {
     id: storyId, userId, tripId, title: content.title,
     content: content as unknown as Record<string, unknown>, storyType: 'travel_story',
     source: 'ai', version: 1, degraded: false, lockedChapterIds: [],
+    generationLanguageMode: 'auto', actualLanguage: 'en', versionType: 'generated', creativeSnapshot: {},
     createdAt: new Date('2026-11-05T00:00:00.000Z'),
     updatedAt: new Date('2026-11-05T00:00:00.000Z'),
   };
@@ -112,7 +122,10 @@ function createService(options: {
       updateVision: async () => { options.onVision?.(); return true; },
     },
     stories: {
-      createVersion: async () => { options.onStory?.(); return storyRecord; },
+      createVersion: async (input) => {
+        options.onStory?.(); options.onVersionType?.(input.versionType);
+        return { ...storyRecord, versionType: input.versionType ?? 'generated' };
+      },
       findLatestForTrip: async () => storyRecord,
       listVersionsForTrip: async () => [storyRecord],
       findByIdForUser: async () => storyRecord,

@@ -48,10 +48,12 @@ test('DeepSeek provider discovers vision support and validates photo-complete st
       storyBackground: null, peopleNotes: null, highlights: null,
       writingStyle: 'warm_documentary', customWritingStyle: null, avoidExpressions: null,
       contentLength: 'medium', arrangement: 'timeline',
+      creativeRequirements: { contentLength: 'custom', customWordCount: 1800, focuses: ['culture'] },
     },
     photos,
     understandings: vision.facts,
     visionAvailable: true,
+    languageMode: 'ja', actualLanguage: 'ja',
   });
 
   assert.equal(vision.facts[0]?.visibleFacts[0], '山路');
@@ -59,6 +61,8 @@ test('DeepSeek provider discovers vision support and validates photo-complete st
   assert.equal(story.meta.model, 'deepseek-flash');
   assert.equal(requests.length, 3);
   assert.equal((requests[1]?.body as { model: string }).model, 'deepseek-flash');
+  assert.match(JSON.stringify(requests[2]?.body), /日本語/);
+  assert.match(JSON.stringify(requests[2]?.body), /1800/);
   assert.doesNotMatch(JSON.stringify(requests), /server-secret/);
 });
 

@@ -1,4 +1,5 @@
-import type { BookPreviewDTO, StoryContentDTO, StoryDTO } from '@trailogue/contracts';
+import { defaultCreativeRequirements, type BookPreviewDTO, type CreativeRequirementsDTO, type StoryContentDTO, type StoryDTO } from '@trailogue/contracts';
+import type { ActualStoryLanguage } from '@trailogue/domain';
 import type {
   BookRecord,
   BookRepository,
@@ -12,6 +13,7 @@ import type {
 import { HttpError } from '../../errors/httpError.js';
 import type { PhotoObjectStorage } from '../photos/photoService.js';
 import type { DeepSeekProvider, StoryPhotoInput } from './deepSeekProvider.js';
+import { resolveStoryLanguage } from './storyLanguage.js';
 
 interface StoryServiceDependencies {
   trips: Pick<TripRepository, 'findByIdForUser'>;
@@ -30,7 +32,12 @@ interface StoryServiceDependencies {
 export class StoryService {
   constructor(private readonly dependencies: StoryServiceDependencies) {}
 
-  async generate(userId: string, tripId: string, feedback?: string | null): Promise<StoryDTO> {
+  async generate(
+    userId: string,
+    tripId: string,
+    feedback?: string | null,
+    fallbackLanguage: ActualStoryLanguage = 'en',
+  ): Promise<StoryDTO> {
     const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
     if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
     const user = await this.dependencies.users.findById(userId);
@@ -62,6 +69,14 @@ export class StoryService {
       tripId,
       vision: fact as unknown as Record<string, unknown>,
     })));
+    const creative = { ...defaultCreativeRequirements(), ...trip.creativeRequirements } as CreativeRequirementsDTO;
+    const actualLanguage = resolveStoryLanguage(creative.generationLanguage, [
+      trip.title, trip.description, trip.storyBackground, trip.peopleNotes, trip.highlights,
+      creative.mainPerson, creative.companions, creative.relationship, creative.focusPerson,
+      creative.specialMemories, creative.emphasis, creative.otherRequirements,
+      ...photos.flatMap((photo) => [photo.caption, photo.locationName]),
+    ], fallbackLanguage);
+    const previous = await this.dependencies.stories.findLatestForTrip(userId, tripId);
     const content = await this.dependencies.provider.generateStory({
       trip: {
         title: trip.title,
@@ -77,11 +92,14 @@ export class StoryService {
         avoidExpressions: trip.avoidExpressions,
         contentLength: trip.contentLength,
         arrangement: trip.arrangement,
+        creativeRequirements: creative as unknown as Record<string, unknown>,
       },
       photos: photoInputs,
       understandings: vision.facts,
       visionAvailable,
       feedback: feedback ?? null,
+      languageMode: creative.generationLanguage,
+      actualLanguage,
     });
     content.meta.totalTokens += vision.totalTokens;
     const record = await this.dependencies.stories.createVersion({
@@ -93,8 +111,12 @@ export class StoryService {
       degraded: content.meta.degraded,
       lockedChapterIds: content.chapters.filter((chapter) => chapter.locked)
         .map((chapter) => chapter.chapterId),
+      generationLanguageMode: creative.generationLanguage,
+      actualLanguage,
+      versionType: previous ? 'regenerated' : 'generated',
+      creativeSnapshot: creative as unknown as Record<string, unknown>,
     });
-    await this.saveBook(userId, tripId, record, content, trip.coverPhotoId ?? photos[0]?.id ?? null);
+    await this.saveBook(userId, tripId, record, content, trip.coverPhotoId ?? photos[0]?.id ?? null, creative.bookStyle);
     return toStoryDto(record);
   }
 
@@ -128,8 +150,13 @@ export class StoryService {
       degraded: edited.meta.degraded,
       lockedChapterIds: edited.chapters.filter((chapter) => chapter.locked)
         .map((chapter) => chapter.chapterId),
+      generationLanguageMode: edited.meta.languageMode ?? 'auto',
+      actualLanguage: edited.meta.actualLanguage ?? 'en',
+      versionType: 'edited',
+      creativeSnapshot: (trip.creativeRequirements ?? {}) as Record<string, unknown>,
     });
-    await this.saveBook(userId, tripId, record, edited, null);
+    const creative = { ...defaultCreativeRequirements(), ...trip.creativeRequirements } as CreativeRequirementsDTO;
+    await this.saveBook(userId, tripId, record, edited, null, creative.bookStyle);
     return toStoryDto(record);
   }
 
@@ -145,6 +172,24 @@ export class StoryService {
     return (await this.dependencies.stories.listVersionsForTrip(userId, tripId)).map(toStoryDto);
   }
 
+  async restore(userId: string, tripId: string, storyId: string): Promise<StoryDTO> {
+    const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
+    if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
+    const original = await this.dependencies.stories.findByIdForUser(storyId, userId);
+    if (!original || original.tripId !== tripId) throw new HttpError(404, 'NOT_FOUND', 'Story version not found');
+    const content = original.content as unknown as StoryContentDTO;
+    const restored = await this.dependencies.stories.createVersion({
+      userId, tripId, title: content.title, content: original.content, source: 'mixed',
+      degraded: original.degraded, lockedChapterIds: original.lockedChapterIds,
+      generationLanguageMode: original.generationLanguageMode ?? 'auto',
+      actualLanguage: original.actualLanguage ?? content.meta.actualLanguage ?? 'en',
+      versionType: 'restored', creativeSnapshot: original.creativeSnapshot ?? {},
+    });
+    const creative = { ...defaultCreativeRequirements(), ...original.creativeSnapshot } as CreativeRequirementsDTO;
+    await this.saveBook(userId, tripId, restored, content, trip.coverPhotoId, creative.bookStyle);
+    return toStoryDto(restored);
+  }
+
   async bookPreview(userId: string, tripId: string): Promise<BookPreviewDTO> {
     const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
     if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
@@ -152,7 +197,12 @@ export class StoryService {
     if (!book?.storyId) throw new HttpError(404, 'NOT_FOUND', 'Book preview not found');
     const story = await this.dependencies.stories.findByIdForUser(book.storyId, userId);
     if (!story) throw new HttpError(404, 'NOT_FOUND', 'Book story not found');
-    return { ...toBookDto(book, story.content as unknown as StoryContentDTO), coverPhotoId: trip.coverPhotoId };
+    return {
+      ...toBookDto(book, story.content as unknown as StoryContentDTO),
+      coverPhotoId: trip.coverPhotoId,
+      tripTitle: trip.title,
+      startDate: trip.startDate,
+    };
   }
 
   private async saveBook(
@@ -161,6 +211,7 @@ export class StoryService {
     story: StoryRecord,
     content: StoryContentDTO,
     coverPhotoId: string | null,
+    bookStyle: CreativeRequirementsDTO['bookStyle'],
   ): Promise<void> {
     const current = await this.dependencies.books.findForTrip(userId, tripId);
     await this.dependencies.books.upsertForTrip({
@@ -170,6 +221,7 @@ export class StoryService {
       title: content.title,
       subtitle: content.subtitle || null,
       coverPhotoId: current?.coverPhotoId ?? coverPhotoId,
+      bookStyle,
     });
   }
 
@@ -197,6 +249,10 @@ function toStoryDto(story: StoryRecord): StoryDTO {
     version: story.version,
     source: story.source,
     degraded: story.degraded,
+    versionType: story.versionType ?? 'generated',
+    languageMode: story.generationLanguageMode ?? 'auto',
+    actualLanguage: story.actualLanguage ?? 'en',
+    creativeSnapshot: { ...defaultCreativeRequirements(), ...(story.creativeSnapshot ?? {}) },
     content: story.content as unknown as StoryContentDTO,
     createdAt: story.createdAt.toISOString(),
     updatedAt: story.updatedAt.toISOString(),
@@ -212,6 +268,9 @@ function toBookDto(book: BookRecord, story: StoryContentDTO): BookPreviewDTO {
     subtitle: book.subtitle,
     coverPhotoId: book.coverPhotoId,
     status: book.status,
+    tripTitle: book.title,
+    startDate: null,
+    bookStyle: book.bookStyle ?? 'travel_magazine',
     story,
     createdAt: book.createdAt.toISOString(),
     updatedAt: book.updatedAt.toISOString(),

@@ -307,6 +307,17 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: tripId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmed]
+              properties:
+                confirmed: { type: boolean, enum: [true] }
+                fallbackLanguage: { type: string, enum: [zh-Hans, zh-Hant, en, ja, ko] }
       responses:
         '201': { description: Generated story version }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -336,6 +347,18 @@ paths:
         - { name: tripId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         '200': { description: Immutable story versions ordered newest first }
+  /v1/trips/{tripId}/stories/{storyId}/restore:
+    post:
+      operationId: restoreTripStoryVersion
+      description: Restores a historical story by creating a new immutable version; no existing version is overwritten.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: tripId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: storyId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201': { description: Newly created restored story version }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /v1/trips/{tripId}/book:
     get:
       operationId: getBookPreview

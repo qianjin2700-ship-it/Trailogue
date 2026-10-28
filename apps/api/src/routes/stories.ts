@@ -11,7 +11,7 @@ const tripParameterSchema = {
 export async function registerStoryRoutes(
   app: FastifyInstance,
   authenticate: preHandlerHookHandler,
-  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'bookPreview'>,
+  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'restore' | 'bookPreview'>,
 ) {
   app.post(
     '/v1/trips/:tripId/story/generate',
@@ -21,7 +21,12 @@ export async function registerStoryRoutes(
         tags: ['stories'], security: [{ bearerAuth: [] }], params: tripParameterSchema,
         body: {
           type: 'object', additionalProperties: false,
-          properties: { feedback: { type: ['string', 'null'], maxLength: 2_000 } },
+          required: ['confirmed'],
+          properties: {
+            feedback: { type: ['string', 'null'], maxLength: 2_000 },
+            confirmed: { const: true },
+            fallbackLanguage: { type: 'string', enum: ['zh-Hans', 'zh-Hant', 'en', 'ja', 'ko'] },
+          },
         },
       },
       onRequest: authenticate,
@@ -33,6 +38,7 @@ export async function registerStoryRoutes(
         request.authentication!.userId,
         tripId,
         body.feedback?.trim() || null,
+        body.fallbackLanguage,
       );
       return reply.code(201).send({ data: result });
     },
@@ -47,6 +53,28 @@ export async function registerStoryRoutes(
     async (request) => {
       const { tripId } = request.params as { tripId: string };
       return { data: await stories.latest(request.authentication!.userId, tripId) };
+    },
+  );
+
+  app.post(
+    '/v1/trips/:tripId/stories/:storyId/restore',
+    {
+      schema: {
+        tags: ['stories'], security: [{ bearerAuth: [] }], params: {
+          type: 'object', required: ['tripId', 'storyId'],
+          properties: {
+            tripId: { type: 'string', format: 'uuid' },
+            storyId: { type: 'string', format: 'uuid' },
+          },
+        },
+      },
+      onRequest: authenticate,
+    },
+    async (request, reply) => {
+      const { tripId, storyId } = request.params as { tripId: string; storyId: string };
+      return reply.code(201).send({
+        data: await stories.restore(request.authentication!.userId, tripId, storyId),
+      });
     },
   );
 

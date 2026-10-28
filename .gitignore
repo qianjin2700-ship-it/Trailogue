@@ -35,6 +35,8 @@ cloudfunctions/**/*.js.map
 # 可写工作区内的 Expo/Hermes 临时构建缓存（沙箱环境）
 ios-app/.tmp-expo-build/
 .expo-tmp/
+tmp/
+output/
 
 # Local PostgreSQL volumes and test databases
 .postgres-data/

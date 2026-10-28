@@ -1,4 +1,4 @@
-import type { CreateTripRequest, SetTripCoverRequest, TripSummaryDTO, UpdateTripRequest } from '@trailogue/contracts';
+import { defaultCreativeRequirements, type CreateTripRequest, type SetTripCoverRequest, type TripSummaryDTO, type UpdateTripRequest } from '@trailogue/contracts';
 import type { TripRecord, TripRepository } from '@trailogue/database';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
@@ -47,6 +47,29 @@ const updateTripBodySchema = {
     avoidExpressions: { type: ['string', 'null'], maxLength: 1_000 },
     contentLength: { type: 'string', enum: ['short', 'medium', 'long'] },
     arrangement: { type: 'string', enum: ['timeline', 'thematic'] },
+    creativeRequirements: {
+      type: 'object', additionalProperties: false,
+      required: ['mainPerson', 'companions', 'relationship', 'focusPerson', 'writingStyle',
+        'customWritingStyle', 'contentLength', 'customWordCount', 'focuses', 'specialMemories',
+        'emphasis', 'avoidExpressions', 'otherRequirements', 'generationLanguage', 'bookStyle'],
+      properties: {
+        mainPerson: { type: ['string', 'null'], maxLength: 500 },
+        companions: { type: ['string', 'null'], maxLength: 1_000 },
+        relationship: { type: ['string', 'null'], maxLength: 500 },
+        focusPerson: { type: ['string', 'null'], maxLength: 500 },
+        writingStyle: { type: 'string', enum: ['warm_documentary', 'literary', 'playful', 'parent_child', 'travel_guide', 'custom'] },
+        customWritingStyle: { type: ['string', 'null'], maxLength: 1_000 },
+        contentLength: { type: 'string', enum: ['short', 'standard', 'detailed', 'custom'] },
+        customWordCount: { type: ['integer', 'null'], minimum: 200, maximum: 10_000 },
+        focuses: { type: 'array', maxItems: 6, uniqueItems: true, items: { type: 'string', enum: ['scenery', 'food', 'people', 'journey', 'reflection', 'culture'] } },
+        specialMemories: { type: ['string', 'null'], maxLength: 10_000 },
+        emphasis: { type: ['string', 'null'], maxLength: 5_000 },
+        avoidExpressions: { type: ['string', 'null'], maxLength: 2_000 },
+        otherRequirements: { type: ['string', 'null'], maxLength: 5_000 },
+        generationLanguage: { type: 'string', enum: ['auto', 'zh-Hans', 'zh-Hant', 'en', 'ja', 'ko'] },
+        bookStyle: { type: 'string', enum: ['travel_magazine', 'warm_memoir', 'minimalist'] },
+      },
+    },
   },
 } as const;
 
@@ -164,6 +187,7 @@ export async function registerTripRoutes(
           ? current.avoidExpressions : body.avoidExpressions?.trim() || null,
         contentLength: body.contentLength ?? current.contentLength,
         arrangement: body.arrangement ?? current.arrangement,
+        creativeRequirements: body.creativeRequirements ?? current.creativeRequirements ?? {},
       };
       if (
         !update.title || !update.destinationName ||
@@ -231,6 +255,7 @@ function toTripDto(trip: TripRecord): TripSummaryDTO {
     destinationName: trip.destinationName,
     status: trip.status,
     coverPhotoId: trip.coverPhotoId,
+    coverPhotoUrl: trip.coverPhotoUrl ?? null,
     photoCount: trip.photoCount,
     startDate: trip.startDate,
     endDate: trip.endDate,
@@ -242,6 +267,10 @@ function toTripDto(trip: TripRecord): TripSummaryDTO {
     avoidExpressions: trip.avoidExpressions,
     contentLength: trip.contentLength,
     arrangement: trip.arrangement,
+    creativeRequirements: {
+      ...defaultCreativeRequirements(),
+      ...trip.creativeRequirements,
+    },
     createdAt: trip.createdAt.toISOString(),
     updatedAt: trip.updatedAt.toISOString(),
   };

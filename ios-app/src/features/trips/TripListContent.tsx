@@ -2,6 +2,7 @@ import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View }
 
 import type { LoadState } from '@/contracts/common';
 import type { TripSummary } from '@/domain/trip/trip';
+import { formatTripDateRange } from './formatTripDateRange';
 
 interface TripListContentProps {
   state: LoadState<TripSummary[]>;
@@ -74,6 +75,7 @@ export function TripListContent({
 }
 
 function TripCard({ trip, onPress }: { trip: TripSummary; onPress(): void }) {
+  const dates = formatTripDateRange(trip.startDate, trip.endDate);
   return (
     <Pressable
       accessibilityLabel={`Open ${trip.title}`}
@@ -92,6 +94,8 @@ function TripCard({ trip, onPress }: { trip: TripSummary; onPress(): void }) {
         <Text numberOfLines={2} style={styles.cardTitle}>
           {trip.title}
         </Text>
+        {dates ? <Text style={styles.tripDates}>{dates}</Text> : null}
+        {trip.destinationName ? <Text numberOfLines={1} style={styles.destination}>{trip.destinationName}</Text> : null}
         <Text style={styles.cardMeta}>
           {trip.photoCount} {trip.photoCount === 1 ? 'photo' : 'photos'} · Updated{' '}
           {formatDate(trip.updatedAt)}
@@ -130,6 +134,8 @@ const styles = StyleSheet.create({
   cardBody: { padding: 18 },
   cardTitle: { color: '#24211D', fontSize: 21, fontWeight: '700' },
   cardMeta: { color: '#655F57', fontSize: 14, lineHeight: 20, marginTop: 8 },
+  tripDates: { color: '#4A443D', fontSize: 14, fontWeight: '600', marginTop: 8 },
+  destination: { color: '#7D5C3C', fontSize: 14, marginTop: 5 },
   status: { color: '#7D5C3C', fontSize: 12, fontWeight: '700', marginTop: 12, textTransform: 'uppercase' },
   refreshError: { alignItems: 'center', backgroundColor: '#F4E5DF', borderRadius: 12, flexDirection: 'row', gap: 12, justifyContent: 'space-between', padding: 14 },
   refreshErrorCopy: { flex: 1 },

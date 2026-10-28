@@ -23,6 +23,7 @@ import {
   storySources,
   tripStatuses,
 } from '@trailogue/domain';
+import type { BookStyle } from '@trailogue/domain';
 
 export const identityProviderEnum = pgEnum('identity_provider', identityProviders);
 export const tripStatusEnum = pgEnum('trip_status', tripStatuses);
@@ -116,6 +117,7 @@ export const trips = pgTable(
     avoidExpressions: text('avoid_expressions'),
     contentLength: varchar('content_length', { length: 24 }).default('medium').notNull(),
     arrangement: varchar('arrangement', { length: 24 }).default('timeline').notNull(),
+    creativeRequirements: jsonb('creative_requirements').$type<Record<string, unknown>>().default({}).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -187,6 +189,10 @@ export const stories = pgTable(
     version: integer('version').default(1).notNull(),
     degraded: boolean('degraded').default(false).notNull(),
     lockedChapterIds: text('locked_chapter_ids').array().default([]).notNull(),
+    generationLanguageMode: varchar('generation_language_mode', { length: 24 }).default('auto').notNull(),
+    actualLanguage: varchar('actual_language', { length: 24 }).default('en').notNull(),
+    versionType: varchar('version_type', { length: 24 }).default('generated').notNull(),
+    creativeSnapshot: jsonb('creative_snapshot').$type<Record<string, unknown>>().default({}).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -211,6 +217,8 @@ export const books = pgTable(
     pdfStorageKey: text('pdf_storage_key'),
     subtitle: varchar('subtitle', { length: 240 }),
     coverPhotoId: uuid('cover_photo_id').references(() => photos.id, { onDelete: 'set null' }),
+    bookStyle: varchar('book_style', { length: 24 }).$type<BookStyle>().default('travel_magazine').notNull(),
+    layout: jsonb('layout').$type<Record<string, unknown>>().default({}).notNull(),
     ...timestamps,
   },
   (table) => [index('books_trip_updated_idx').on(table.tripId, table.updatedAt)],

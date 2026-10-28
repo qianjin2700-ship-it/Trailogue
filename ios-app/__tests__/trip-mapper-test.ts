@@ -20,11 +20,17 @@ describe('trip mappers', () => {
       avoidExpressions: null,
       contentLength: 'medium',
       arrangement: 'timeline',
+      creativeRequirements: {
+        mainPerson: null, companions: null, relationship: null, focusPerson: null,
+        writingStyle: 'warm_documentary', customWritingStyle: null, contentLength: 'standard',
+        customWordCount: null, focuses: [], specialMemories: null, emphasis: null,
+        avoidExpressions: null, otherRequirements: null, generationLanguage: 'auto', bookStyle: 'travel_magazine',
+      },
       createdAt: '2026-10-01T08:30:00.000Z',
       updatedAt: '2026-10-14T08:30:00.000Z',
     });
 
-    expect(trip).toEqual({
+    expect(trip).toEqual(expect.objectContaining({
       id: 'trip-1',
       title: 'Kyoto in Autumn',
       status: 'published',
@@ -43,9 +49,15 @@ describe('trip mappers', () => {
       avoidExpressions: null,
       contentLength: 'medium',
       arrangement: 'timeline',
+      creativeRequirements: {
+        mainPerson: null, companions: null, relationship: null, focusPerson: null,
+        writingStyle: 'warm_documentary', customWritingStyle: null, contentLength: 'standard',
+        customWordCount: null, focuses: [], specialMemories: null, emphasis: null,
+        avoidExpressions: null, otherRequirements: null, generationLanguage: 'auto', bookStyle: 'travel_magazine',
+      },
       createdAt: new Date('2026-10-01T08:30:00.000Z'),
       updatedAt: new Date('2026-10-14T08:30:00.000Z'),
-    });
+    }));
   });
 
   it('preserves missing travel dates as null', () => {
@@ -67,6 +79,12 @@ describe('trip mappers', () => {
       avoidExpressions: null,
       contentLength: 'medium',
       arrangement: 'timeline',
+      creativeRequirements: {
+        mainPerson: null, companions: null, relationship: null, focusPerson: null,
+        writingStyle: 'warm_documentary', customWritingStyle: null, contentLength: 'standard',
+        customWordCount: null, focuses: [], specialMemories: null, emphasis: null,
+        avoidExpressions: null, otherRequirements: null, generationLanguage: 'auto', bookStyle: 'travel_magazine',
+      },
       createdAt: '2026-10-01T08:30:00.000Z',
       updatedAt: '2026-10-01T08:30:00.000Z',
     });

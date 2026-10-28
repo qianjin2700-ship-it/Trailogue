@@ -34,7 +34,7 @@ export interface ApiServices {
     'create' | 'findByIdForUser' | 'listForUser' | 'updateForUser' | 'deleteForUser'
     | 'setCoverPhoto'
   >;
-  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'bookPreview'>;
+  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'restore' | 'bookPreview'>;
   shares: Pick<ShareService, 'create' | 'revoke' | 'resolve'>;
   users: Pick<UserService, 'findById' | 'update' | 'deleteAccount'>;
 }

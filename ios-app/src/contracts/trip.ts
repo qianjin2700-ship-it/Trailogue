@@ -5,6 +5,7 @@ export type {
   UpdateTripRequest,
   TripListResponse,
   TripSummaryDTO,
+  CreativeRequirementsDTO,
 } from '@trailogue/contracts';
 export type { TripStatus } from '@trailogue/domain';
 

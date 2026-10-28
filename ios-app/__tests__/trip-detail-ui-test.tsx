@@ -56,7 +56,6 @@ describe('<TripDetailScreen />', () => {
   it('renders the mapped travel date range', async () => {
     const screen = render(<TripDetailScreen />);
 
-    await waitFor(() => expect(screen.getByText('Travel dates')).toBeTruthy());
-    expect(screen.getByText('Nov 1 – Nov 5, 2026')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('2026.11.01 — 2026.11.05')).toBeTruthy());
   });
 });

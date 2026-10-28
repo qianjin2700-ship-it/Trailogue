@@ -29,6 +29,13 @@
       "when": 1793095200000,
       "tag": "0003_complete_product",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793174400000,
+      "tag": "0004_creative_book_experience",
+      "breakpoints": true
     }
   ]
 }

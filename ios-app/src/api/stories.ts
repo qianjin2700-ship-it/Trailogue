@@ -13,13 +13,14 @@ export interface StoriesApi {
   getLatest(tripId: string): Promise<StoryDTO>;
   update(tripId: string, input: UpdateStoryRequest): Promise<StoryDTO>;
   listVersions(tripId: string): Promise<StoryDTO[]>;
+  restore(tripId: string, storyId: string): Promise<StoryDTO>;
   getBook(tripId: string): Promise<BookPreviewDTO>;
 }
 
 export function createStoriesApi(client: ApiClient): StoriesApi {
   const tripPath = (tripId: string) => `/v1/trips/${encodeURIComponent(tripId)}`;
   return {
-    async generate(tripId, input = {}) {
+    async generate(tripId, input) {
       const response = await client.request<ApiDataResponse<StoryDTO>>(
         `${tripPath(tripId)}/story/generate`,
         { method: 'POST', body: input, timeoutMs: 300_000 },
@@ -36,6 +37,12 @@ export function createStoriesApi(client: ApiClient): StoriesApi {
     },
     async listVersions(tripId) {
       return (await client.request<ApiDataResponse<StoryDTO[]>>(`${tripPath(tripId)}/stories`)).data;
+    },
+    async restore(tripId, storyId) {
+      return (await client.request<ApiDataResponse<StoryDTO>>(
+        `${tripPath(tripId)}/stories/${encodeURIComponent(storyId)}/restore`,
+        { method: 'POST' },
+      )).data;
     },
     async getBook(tripId) {
       return (await client.request<ApiDataResponse<BookPreviewDTO>>(`${tripPath(tripId)}/book`)).data;

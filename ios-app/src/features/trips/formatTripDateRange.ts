@@ -1,18 +1,3 @@
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-] as const;
-
 interface CalendarDate {
   year: number;
   month: number;
@@ -27,11 +12,9 @@ export function formatTripDateRange(
   const end = parseDateOnly(endDate);
 
   if (!start && !end) return null;
-  if (!start) return formatFullDate(end!);
-  if (!end || isSameDate(start, end)) return formatFullDate(start);
-  if (start.year !== end.year) return `${formatFullDate(start)} – ${formatFullDate(end)}`;
-
-  return `${formatMonthDay(start)} – ${formatMonthDay(end)}, ${end.year}`;
+  if (!start) return formatNumericDate(end!);
+  if (!end || isSameDate(start, end)) return formatNumericDate(start);
+  return `${formatNumericDate(start)} — ${formatNumericDate(end)}`;
 }
 
 function parseDateOnly(value: string | null): CalendarDate | null {
@@ -57,10 +40,6 @@ function isSameDate(left: CalendarDate, right: CalendarDate): boolean {
   return left.year === right.year && left.month === right.month && left.day === right.day;
 }
 
-function formatMonthDay(date: CalendarDate): string {
-  return `${MONTHS[date.month - 1]} ${date.day}`;
-}
-
-function formatFullDate(date: CalendarDate): string {
-  return `${formatMonthDay(date)}, ${date.year}`;
+function formatNumericDate(date: CalendarDate): string {
+  return `${date.year}.${String(date.month).padStart(2, '0')}.${String(date.day).padStart(2, '0')}`;
 }
