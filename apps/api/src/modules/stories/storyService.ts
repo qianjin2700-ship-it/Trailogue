@@ -1,4 +1,10 @@
-import { normalizeCreativeRequirements, type BookPreviewDTO, type CreativeRequirementsDTO, type StoryContentDTO, type StoryDTO } from '@trailogue/contracts';
+import {
+  normalizeCreativeRequirements,
+  type BookPreviewDTO,
+  type CreativeRequirementsDTO,
+  type StoryContentDTO,
+  type StoryDTO,
+} from '@trailogue/contracts';
 import type { ActualStoryLanguage } from '@trailogue/domain';
 import type {
   BookRecord,
@@ -25,7 +31,10 @@ interface StoryServiceDependencies {
   >;
   books: Pick<BookRepository, 'upsertForTrip' | 'findForTrip' | 'updateLayoutForTrip'>;
   storage: Pick<PhotoObjectStorage, 'createReadUrl'>;
-  provider: Pick<DeepSeekProvider, 'model' | 'supportsVision' | 'understandPhotos' | 'generateStory'>;
+  provider: Pick<
+    DeepSeekProvider,
+    'model' | 'supportsVision' | 'understandPhotos' | 'generateStory'
+  >;
   readUrlTtlSeconds: number;
 }
 
@@ -36,29 +45,35 @@ export class StoryService {
     userId: string,
     tripId: string,
     feedback?: string | null,
-    fallbackLanguage: ActualStoryLanguage = 'en',
+    fallbackLanguage: ActualStoryLanguage = 'en'
   ): Promise<StoryDTO> {
     const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
     if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
     const user = await this.dependencies.users.findById(userId);
     if (!user?.privacyAgreedAt) {
-      throw new HttpError(409, 'CONFLICT', 'Accept the AI photo privacy agreement in Settings first');
+      throw new HttpError(
+        409,
+        'CONFLICT',
+        'Accept the AI photo privacy agreement in Settings first'
+      );
     }
     const photos = await this.dependencies.photos.listReadyForTrip(userId, tripId, 50);
     if (photos.length === 0) {
       throw new HttpError(409, 'CONFLICT', 'Add at least one photo before generating a story');
     }
-    const photoInputs: StoryPhotoInput[] = await Promise.all(photos.map(async (photo) => ({
-      id: photo.id,
-      url: await this.dependencies.storage.createReadUrl(
-        photo.storageKey,
-        this.dependencies.readUrlTtlSeconds,
-      ),
-      capturedAt: photo.capturedAt?.toISOString() ?? null,
-      locationName: photo.locationName,
-      caption: photo.caption,
-      originalFilename: photo.originalFilename,
-    })));
+    const photoInputs: StoryPhotoInput[] = await Promise.all(
+      photos.map(async (photo) => ({
+        id: photo.id,
+        url: await this.dependencies.storage.createReadUrl(
+          photo.storageKey,
+          this.dependencies.readUrlTtlSeconds
+        ),
+        capturedAt: photo.capturedAt?.toISOString() ?? null,
+        locationName: photo.locationName,
+        caption: photo.caption,
+        originalFilename: photo.originalFilename,
+      }))
+    );
     let visionAvailable: boolean;
     let vision: Awaited<ReturnType<DeepSeekProvider['understandPhotos']>>;
     try {
@@ -67,40 +82,61 @@ export class StoryService {
         ? await this.dependencies.provider.understandPhotos(photoInputs)
         : { facts: [], totalTokens: 0 };
     } catch {
-      throw new HttpError(502, 'AI_SERVICE_ERROR', 'The AI photo analysis service failed. Please try again');
+      throw new HttpError(
+        502,
+        'AI_SERVICE_ERROR',
+        'The AI photo analysis service failed. Please try again'
+      );
     }
-    await Promise.all(vision.facts.map((fact) => this.dependencies.photos.updateVision({
-      id: fact.photoId,
-      userId,
-      tripId,
-      vision: fact as unknown as Record<string, unknown>,
-    })));
+    await Promise.all(
+      vision.facts.map((fact) =>
+        this.dependencies.photos.updateVision({
+          id: fact.photoId,
+          userId,
+          tripId,
+          vision: fact as unknown as Record<string, unknown>,
+        })
+      )
+    );
     const creative = normalizeCreativeRequirements(trip.creativeRequirements);
-    const actualLanguage = resolveStoryLanguage(creative.generationLanguage, [
-      trip.title, trip.description, trip.storyBackground, trip.peopleNotes, trip.highlights,
-      creative.mainPerson, creative.companions, creative.relationship, creative.focusPerson,
-      creative.specialMemories, creative.emphasis, creative.otherRequirements,
-      ...photos.flatMap((photo) => [photo.caption, photo.locationName]),
-    ], fallbackLanguage);
+    const actualLanguage = resolveStoryLanguage(
+      creative.generationLanguage,
+      [
+        trip.title,
+        trip.description,
+        trip.storyBackground,
+        trip.peopleNotes,
+        trip.highlights,
+        creative.mainPerson,
+        creative.companions,
+        creative.relationship,
+        creative.focusPerson,
+        creative.specialMemories,
+        creative.emphasis,
+        creative.otherRequirements,
+        ...photos.flatMap((photo) => [photo.caption, photo.locationName]),
+      ],
+      fallbackLanguage
+    );
     const previous = await this.dependencies.stories.findLatestForTrip(userId, tripId);
     let content: StoryContentDTO;
     try {
       content = await this.dependencies.provider.generateStory({
         trip: {
-        title: trip.title,
-        description: trip.description,
-        destinationName: trip.destinationName,
-        startDate: trip.startDate,
-        endDate: trip.endDate,
-        storyBackground: trip.storyBackground,
-        peopleNotes: trip.peopleNotes,
-        highlights: trip.highlights,
-        writingStyle: trip.writingStyle,
-        customWritingStyle: trip.customWritingStyle,
-        avoidExpressions: trip.avoidExpressions,
-        contentLength: trip.contentLength,
-        arrangement: trip.arrangement,
-        creativeRequirements: creative as unknown as Record<string, unknown>,
+          title: trip.title,
+          description: trip.description,
+          destinationName: trip.destinationName,
+          startDate: trip.startDate,
+          endDate: trip.endDate,
+          storyBackground: trip.storyBackground,
+          peopleNotes: trip.peopleNotes,
+          highlights: trip.highlights,
+          writingStyle: trip.writingStyle,
+          customWritingStyle: trip.customWritingStyle,
+          avoidExpressions: trip.avoidExpressions,
+          contentLength: trip.contentLength,
+          arrangement: trip.arrangement,
+          creativeRequirements: creative as unknown as Record<string, unknown>,
         },
         photos: photoInputs,
         understandings: vision.facts,
@@ -120,27 +156,31 @@ export class StoryService {
       content: content as unknown as Record<string, unknown>,
       source: 'ai',
       degraded: content.meta.degraded,
-      lockedChapterIds: content.chapters.filter((chapter) => chapter.locked)
+      lockedChapterIds: content.chapters
+        .filter((chapter) => chapter.locked)
         .map((chapter) => chapter.chapterId),
       generationLanguageMode: creative.generationLanguage,
       actualLanguage,
       versionType: previous ? 'regenerated' : 'generated',
       creativeSnapshot: creative as unknown as Record<string, unknown>,
     });
-    await this.saveBook(userId, tripId, record, content, trip.coverPhotoId ?? photos[0]?.id ?? null, creative.bookStyle);
+    await this.saveBook(
+      userId,
+      tripId,
+      record,
+      content,
+      trip.coverPhotoId ?? photos[0]?.id ?? null,
+      creative.bookStyle
+    );
     return toStoryDto(record);
   }
 
-  async update(
-    userId: string,
-    tripId: string,
-    content: StoryContentDTO,
-  ): Promise<StoryDTO> {
+  async update(userId: string, tripId: string, content: StoryContentDTO): Promise<StoryDTO> {
     const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
     if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
     validateEditedStory(content);
     const photoIds = new Set(
-      (await this.dependencies.photos.listReadyForTrip(userId, tripId, 50)).map((photo) => photo.id),
+      (await this.dependencies.photos.listReadyForTrip(userId, tripId, 50)).map((photo) => photo.id)
     );
     for (const chapter of content.chapters) {
       if (chapter.photoIds.some((photoId) => !photoIds.has(photoId))) {
@@ -159,7 +199,8 @@ export class StoryService {
       content: edited as unknown as Record<string, unknown>,
       source: 'mixed',
       degraded: edited.meta.degraded,
-      lockedChapterIds: edited.chapters.filter((chapter) => chapter.locked)
+      lockedChapterIds: edited.chapters
+        .filter((chapter) => chapter.locked)
         .map((chapter) => chapter.chapterId),
       generationLanguageMode: edited.meta.languageMode ?? 'auto',
       actualLanguage: edited.meta.actualLanguage ?? 'en',
@@ -187,14 +228,21 @@ export class StoryService {
     const trip = await this.dependencies.trips.findByIdForUser(tripId, userId);
     if (!trip) throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
     const original = await this.dependencies.stories.findByIdForUser(storyId, userId);
-    if (!original || original.tripId !== tripId) throw new HttpError(404, 'NOT_FOUND', 'Story version not found');
+    if (!original || original.tripId !== tripId)
+      throw new HttpError(404, 'NOT_FOUND', 'Story version not found');
     const content = original.content as unknown as StoryContentDTO;
     const restored = await this.dependencies.stories.createVersion({
-      userId, tripId, title: content.title, content: original.content, source: 'mixed',
-      degraded: original.degraded, lockedChapterIds: original.lockedChapterIds,
+      userId,
+      tripId,
+      title: content.title,
+      content: original.content,
+      source: 'mixed',
+      degraded: original.degraded,
+      lockedChapterIds: original.lockedChapterIds,
       generationLanguageMode: original.generationLanguageMode ?? 'auto',
       actualLanguage: original.actualLanguage ?? content.meta.actualLanguage ?? 'en',
-      versionType: 'restored', creativeSnapshot: original.creativeSnapshot ?? {},
+      versionType: 'restored',
+      creativeSnapshot: original.creativeSnapshot ?? {},
     });
     const creative = normalizeCreativeRequirements(original.creativeSnapshot);
     await this.saveBook(userId, tripId, restored, content, trip.coverPhotoId, creative.bookStyle);
@@ -219,7 +267,7 @@ export class StoryService {
   async updateBookLayout(
     userId: string,
     tripId: string,
-    layout: Record<string, unknown>,
+    layout: Record<string, unknown>
   ): Promise<BookPreviewDTO> {
     await this.requireOwnedTrip(userId, tripId);
     validateBookLayout(layout);
@@ -234,7 +282,7 @@ export class StoryService {
     story: StoryRecord,
     content: StoryContentDTO,
     coverPhotoId: string | null,
-    bookStyle: CreativeRequirementsDTO['bookStyle'],
+    bookStyle: CreativeRequirementsDTO['bookStyle']
   ): Promise<void> {
     const current = await this.dependencies.books.findForTrip(userId, tripId);
     await this.dependencies.books.upsertForTrip({
@@ -249,7 +297,7 @@ export class StoryService {
   }
 
   private async requireOwnedTrip(userId: string, tripId: string): Promise<void> {
-    if (!await this.dependencies.trips.findByIdForUser(tripId, userId)) {
+    if (!(await this.dependencies.trips.findByIdForUser(tripId, userId))) {
       throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
     }
   }
@@ -302,7 +350,15 @@ function toBookDto(book: BookRecord, story: StoryContentDTO): BookPreviewDTO {
 }
 
 function validateBookLayout(layout: Record<string, unknown>): void {
-  if (layout.version !== 2 || !Array.isArray(layout.pages) || layout.pages.length === 0 || layout.pages.length > 200) {
+  const version = Number(layout.version);
+  if (
+    !Number.isInteger(version) ||
+    version < 2 ||
+    version > 4 ||
+    !Array.isArray(layout.pages) ||
+    layout.pages.length === 0 ||
+    layout.pages.length > 200
+  ) {
     throw new HttpError(400, 'VALIDATION_ERROR', 'Book layout is invalid');
   }
   const serialized = JSON.stringify(layout);
@@ -311,10 +367,16 @@ function validateBookLayout(layout: Record<string, unknown>): void {
   }
   for (const page of layout.pages) {
     if (
-      typeof page !== 'object' || page === null ||
-      !('id' in page) || typeof page.id !== 'string' || page.id.length > 160 ||
-      !('kind' in page) || typeof page.kind !== 'string' ||
-      !('photoIds' in page) || !Array.isArray(page.photoIds) || page.photoIds.length > 4 ||
+      typeof page !== 'object' ||
+      page === null ||
+      !('id' in page) ||
+      typeof page.id !== 'string' ||
+      page.id.length > 160 ||
+      !('kind' in page) ||
+      typeof page.kind !== 'string' ||
+      !('photoIds' in page) ||
+      !Array.isArray(page.photoIds) ||
+      page.photoIds.length > 4 ||
       page.photoIds.some((id: unknown) => typeof id !== 'string')
     ) {
       throw new HttpError(400, 'VALIDATION_ERROR', 'Book layout contains an invalid page');

@@ -168,7 +168,7 @@ async function main() {
     );
   }
   await writeFile(
-    path.join(outputDirectory, 'guishan-v3-layout-audit.json'),
+    path.join(outputDirectory, 'guishan-v4-reference-layout-audit.json'),
     JSON.stringify(audit, null, 2),
     'utf8'
   );

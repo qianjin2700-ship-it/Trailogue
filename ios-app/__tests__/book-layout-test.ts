@@ -92,7 +92,7 @@ const baseBook: BookPreviewDTO = {
 
 test('creates a complete plan with cover fallback and no short blank text pages', () => {
   const document = buildBookLayout(baseBook, photos);
-  expect(document.version).toBe(3);
+  expect(document.version).toBe(4);
   expect(document.pages[0]?.photoIds).toEqual(['photo-1']);
   expect(document.chapters).toHaveLength(4);
   expect(inspectBookLayout(document)).toEqual([]);
@@ -109,10 +109,14 @@ test('three book styles produce materially different plans and HTML themes', () 
     document.pages.map((page) => `${page.kind}:${page.photoIds.length}`).join('|')
   );
   expect(new Set(signatures).size).toBe(3);
-  expect(memoir.pages[0]?.photoIds).toHaveLength(2);
-  expect(renderBookHtml(magazine, photos)).toContain('text-transform:uppercase');
-  expect(renderBookHtml(memoir, photos)).toContain('background:#fffaf2');
-  expect(renderBookHtml(minimalist, photos)).toContain('padding:18mm 20mm');
+  expect(memoir.pages[0]?.photoIds).toHaveLength(1);
+  expect(magazine.pages[0]?.variant).toBe('cover_magazine');
+  expect(memoir.pages[0]?.variant).toBe('cover_memoir');
+  expect(minimalist.pages[0]?.variant).toBe('cover_minimal');
+  expect(renderBookHtml(magazine, photos)).toContain('editorial blocks and asymmetric rhythm');
+  expect(renderBookHtml(memoir, photos)).toContain('central keepsake card');
+  expect(renderBookHtml(minimalist, photos)).toContain('slim information rail');
+  expect(minimalist.pages.some((page) => page.variant === 'text_rail')).toBe(true);
   expect(minimalist.pages.length).toBeGreaterThanOrEqual(8);
   expect(minimalist.pages.length).toBeLessThanOrEqual(12);
 });
@@ -184,10 +188,30 @@ test('migrates V2 plans without discarding user layout edits', () => {
     baseBook,
     photos
   );
-  expect(restored?.version).toBe(3);
+  expect(restored?.version).toBe(4);
   expect(restored?.pages.every((page) => page.photoIds.every((id) => page.placements[id]))).toBe(
     true
   );
+});
+
+test('replans V3 automatic pages for the reference design while retaining manual edits', () => {
+  const current = buildBookLayout(baseBook, photos);
+  const editable = current.pages.find((page) => page.kind !== 'cover' && page.photoIds.length > 0)!;
+  const legacy = {
+    ...current,
+    version: 3,
+    pages: current.pages.map((page) =>
+      page.id === editable.id ? { ...page, userEdited: true, title: 'Keep this edit' } : page
+    ),
+  };
+  const restored = restoreBookLayout(
+    legacy as unknown as Record<string, unknown>,
+    baseBook,
+    photos
+  );
+  expect(restored?.version).toBe(4);
+  expect(restored?.pages[0]?.variant).toBe('cover_magazine');
+  expect(restored?.pages.find((page) => page.id === editable.id)?.title).toBe('Keep this edit');
 });
 
 test('date and PDF filename preserve calendar day without timezone conversion', () => {

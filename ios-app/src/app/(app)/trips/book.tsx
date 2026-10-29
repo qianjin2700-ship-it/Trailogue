@@ -303,44 +303,83 @@ function PagePreview({
     .map((id) => photos.get(id))
     .filter((photo): photo is Photo => Boolean(photo));
   const cover = page.kind === 'cover' || page.kind === 'chapter_opener';
+  const bookCover = page.kind === 'cover';
+  const minimalRail = styleName === 'minimalist' && page.variant === 'text_rail' && !bookCover;
+  const media = pagePhotos.length ? (
+    <View
+      style={[
+        styles.photoGrid,
+        mediaLayoutStyle(page),
+        minimalRail && styles.minimalRailMedia,
+        bookCover && styleName === 'travel_magazine' && styles.magazineCoverMedia,
+        bookCover && styleName === 'warm_memoir' && styles.memoirCoverMedia,
+        bookCover && styleName === 'minimalist' && styles.minimalCoverMedia,
+      ]}
+    >
+      {pagePhotos.map((photo, index) => (
+        <View key={photo.id} style={[styles.photoSlot, photoSlotStyle(page, index)]}>
+          <PreviewPhoto photo={photo} placement={page.placements[photo.id]} />
+        </View>
+      ))}
+    </View>
+  ) : null;
+  const copy = (
+    <View
+      style={[
+        styles.pageCopy,
+        cover && styleName === 'travel_magazine' && styles.overlayCopy,
+        styleName === 'warm_memoir' && !bookCover && styles.memoirCopy,
+        bookCover && styleName === 'warm_memoir' && styles.memoirCoverCopy,
+        bookCover && styleName === 'minimalist' && styles.minimalCoverCopy,
+        minimalRail && styles.minimalRailCopy,
+      ]}
+    >
+      {page.eyebrow ? (
+        <Text style={[styles.eyebrow, cover && styleName === 'travel_magazine' && styles.light]}>
+          {page.eyebrow}
+        </Text>
+      ) : null}
+      {page.title ? (
+        <Text
+          style={[
+            styles.pageTitle,
+            cover && styleName === 'travel_magazine' && styles.light,
+            minimalRail && styles.minimalRailTitle,
+          ]}
+        >
+          {page.title}
+        </Text>
+      ) : null}
+      {page.body ? (
+        <Text
+          numberOfLines={cover ? 7 : 12}
+          style={[
+            styles.body,
+            cover && styleName === 'travel_magazine' && styles.light,
+            minimalRail && styles.minimalRailBody,
+          ]}
+        >
+          {page.body}
+        </Text>
+      ) : null}
+    </View>
+  );
   return (
     <View
       style={[
         styles.page,
         styleName === 'warm_memoir' && styles.memoirPage,
         styleName === 'minimalist' && styles.minimalPage,
-        cover && styles.darkPage,
+        cover && styleName === 'travel_magazine' && styles.darkPage,
+        bookCover && styleName === 'warm_memoir' && styles.memoirCover,
+        minimalRail && styles.minimalRailPage,
       ]}
     >
-      {pagePhotos.length ? (
-        <View style={[styles.photoGrid, mediaLayoutStyle(page)]}>
-          {pagePhotos.map((photo, index) => (
-            <View key={photo.id} style={[styles.photoSlot, photoSlotStyle(page, index)]}>
-              <PreviewPhoto photo={photo} placement={page.placements[photo.id]} />
-            </View>
-          ))}
-        </View>
-      ) : null}
-      <View
-        style={[
-          styles.pageCopy,
-          cover && styles.overlayCopy,
-          styleName === 'warm_memoir' && !cover && styles.memoirCopy,
-        ]}
-      >
-        {page.eyebrow ? (
-          <Text style={[styles.eyebrow, cover && styles.light]}>{page.eyebrow}</Text>
-        ) : null}
-        {page.title ? (
-          <Text style={[styles.pageTitle, cover && styles.light]}>{page.title}</Text>
-        ) : null}
-        {page.body ? (
-          <Text numberOfLines={cover ? 7 : 12} style={[styles.body, cover && styles.light]}>
-            {page.body}
-          </Text>
-        ) : null}
-      </View>
-      <Text style={[styles.pageNumber, cover && styles.light]}>{pageNumber}</Text>
+      {minimalRail ? copy : media}
+      {minimalRail ? media : copy}
+      <Text style={[styles.pageNumber, cover && styleName === 'travel_magazine' && styles.light]}>
+        {pageNumber}
+      </Text>
     </View>
   );
 }
@@ -452,6 +491,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
   },
+  magazineCoverMedia: { flex: 0.58 },
+  memoirCover: { padding: 22 },
+  memoirCoverMedia: {
+    backgroundColor: '#FFFAF2',
+    borderRadius: 2,
+    flex: 0.68,
+    marginHorizontal: 18,
+    marginTop: 10,
+    padding: 7,
+  },
+  memoirCoverCopy: { alignItems: 'center', paddingHorizontal: 24 },
+  minimalCoverMedia: { flex: 0.68 },
+  minimalCoverCopy: { alignItems: 'center', paddingHorizontal: 24 },
+  minimalRailPage: { flexDirection: 'row', padding: 10 },
+  minimalRailCopy: { flex: 0.23, paddingHorizontal: 5, paddingTop: 8 },
+  minimalRailMedia: { flex: 0.77 },
+  minimalRailTitle: { color: '#18365D', fontSize: 14, lineHeight: 18 },
+  minimalRailBody: { fontSize: 8, lineHeight: 12 },
   memoirCopy: {
     backgroundColor: '#FFFAF2',
     borderLeftColor: '#C78D72',

@@ -79,16 +79,26 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
   };
   return {
     authentication: {
-      signInWithApple: async () => ({ accessToken: bearerToken, expiresAt: session.expiresAt, user }),
+      signInWithApple: async () => ({
+        accessToken: bearerToken,
+        expiresAt: session.expiresAt,
+        user,
+      }),
     },
     sessions: { verify: async (token) => (token === bearerToken ? session : null) },
     photos: {
-      createUploadIntent: async () => { throw new Error('Not used by this test'); },
-      completeUpload: async () => { throw new Error('Not used by this test'); },
+      createUploadIntent: async () => {
+        throw new Error('Not used by this test');
+      },
+      completeUpload: async () => {
+        throw new Error('Not used by this test');
+      },
       listPhotos: async () => [],
       deletePhoto: async () => undefined,
       reorderPhotos: async () => undefined,
-      updatePhoto: async () => { throw new Error('Not used by this test'); },
+      updatePhoto: async () => {
+        throw new Error('Not used by this test');
+      },
     },
     users: {
       findById: async (id) => (id === userId ? user : null),
@@ -97,8 +107,7 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
     },
     trips: {
       create: async () => trip,
-      findByIdForUser: async (id, ownerId) =>
-        id === tripId && ownerId === userId ? trip : null,
+      findByIdForUser: async (id, ownerId) => (id === tripId && ownerId === userId ? trip : null),
       listForUser: async ({ userId: ownerId }) => (ownerId === userId ? [trip] : []),
       updateForUser: async (id, ownerId, input) =>
         id === tripId && ownerId === userId ? { ...trip, ...input } : null,
@@ -108,18 +117,34 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
         id === tripId && ownerId === userId ? { ...trip, creativeRequirements } : null,
     },
     stories: {
-      generate: async () => { throw new Error('Not used by this test'); },
-      update: async () => { throw new Error('Not used by this test'); },
-      latest: async () => { throw new Error('Not used by this test'); },
+      generate: async () => {
+        throw new Error('Not used by this test');
+      },
+      update: async () => {
+        throw new Error('Not used by this test');
+      },
+      latest: async () => {
+        throw new Error('Not used by this test');
+      },
       versions: async () => [],
-      bookPreview: async () => { throw new Error('Not used by this test'); },
-      updateBookLayout: async () => { throw new Error('Not used by this test'); },
-      restore: async () => { throw new Error('Not used by this test'); },
+      bookPreview: async () => {
+        throw new Error('Not used by this test');
+      },
+      updateBookLayout: async () => {
+        throw new Error('Not used by this test');
+      },
+      restore: async () => {
+        throw new Error('Not used by this test');
+      },
     },
     shares: {
-      create: async () => { throw new Error('Not used by this test'); },
+      create: async () => {
+        throw new Error('Not used by this test');
+      },
       revoke: async () => undefined,
-      resolve: async () => { throw new Error('Not used by this test'); },
+      resolve: async () => {
+        throw new Error('Not used by this test');
+      },
     },
     ...overrides,
   };
@@ -177,7 +202,11 @@ test('story and book routes require bearer authentication', async () => {
     { method: 'POST' as const, url: `/v1/trips/${tripId}/story/generate`, payload: {} },
     { method: 'GET' as const, url: `/v1/trips/${tripId}/story` },
     { method: 'GET' as const, url: `/v1/trips/${tripId}/book` },
-    { method: 'PUT' as const, url: `/v1/trips/${tripId}/book/layout`, payload: { layout: { version: 2, pages: [] } } },
+    {
+      method: 'PUT' as const,
+      url: `/v1/trips/${tripId}/book/layout`,
+      payload: { layout: { version: 2, pages: [] } },
+    },
   ]) {
     const response = await app.inject(request);
     assert.equal(response.statusCode, 401);
@@ -189,12 +218,24 @@ test('PUT /v1/trips/:id/book/layout passes the versioned layout contract to the 
   let received: Record<string, unknown> | undefined;
   const services = createServices();
   services.stories.updateBookLayout = async (ownerId, ownedTripId, layout) => {
-    assert.equal(ownerId, userId); assert.equal(ownedTripId, tripId); received = layout;
+    assert.equal(ownerId, userId);
+    assert.equal(ownedTripId, tripId);
+    received = layout;
     return { id: 'book-1' } as never;
   };
-  const layout = { version: 2, storyId: 'story-1', style: 'travel_magazine', pages: [{ id: 'cover', kind: 'cover', photoIds: ['photo-1'], captions: {} }] };
+  const layout = {
+    version: 4,
+    storyId: 'story-1',
+    style: 'travel_magazine',
+    pages: [{ id: 'cover', kind: 'cover', photoIds: ['photo-1'], captions: {} }],
+  };
   const app = await createApp(services);
-  const response = await app.inject({ method: 'PUT', url: `/v1/trips/${tripId}/book/layout`, headers: { authorization: `Bearer ${bearerToken}` }, payload: { layout } });
+  const response = await app.inject({
+    method: 'PUT',
+    url: `/v1/trips/${tripId}/book/layout`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+    payload: { layout },
+  });
   await app.close();
   assert.equal(response.statusCode, 200);
   assert.deepEqual(received, layout);
@@ -222,8 +263,10 @@ test('POST /v1/auth/apple returns a Trailogue bearer session', async () => {
 test('POST /v1/auth/apple maps invalid identity tokens to a safe 401', async () => {
   const app = await createApp(
     createServices({
-      authentication: { signInWithApple: async () => Promise.reject(new InvalidAppleIdentityError()) },
-    }),
+      authentication: {
+        signInWithApple: async () => Promise.reject(new InvalidAppleIdentityError()),
+      },
+    })
   );
   const response = await app.inject({
     method: 'POST',
@@ -243,7 +286,12 @@ test('POST /v1/auth/apple maps invalid identity tokens to a safe 401', async () 
 
 test('authenticated user and trip routes reject a missing bearer token', async () => {
   const app = await createApp();
-  for (const request of [{ method: 'GET', url: '/v1/users/me' }, { method: 'GET', url: '/v1/trips' }, { method: 'POST', url: '/v1/trips', payload: {} }, { method: 'GET', url: `/v1/trips/${tripId}` }]) {
+  for (const request of [
+    { method: 'GET', url: '/v1/users/me' },
+    { method: 'GET', url: '/v1/trips' },
+    { method: 'POST', url: '/v1/trips', payload: {} },
+    { method: 'GET', url: `/v1/trips/${tripId}` },
+  ]) {
     const response = await app.inject(request);
     assert.equal(response.statusCode, 401);
     assert.equal(response.json().error.code, 'UNAUTHORIZED');
@@ -256,24 +304,55 @@ test('POST /v1/trips creates an owner-scoped draft with a reusable idempotency k
   const services = createServices();
   services.trips.create = async (value) => {
     input = value;
-    return { ...trip, title: value.title, destinationName: value.destinationName ?? null, description: value.description ?? null, startDate: value.startDate ?? null, endDate: value.endDate ?? null };
+    return {
+      ...trip,
+      title: value.title,
+      destinationName: value.destinationName ?? null,
+      description: value.description ?? null,
+      startDate: value.startDate ?? null,
+      endDate: value.endDate ?? null,
+    };
   };
   const app = await createApp(services);
-  const payload = { title: 'New coast', destinationName: 'California', description: 'Created by the API', startDate: '2026-10-01', endDate: '2026-10-07' };
-  const headers = { authorization: `Bearer ${bearerToken}`, 'idempotency-key': '50000000-0000-4000-8000-000000000005' };
+  const payload = {
+    title: 'New coast',
+    destinationName: 'California',
+    description: 'Created by the API',
+    startDate: '2026-10-01',
+    endDate: '2026-10-07',
+  };
+  const headers = {
+    authorization: `Bearer ${bearerToken}`,
+    'idempotency-key': '50000000-0000-4000-8000-000000000005',
+  };
   const first = await app.inject({ method: 'POST', url: '/v1/trips', headers, payload });
   const retry = await app.inject({ method: 'POST', url: '/v1/trips', headers, payload });
   await app.close();
-  assert.equal(first.statusCode, 201); assert.equal(retry.statusCode, 201);
+  assert.equal(first.statusCode, 201);
+  assert.equal(retry.statusCode, 201);
   assert.equal(first.json().data.status, 'draft');
   assert.deepEqual(input, { userId, ...payload, idempotencyKey: headers['idempotency-key'] });
 });
 
 test('POST /v1/trips rejects invalid date ranges', async () => {
   const app = await createApp();
-  const response = await app.inject({ method: 'POST', url: '/v1/trips', headers: { authorization: `Bearer ${bearerToken}`, 'idempotency-key': '50000000-0000-4000-8000-000000000005' }, payload: { title: 'Invalid', destinationName: 'Here', startDate: '2026-10-08', endDate: '2026-10-07' } });
+  const response = await app.inject({
+    method: 'POST',
+    url: '/v1/trips',
+    headers: {
+      authorization: `Bearer ${bearerToken}`,
+      'idempotency-key': '50000000-0000-4000-8000-000000000005',
+    },
+    payload: {
+      title: 'Invalid',
+      destinationName: 'Here',
+      startDate: '2026-10-08',
+      endDate: '2026-10-07',
+    },
+  });
   await app.close();
-  assert.equal(response.statusCode, 400); assert.equal(response.json().error.code, 'VALIDATION_ERROR');
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error.code, 'VALIDATION_ERROR');
 });
 
 test('PATCH and DELETE /v1/trips/:id update and remove an owned trip', async () => {
@@ -286,11 +365,15 @@ test('PATCH and DELETE /v1/trips/:id update and remove an owned trip', async () 
   const app = await createApp(services);
   const authorization = { authorization: `Bearer ${bearerToken}` };
   const updated = await app.inject({
-    method: 'PATCH', url: `/v1/trips/${tripId}`, headers: authorization,
+    method: 'PATCH',
+    url: `/v1/trips/${tripId}`,
+    headers: authorization,
     payload: { title: 'Edited Pacific Coast' },
   });
   const removed = await app.inject({
-    method: 'DELETE', url: `/v1/trips/${tripId}`, headers: authorization,
+    method: 'DELETE',
+    url: `/v1/trips/${tripId}`,
+    headers: authorization,
   });
   await app.close();
 
@@ -363,12 +446,20 @@ test('PUT /v1/trips/:id/creative-requirements accepts the iPhone form contract i
     { ...empty, generationLanguage: 'auto' as const },
     {
       ...empty,
-      mainPerson: '孩子', companions: '妈妈、孩子', relationship: '母女', focusPerson: '孩子',
-      writingStyle: 'custom' as const, customWritingStyle: '克制而温暖',
-      contentLength: 'custom' as const, customWordCount: 1_800,
+      mainPerson: '孩子',
+      companions: '妈妈、孩子',
+      relationship: '母女',
+      focusPerson: '孩子',
+      writingStyle: 'custom' as const,
+      customWritingStyle: '克制而温暖',
+      contentLength: 'custom' as const,
+      customWordCount: 1_800,
       focuses: ['scenery', 'people', 'culture'] as const,
-      specialMemories: '一起看灯塔', emphasis: '真实互动', avoidExpressions: '不要编造对话',
-      otherRequirements: '按照片顺序叙述', generationLanguage: 'zh-Hans' as const,
+      specialMemories: '一起看灯塔',
+      emphasis: '真实互动',
+      avoidExpressions: '不要编造对话',
+      otherRequirements: '按照片顺序叙述',
+      generationLanguage: 'zh-Hans' as const,
       bookStyle: 'warm_memoir' as const,
     },
   ];
@@ -405,10 +496,12 @@ test('creative requirements validation identifies the rejected field without log
   assert.equal(response.statusCode, 400);
   assert.equal(response.json().error.code, 'VALIDATION_ERROR');
   assert.match(response.json().error.message, /Generation language has an unsupported value/i);
-  assert.deepEqual(response.json().error.details.issues, [{
-    field: 'creativeRequirements.generationLanguage',
-    reason: 'has an unsupported value',
-  }]);
+  assert.deepEqual(response.json().error.details.issues, [
+    {
+      field: 'creativeRequirements.generationLanguage',
+      reason: 'has an unsupported value',
+    },
+  ]);
 });
 
 test('creative requirements normalization strips legacy keys and repairs legacy length values', () => {
@@ -458,25 +551,34 @@ test('GET /v1/users/me returns the authenticated user', async () => {
 
 test('PATCH and DELETE /v1/users/me manage authenticated account data', async () => {
   let deleted = false;
-  const app = await createApp(createServices({
-    users: {
-      findById: async () => user,
-      update: async (_id, input) => ({
-        ...user,
-        displayName: input.displayName ?? user.displayName,
-        retentionDays: input.retentionDays ?? user.retentionDays,
-        privacyAgreedAt: input.privacyAgreed ? now : null,
-      }),
-      deleteAccount: async () => { deleted = true; },
-    },
-  }));
+  const app = await createApp(
+    createServices({
+      users: {
+        findById: async () => user,
+        update: async (_id, input) => ({
+          ...user,
+          displayName: input.displayName ?? user.displayName,
+          retentionDays: input.retentionDays ?? user.retentionDays,
+          privacyAgreedAt: input.privacyAgreed ? now : null,
+        }),
+        deleteAccount: async () => {
+          deleted = true;
+        },
+      },
+    })
+  );
   const headers = { authorization: `Bearer ${bearerToken}` };
   const updated = await app.inject({
-    method: 'PATCH', url: '/v1/users/me', headers,
+    method: 'PATCH',
+    url: '/v1/users/me',
+    headers,
     payload: { displayName: 'Updated Traveler', retentionDays: 365, privacyAgreed: true },
   });
   const removed = await app.inject({
-    method: 'DELETE', url: '/v1/users/me', headers, payload: { confirmation: 'DELETE' },
+    method: 'DELETE',
+    url: '/v1/users/me',
+    headers,
+    payload: { confirmation: 'DELETE' },
   });
   await app.close();
 
@@ -525,7 +627,7 @@ test('GET /v1/trips/:id is owner-scoped and returns NOT_FOUND safely', async () 
   assert.equal(response.json().error.code, 'NOT_FOUND');
 });
 
-test('trip list and detail never expose one authenticated user\'s trips to another', async () => {
+test("trip list and detail never expose one authenticated user's trips to another", async () => {
   const firstSession: SessionRecord = {
     id: '30000000-0000-4000-8000-000000000003',
     userId,
@@ -576,12 +678,12 @@ test('trip list and detail never expose one authenticated user\'s trips to anoth
         return null;
       },
       deleteForUser: async (id, ownerId) =>
-        (id === tripId && ownerId === userId) ||
-        (id === secondTripId && ownerId === secondUserId),
+        (id === tripId && ownerId === userId) || (id === secondTripId && ownerId === secondUserId),
       setCoverPhoto: async () => true,
       updateCreativeRequirementsForUser: async (id, ownerId, creativeRequirements) => {
         if (id === tripId && ownerId === userId) return { ...trip, creativeRequirements };
-        if (id === secondTripId && ownerId === secondUserId) return { ...secondTrip, creativeRequirements };
+        if (id === secondTripId && ownerId === secondUserId)
+          return { ...secondTrip, creativeRequirements };
         return null;
       },
     },
@@ -606,7 +708,10 @@ test('trip list and detail never expose one authenticated user\'s trips to anoth
   await app.close();
 
   assert.equal(firstUserList.statusCode, 200);
-  assert.deepEqual(firstUserList.json().data.map((item: { id: string }) => item.id), [tripId]);
+  assert.deepEqual(
+    firstUserList.json().data.map((item: { id: string }) => item.id),
+    [tripId]
+  );
   assert.equal(crossUserDetail.statusCode, 404);
   assert.equal(crossUserDetail.json().error.code, 'NOT_FOUND');
   assert.equal(secondUserDetail.statusCode, 200);
