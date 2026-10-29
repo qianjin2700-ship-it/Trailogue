@@ -144,6 +144,26 @@ test('trip and photo management stay owner-scoped and preserve explicit ordering
     assert.equal(updated?.highlights, 'Temple gardens');
     assert.equal(updated?.avoidExpressions, 'perfect');
 
+    const creativeRequirements = {
+      mainPerson: null, companions: null, relationship: null, focusPerson: null,
+      writingStyle: 'warm_documentary', customWritingStyle: null,
+      contentLength: 'standard', customWordCount: null, focuses: [],
+      specialMemories: null, emphasis: null, avoidExpressions: null,
+      otherRequirements: null, generationLanguage: 'en', bookStyle: 'travel_magazine',
+    };
+    assert.equal(
+      await trips.updateCreativeRequirementsForUser(trip.id, bob.id, creativeRequirements),
+      null,
+    );
+    const creativeUpdated = await trips.updateCreativeRequirementsForUser(
+      trip.id,
+      alice.id,
+      creativeRequirements,
+    );
+    assert.deepEqual(creativeUpdated?.creativeRequirements, creativeRequirements);
+    assert.equal(creativeUpdated?.destinationName, 'Kyoto');
+    assert.equal(new Date(String(creativeUpdated?.startDate)).toISOString().slice(0, 10), '2026-11-01');
+
     const first = await photos.createUploadIntent({
       id: '74000000-0000-4000-8000-000000000007', userId: alice.id, tripId: trip.id,
       clientUploadId: '75000000-0000-4000-8000-000000000007',

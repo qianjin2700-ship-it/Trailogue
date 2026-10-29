@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 
 import { useAuth } from '@/auth/AuthProvider';
 import { handleProtectedError } from '@/auth/handleProtectedError';
+import { AppError } from '@/api/errors';
 import { storyRepository, tripRepository } from '@/composition/services';
 import type { CreativeRequirementsDTO } from '@/contracts/trip';
 import type { ActualStoryLanguage } from '@trailogue/domain';
@@ -54,20 +55,20 @@ export default function CreativeRequirementsScreen() {
   }, [id, signOut]);
 
   useEffect(() => {
-    if (!id || !loaded || serialized === lastSaved.current) return;
+    if (!id || !loaded || generating || serialized === lastSaved.current) return;
     const timer = setTimeout(() => {
       setSaving(true);
       const normalized = normalizeCreativeRequirements(form);
-      void tripRepository.updateTrip(id, { creativeRequirements: normalized })
+      void tripRepository.updateCreativeRequirements(id, normalized)
         .then(() => { lastSaved.current = serialized; setMessage('Creative requirements saved'); })
         .catch(async (cause: unknown) => {
           if (await handleProtectedError(cause, signOut)) return;
-          setMessage(cause instanceof Error ? cause.message : 'Could not save changes');
+          setMessage(formatFailure('Could not save creative requirements', cause));
         })
         .finally(() => setSaving(false));
     }, 900);
     return () => clearTimeout(timer);
-  }, [form, id, loaded, serialized, signOut]);
+  }, [form, generating, id, loaded, serialized, signOut]);
 
   const update = <K extends keyof CreativeRequirementsDTO>(key: K, value: CreativeRequirementsDTO[K]) => {
     setMessage(null);
@@ -75,17 +76,29 @@ export default function CreativeRequirementsScreen() {
   };
   const generate = async () => {
     if (!id) return;
+    const validationMessage = validateForm(form);
+    if (validationMessage) {
+      setMessage(validationMessage);
+      return;
+    }
     setGenerating(true);
     setMessage(null);
+    const normalized = normalizeCreativeRequirements(form);
     try {
-      const normalized = normalizeCreativeRequirements(form);
-      await tripRepository.updateTrip(id, { creativeRequirements: normalized });
+      await tripRepository.updateCreativeRequirements(id, normalized);
       lastSaved.current = JSON.stringify(normalized);
+    } catch (cause) {
+      if (await handleProtectedError(cause, signOut)) return;
+      setMessage(formatFailure('Could not save creative requirements', cause));
+      setGenerating(false);
+      return;
+    }
+    try {
       await storyRepository.generate(id, { confirmed: true, fallbackLanguage: fallbackLanguage() });
       router.replace({ pathname: '/trips/story', params: { id } });
     } catch (cause) {
       if (await handleProtectedError(cause, signOut)) return;
-      setMessage(cause instanceof Error ? cause.message : 'Story generation failed');
+      setMessage(formatFailure('Could not start story generation', cause));
     } finally {
       setGenerating(false);
     }
@@ -157,6 +170,23 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[styles.chip, selected && styles.chipSelected]}><Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{label}</Text></Pressable>;
 }
 function Centered({ text }: { text: string }) { return <View style={styles.center}><Text>{text}</Text></View>; }
+function validateForm(form: CreativeRequirementsDTO): string | null {
+  if (form.writingStyle === 'custom' && !form.customWritingStyle?.trim()) {
+    return 'Custom style is required when Custom style is selected.';
+  }
+  if (
+    form.contentLength === 'custom' &&
+    (!Number.isInteger(form.customWordCount) || (form.customWordCount ?? 0) < 200 || (form.customWordCount ?? 0) > 10_000)
+  ) {
+    return 'Target words / characters must be a whole number between 200 and 10,000.';
+  }
+  return null;
+}
+function formatFailure(stage: string, cause: unknown): string {
+  const reason = cause instanceof Error ? cause.message : 'Please try again.';
+  const reference = cause instanceof AppError && cause.requestId ? ` Reference: ${cause.requestId}.` : '';
+  return `${stage}: ${reason}${reference}`;
+}
 function fallbackLanguage(): ActualStoryLanguage {
   const locale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
   if (locale.startsWith('zh-tw') || locale.startsWith('zh-hk')) return 'zh-Hant';

@@ -48,17 +48,38 @@ describe('API client', () => {
     });
   });
 
-  it('uses a form-neutral message for validation failures', async () => {
+  it('uses the backend field reason for validation failures', async () => {
     const client = createApiClient({
       baseUrl: 'https://api.example.com',
       fetch: jest.fn().mockResolvedValue(response(400, {
-        error: { code: 'VALIDATION_ERROR', message: 'hidden', requestId: 'request-3' },
+        error: { code: 'VALIDATION_ERROR', message: 'Trip title is required.', requestId: 'request-3' },
       })),
     });
 
     await expect(client.request('/v1/example')).rejects.toMatchObject({
       code: 'INVALID_REQUEST',
-      message: 'Some information is not valid. Review your entries and try again.',
+      message: 'Trip title is required.',
+    });
+  });
+
+  it('preserves safe backend validation details and the request reference', async () => {
+    const client = createApiClient({
+      baseUrl: 'https://api.example.com',
+      fetch: jest.fn().mockResolvedValue(response(400, {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Generation language has an unsupported value.',
+          requestId: 'request-validation-1',
+          details: { issues: [{ field: 'creativeRequirements.generationLanguage', reason: 'unsupported value' }] },
+        },
+      })),
+    });
+
+    await expect(client.request('/v1/example')).rejects.toMatchObject({
+      code: 'INVALID_REQUEST',
+      message: 'Generation language has an unsupported value.',
+      requestId: 'request-validation-1',
+      fieldIssues: [{ field: 'creativeRequirements.generationLanguage', reason: 'unsupported value' }],
     });
   });
 

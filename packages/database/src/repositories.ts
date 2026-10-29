@@ -435,6 +435,21 @@ export class TripRepository {
     return result.rows[0] ?? null;
   }
 
+  async updateCreativeRequirementsForUser(
+    id: string,
+    userId: string,
+    creativeRequirements: object,
+  ): Promise<TripRecord | null> {
+    const result = await this.database.query<{ id: string }>(
+      `update trips
+       set creative_requirements = $3::jsonb, updated_at = now()
+       where id = $1 and user_id = $2
+       returning id`,
+      [id, userId, JSON.stringify(creativeRequirements)],
+    );
+    return result.rowCount === 1 ? this.findByIdForUser(id, userId) : null;
+  }
+
   async deleteForUser(id: string, userId: string): Promise<boolean> {
     const result = await this.database.query<{ id: string }>(
       'delete from trips where id = $1 and user_id = $2 returning id',

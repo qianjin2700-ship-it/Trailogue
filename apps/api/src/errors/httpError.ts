@@ -18,9 +18,10 @@ export function sendError(
   statusCode: number,
   code: ApiErrorCode,
   message: string,
+  details?: ApiErrorResponse['error']['details'],
 ) {
   const body: ApiErrorResponse = {
-    error: { code, message, requestId: request.id },
+    error: { code, message, requestId: request.id, ...(details ? { details } : {}) },
   };
   return reply.status(statusCode).send(body);
 }

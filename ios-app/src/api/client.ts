@@ -58,10 +58,19 @@ export function createApiClient({
 
         const payload = await parseJson<T>(response);
         if (!response.ok) {
-          const backendCode = (payload as Partial<ApiErrorResponse>).error?.code;
+          const backendError = (payload as Partial<ApiErrorResponse>).error;
+          const appCode = backendError?.code ? mapBackendCode(backendError.code) : mapHttpStatus(response.status);
           throw new AppError(
-            backendCode ? mapBackendCode(backendCode) : mapHttpStatus(response.status),
+            appCode,
             response.status,
+            undefined,
+            {
+              message: ['INVALID_REQUEST', 'CONFLICT', 'AI_SERVICE_ERROR'].includes(appCode)
+                ? backendError?.message
+                : undefined,
+              requestId: backendError?.requestId,
+              fieldIssues: backendError?.details?.issues,
+            },
           );
         }
         return payload;

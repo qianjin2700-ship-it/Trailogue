@@ -101,6 +101,7 @@ export type ApiErrorCode =
   | 'RATE_LIMITED'
   | 'INVALID_APPLE_TOKEN'
   | 'NOT_IMPLEMENTED'
+  | 'AI_SERVICE_ERROR'
   | 'INTERNAL_ERROR';
 
 export interface ApiDataResponse<T> {
@@ -119,6 +120,9 @@ export interface ApiErrorResponse {
     code: ApiErrorCode;
     message: string;
     requestId: string;
+    details?: {
+      issues?: Array<{ field: string; reason: string }>;
+    };
   };
 }
 

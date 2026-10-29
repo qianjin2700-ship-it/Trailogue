@@ -31,6 +31,14 @@ export class TripService {
     return this.trips.updateForUser(id, userId, input);
   }
 
+  updateCreativeRequirementsForUser(
+    id: string,
+    userId: string,
+    creativeRequirements: object,
+  ) {
+    return this.trips.updateCreativeRequirementsForUser(id, userId, creativeRequirements);
+  }
+
   async setCoverPhoto(id: string, userId: string, photoId: string | null): Promise<boolean> {
     if (!await this.trips.setCoverPhoto(id, userId, photoId)) {
       throw new HttpError(404, 'NOT_FOUND', 'Trip or cover photo not found');

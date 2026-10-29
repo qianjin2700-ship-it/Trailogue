@@ -59,10 +59,16 @@ export class StoryService {
       caption: photo.caption,
       originalFilename: photo.originalFilename,
     })));
-    const visionAvailable = await this.dependencies.provider.supportsVision();
-    const vision = visionAvailable
-      ? await this.dependencies.provider.understandPhotos(photoInputs)
-      : { facts: [], totalTokens: 0 };
+    let visionAvailable: boolean;
+    let vision: Awaited<ReturnType<DeepSeekProvider['understandPhotos']>>;
+    try {
+      visionAvailable = await this.dependencies.provider.supportsVision();
+      vision = visionAvailable
+        ? await this.dependencies.provider.understandPhotos(photoInputs)
+        : { facts: [], totalTokens: 0 };
+    } catch {
+      throw new HttpError(502, 'AI_SERVICE_ERROR', 'The AI photo analysis service failed. Please try again');
+    }
     await Promise.all(vision.facts.map((fact) => this.dependencies.photos.updateVision({
       id: fact.photoId,
       userId,
@@ -77,8 +83,10 @@ export class StoryService {
       ...photos.flatMap((photo) => [photo.caption, photo.locationName]),
     ], fallbackLanguage);
     const previous = await this.dependencies.stories.findLatestForTrip(userId, tripId);
-    const content = await this.dependencies.provider.generateStory({
-      trip: {
+    let content: StoryContentDTO;
+    try {
+      content = await this.dependencies.provider.generateStory({
+        trip: {
         title: trip.title,
         description: trip.description,
         destinationName: trip.destinationName,
@@ -93,14 +101,17 @@ export class StoryService {
         contentLength: trip.contentLength,
         arrangement: trip.arrangement,
         creativeRequirements: creative as unknown as Record<string, unknown>,
-      },
-      photos: photoInputs,
-      understandings: vision.facts,
-      visionAvailable,
-      feedback: feedback ?? null,
-      languageMode: creative.generationLanguage,
-      actualLanguage,
-    });
+        },
+        photos: photoInputs,
+        understandings: vision.facts,
+        visionAvailable,
+        feedback: feedback ?? null,
+        languageMode: creative.generationLanguage,
+        actualLanguage,
+      });
+    } catch {
+      throw new HttpError(502, 'AI_SERVICE_ERROR', 'The AI story service failed. Please try again');
+    }
     content.meta.totalTokens += vision.totalTokens;
     const record = await this.dependencies.stories.createVersion({
       userId,

@@ -104,6 +104,8 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
         id === tripId && ownerId === userId ? { ...trip, ...input } : null,
       deleteForUser: async (id, ownerId) => id === tripId && ownerId === userId,
       setCoverPhoto: async () => true,
+      updateCreativeRequirementsForUser: async (id, ownerId, creativeRequirements) =>
+        id === tripId && ownerId === userId ? { ...trip, creativeRequirements } : null,
     },
     stories: {
       generate: async () => { throw new Error('Not used by this test'); },
@@ -327,6 +329,71 @@ test('PATCH /v1/trips/:id can save creative requirements for a legacy trip witho
   assert.deepEqual(response.json().data.creativeRequirements, defaultCreativeRequirements());
 });
 
+test('PUT /v1/trips/:id/creative-requirements accepts the iPhone form contract independently of legacy trip fields', async () => {
+  const saved: object[] = [];
+  const services = createServices();
+  services.trips.updateCreativeRequirementsForUser = async (id, ownerId, creativeRequirements) => {
+    saved.push(creativeRequirements);
+    return id === tripId && ownerId === userId
+      ? { ...trip, destinationName: null, creativeRequirements }
+      : null;
+  };
+  const app = await createApp(services);
+  const empty = defaultCreativeRequirements();
+  const cases = [
+    { ...empty, generationLanguage: 'en' as const, bookStyle: 'travel_magazine' as const },
+    { ...empty, writingStyle: 'parent_child' as const, generationLanguage: 'zh-Hans' as const },
+    { ...empty, generationLanguage: 'auto' as const },
+    {
+      ...empty,
+      mainPerson: '孩子', companions: '妈妈、孩子', relationship: '母女', focusPerson: '孩子',
+      writingStyle: 'custom' as const, customWritingStyle: '克制而温暖',
+      contentLength: 'custom' as const, customWordCount: 1_800,
+      focuses: ['scenery', 'people', 'culture'] as const,
+      specialMemories: '一起看灯塔', emphasis: '真实互动', avoidExpressions: '不要编造对话',
+      otherRequirements: '按照片顺序叙述', generationLanguage: 'zh-Hans' as const,
+      bookStyle: 'warm_memoir' as const,
+    },
+  ];
+
+  for (const creativeRequirements of cases) {
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/v1/trips/${tripId}/creative-requirements`,
+      headers: { authorization: `Bearer ${bearerToken}` },
+      payload: { creativeRequirements },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+  }
+  await app.close();
+
+  assert.deepEqual(saved, cases);
+});
+
+test('creative requirements validation identifies the rejected field without logging its value', async () => {
+  const app = await createApp(createServices());
+  const response = await app.inject({
+    method: 'PUT',
+    url: `/v1/trips/${tripId}/creative-requirements`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+    payload: {
+      creativeRequirements: {
+        ...defaultCreativeRequirements(),
+        generationLanguage: 'unsupported-phone-value',
+      },
+    },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error.code, 'VALIDATION_ERROR');
+  assert.match(response.json().error.message, /Generation language has an unsupported value/i);
+  assert.deepEqual(response.json().error.details.issues, [{
+    field: 'creativeRequirements.generationLanguage',
+    reason: 'has an unsupported value',
+  }]);
+});
+
 test('creative requirements normalization strips legacy keys and repairs legacy length values', () => {
   const normalized = normalizeCreativeRequirements({
     ...defaultCreativeRequirements(),
@@ -495,6 +562,11 @@ test('trip list and detail never expose one authenticated user\'s trips to anoth
         (id === tripId && ownerId === userId) ||
         (id === secondTripId && ownerId === secondUserId),
       setCoverPhoto: async () => true,
+      updateCreativeRequirementsForUser: async (id, ownerId, creativeRequirements) => {
+        if (id === tripId && ownerId === userId) return { ...trip, creativeRequirements };
+        if (id === secondTripId && ownerId === secondUserId) return { ...secondTrip, creativeRequirements };
+        return null;
+      },
     },
   });
   const app = await createApp(services);

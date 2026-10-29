@@ -72,6 +72,15 @@ test('story generation persists vision facts, a new version, and a book with the
   assert.equal(savedCover, photoId);
 });
 
+test('story generation reports a distinct AI service failure after settings validation succeeds', async () => {
+  const service = createService({ failStoryProvider: true });
+  await assert.rejects(
+    () => service.generate(userId, tripId),
+    (error: unknown) => error instanceof HttpError &&
+      error.statusCode === 502 && error.code === 'AI_SERVICE_ERROR',
+  );
+});
+
 test('book preview always reflects the trip cover selected after generation', async () => {
   const service = createService({ bookCoverPhotoId: null });
   const result = await service.bookPreview(userId, tripId);
@@ -93,6 +102,7 @@ function createService(options: {
   onStory?: () => void;
   onBook?: (cover: string | null | undefined) => void;
   onVersionType?: (value: string | undefined) => void;
+  failStoryProvider?: boolean;
 } = {}) {
   const storyRecord: StoryRecord = {
     id: storyId, userId, tripId, title: content.title,
@@ -144,7 +154,10 @@ function createService(options: {
         facts: [{ photoId, visibleFacts: ['garden'], inferredLocation: null, confidence: 0.9 }],
         totalTokens: 10,
       }),
-      generateStory: async () => structuredClone(content),
+      generateStory: async () => {
+        if (options.failStoryProvider) throw new Error('provider detail must stay private');
+        return structuredClone(content);
+      },
     },
     readUrlTtlSeconds: 600,
   });

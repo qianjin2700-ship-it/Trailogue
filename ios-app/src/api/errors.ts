@@ -7,6 +7,7 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'INVALID_REQUEST'
   | 'CONFLICT'
+  | 'AI_SERVICE_ERROR'
   | 'SERVER_ERROR'
   | 'UNKNOWN';
 
@@ -19,6 +20,7 @@ const USER_MESSAGES: Record<ApiErrorCode, string> = {
   NOT_FOUND: 'This item could not be found.',
   INVALID_REQUEST: 'Some information is not valid. Review your entries and try again.',
   CONFLICT: 'This request cannot be completed yet. Check the required details and try again.',
+  AI_SERVICE_ERROR: 'The AI story service could not complete this request. Please try again.',
   SERVER_ERROR: 'The service is unavailable right now. Please try again.',
   UNKNOWN: 'Something went wrong. Please try again.',
 };
@@ -26,12 +28,25 @@ const USER_MESSAGES: Record<ApiErrorCode, string> = {
 export class AppError extends Error {
   readonly code: ApiErrorCode;
   readonly status?: number;
+  readonly requestId?: string;
+  readonly fieldIssues?: { field: string; reason: string }[];
 
-  constructor(code: ApiErrorCode, status?: number, cause?: unknown) {
-    super(USER_MESSAGES[code]);
+  constructor(
+    code: ApiErrorCode,
+    status?: number,
+    cause?: unknown,
+    diagnostics?: {
+      message?: string;
+      requestId?: string;
+      fieldIssues?: { field: string; reason: string }[];
+    },
+  ) {
+    super(diagnostics?.message?.trim() || USER_MESSAGES[code]);
     this.name = 'AppError';
     this.code = code;
     this.status = status;
+    this.requestId = diagnostics?.requestId;
+    this.fieldIssues = diagnostics?.fieldIssues;
     if (cause !== undefined) {
       this.cause = cause;
     }
@@ -54,6 +69,7 @@ export function mapBackendCode(code: string): ApiErrorCode {
   if (code === 'NOT_FOUND') return 'NOT_FOUND';
   if (code === 'VALIDATION_ERROR') return 'INVALID_REQUEST';
   if (code === 'CONFLICT') return 'CONFLICT';
+  if (code === 'AI_SERVICE_ERROR') return 'AI_SERVICE_ERROR';
   if (code === 'INTERNAL_ERROR') return 'SERVER_ERROR';
   return 'UNKNOWN';
 }

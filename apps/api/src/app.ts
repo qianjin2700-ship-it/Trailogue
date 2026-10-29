@@ -32,7 +32,7 @@ export interface ApiServices {
   trips: Pick<
     TripService,
     'create' | 'findByIdForUser' | 'listForUser' | 'updateForUser' | 'deleteForUser'
-    | 'setCoverPhoto'
+    | 'setCoverPhoto' | 'updateCreativeRequirementsForUser'
   >;
   stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'restore' | 'bookPreview'>;
   shares: Pick<ShareService, 'create' | 'revoke' | 'resolve'>;
@@ -82,9 +82,26 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
 
   app.setErrorHandler((error, request, reply) => {
     if (typeof error === 'object' && error !== null && 'validation' in error) {
-      return sendError(reply, request, 400, 'VALIDATION_ERROR', 'Request validation failed');
+      const issues = validationIssues(error.validation);
+      request.log.warn({
+        requestId: request.id,
+        method: request.method,
+        url: request.url,
+        validationIssues: issues.map(({ field, keyword }) => ({ field, keyword })),
+      }, 'Request validation failed');
+      const first = issues[0];
+      const message = first
+        ? `${humanizeField(first.field)} ${first.reason}.`
+        : 'The request contains invalid information.';
+      return sendError(reply, request, 400, 'VALIDATION_ERROR', message, {
+        issues: issues.map(({ field, reason }) => ({ field, reason })),
+      });
     }
     if (error instanceof HttpError) {
+      request.log.warn({
+        requestId: request.id, method: request.method, url: request.url,
+        code: error.code, statusCode: error.statusCode,
+      }, 'Request failed');
       return sendError(reply, request, error.statusCode, error.code, error.message);
     }
     request.log.error({ error }, 'Unhandled request error');
@@ -104,4 +121,50 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
   await registerStoryRoutes(app, authenticate, services.stories);
   await registerShareRoutes(app, authenticate, services.shares);
   return app;
+}
+
+interface SafeValidationIssue {
+  field: string;
+  keyword: string;
+  reason: string;
+}
+
+function validationIssues(value: unknown): SafeValidationIssue[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry): SafeValidationIssue[] => {
+    if (typeof entry !== 'object' || entry === null) return [];
+    const issue = entry as {
+      instancePath?: unknown;
+      keyword?: unknown;
+      params?: { missingProperty?: unknown; additionalProperty?: unknown };
+    };
+    const keyword = typeof issue.keyword === 'string' ? issue.keyword : 'invalid';
+    const path = typeof issue.instancePath === 'string'
+      ? issue.instancePath.replace(/^\//, '').replaceAll('/', '.')
+      : '';
+    const property = keyword === 'required' && typeof issue.params?.missingProperty === 'string'
+      ? issue.params.missingProperty
+      : keyword === 'additionalProperties' && typeof issue.params?.additionalProperty === 'string'
+        ? issue.params.additionalProperty
+        : null;
+    const field = [path, property].filter(Boolean).join('.') || 'request';
+    return [{ field, keyword, reason: validationReason(keyword) }];
+  });
+}
+
+function validationReason(keyword: string): string {
+  if (keyword === 'required') return 'is required';
+  if (keyword === 'enum' || keyword === 'const') return 'has an unsupported value';
+  if (keyword === 'type') return 'has the wrong data type';
+  if (keyword === 'minimum' || keyword === 'minLength') return 'is below the allowed minimum';
+  if (keyword === 'maximum' || keyword === 'maxLength' || keyword === 'maxItems') {
+    return 'exceeds the allowed limit';
+  }
+  if (keyword === 'additionalProperties') return 'is not supported';
+  return 'is not valid';
+}
+
+function humanizeField(field: string): string {
+  const last = field.split('.').at(-1) ?? 'request';
+  return last.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (character) => character.toUpperCase());
 }
