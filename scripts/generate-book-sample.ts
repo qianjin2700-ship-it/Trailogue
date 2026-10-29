@@ -1,5 +1,4 @@
-import { mkdir, readdir, writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { BookPreviewDTO } from '../ios-app/src/contracts/story.ts';
@@ -10,15 +9,16 @@ async function main() {
 const root = process.cwd();
 const imageDirectory = path.join(root, 'tmp', 'pdfs', 'guishan-images');
 const files = (await readdir(imageDirectory)).filter((name) => name.endsWith('.jpg')).sort();
-const photos = new Map<string, Photo>(files.map((name, index) => {
+const photos = new Map<string, Photo>(await Promise.all(files.map(async (name, index) => {
   const id = `photo-${index + 1}`;
+  const bytes = await readFile(path.join(imageDirectory, name));
   return [id, {
-    id, tripId: 'sample-trip', status: 'ready', url: pathToFileURL(path.join(imageDirectory, name)).href,
+    id, tripId: 'sample-trip', status: 'ready', url: `data:image/jpeg;base64,${bytes.toString('base64')}`,
     originalFilename: name, mimeType: 'image/jpeg', fileSize: 1,
     width: index % 4 === 0 ? 900 : 1600, height: index % 4 === 0 ? 1400 : 1000,
     capturedAt: null, createdAt: new Date(0), uploadedAt: new Date(0), caption: null, locationName: '桂山岛',
-  }];
-}));
+  }] as [string, Photo];
+})));
 
 const chapters = [
   {
@@ -47,7 +47,7 @@ const book: BookPreviewDTO = {
   id: 'sample-book', tripId: 'sample-trip', storyId: 'sample-story',
   title: '八月的桂山岛：风、灯塔与海味', tripTitle: '八月的桂山岛',
   subtitle: '在珠海度过的四天海边时光', coverPhotoId: 'photo-11',
-  status: 'ready', startDate: '2025-08-24', bookStyle: 'travel_magazine',
+  status: 'ready', startDate: '2025-08-24', bookStyle: 'travel_magazine', layout: {},
   story: {
     title: '八月的桂山岛：风、灯塔与海味', subtitle: '在珠海度过的四天海边时光',
     preface: '旅行从2025年8月24日开始。这些照片记下了步道、灯塔、晚霞和水边的晚餐，也记下了家人一起走过的时间。对无法由照片确认的细节，这本书保留了克制的语气。',
@@ -58,9 +58,11 @@ const book: BookPreviewDTO = {
 
 const outputDirectory = path.join(root, 'tmp', 'pdfs');
 await mkdir(outputDirectory, { recursive: true });
-const document = buildBookLayout(book, photos);
-await writeFile(path.join(outputDirectory, 'guishan-new-layout.html'), renderBookHtml(document, photos), 'utf8');
-console.log(JSON.stringify({ pages: document.pages.length, layouts: [...new Set(document.pages.map((page) => page.kind))] }));
+for (const style of ['travel_magazine', 'warm_memoir', 'minimalist'] as const) {
+  const document = buildBookLayout({ ...book, bookStyle: style }, photos);
+  await writeFile(path.join(outputDirectory, `guishan-${style}.html`), renderBookHtml(document, photos), 'utf8');
+  console.log(JSON.stringify({ style, pages: document.pages.length, layouts: [...new Set(document.pages.map((page) => page.kind))] }));
+}
 }
 
 void main();

@@ -291,9 +291,14 @@ export interface BookPreviewDTO {
   tripTitle: string;
   startDate: string | null;
   bookStyle: BookStyle;
+  layout: Record<string, unknown>;
   story: StoryContentDTO;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateBookLayoutRequest {
+  layout: Record<string, unknown>;
 }
 
 export interface ShareLinkDTO {

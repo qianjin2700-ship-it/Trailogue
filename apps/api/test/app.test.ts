@@ -113,6 +113,7 @@ function createServices(overrides: Partial<ApiServices> = {}): ApiServices {
       latest: async () => { throw new Error('Not used by this test'); },
       versions: async () => [],
       bookPreview: async () => { throw new Error('Not used by this test'); },
+      updateBookLayout: async () => { throw new Error('Not used by this test'); },
       restore: async () => { throw new Error('Not used by this test'); },
     },
     shares: {
@@ -176,11 +177,27 @@ test('story and book routes require bearer authentication', async () => {
     { method: 'POST' as const, url: `/v1/trips/${tripId}/story/generate`, payload: {} },
     { method: 'GET' as const, url: `/v1/trips/${tripId}/story` },
     { method: 'GET' as const, url: `/v1/trips/${tripId}/book` },
+    { method: 'PUT' as const, url: `/v1/trips/${tripId}/book/layout`, payload: { layout: { version: 2, pages: [] } } },
   ]) {
     const response = await app.inject(request);
     assert.equal(response.statusCode, 401);
   }
   await app.close();
+});
+
+test('PUT /v1/trips/:id/book/layout passes the versioned layout contract to the story service', async () => {
+  let received: Record<string, unknown> | undefined;
+  const services = createServices();
+  services.stories.updateBookLayout = async (ownerId, ownedTripId, layout) => {
+    assert.equal(ownerId, userId); assert.equal(ownedTripId, tripId); received = layout;
+    return { id: 'book-1' } as never;
+  };
+  const layout = { version: 2, storyId: 'story-1', style: 'travel_magazine', pages: [{ id: 'cover', kind: 'cover', photoIds: ['photo-1'], captions: {} }] };
+  const app = await createApp(services);
+  const response = await app.inject({ method: 'PUT', url: `/v1/trips/${tripId}/book/layout`, headers: { authorization: `Bearer ${bearerToken}` }, payload: { layout } });
+  await app.close();
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(received, layout);
 });
 
 test('POST /v1/auth/apple returns a Trailogue bearer session', async () => {

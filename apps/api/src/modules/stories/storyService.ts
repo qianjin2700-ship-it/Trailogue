@@ -23,7 +23,7 @@ interface StoryServiceDependencies {
     StoryRepository,
     'createVersion' | 'findLatestForTrip' | 'listVersionsForTrip' | 'findByIdForUser'
   >;
-  books: Pick<BookRepository, 'upsertForTrip' | 'findForTrip'>;
+  books: Pick<BookRepository, 'upsertForTrip' | 'findForTrip' | 'updateLayoutForTrip'>;
   storage: Pick<PhotoObjectStorage, 'createReadUrl'>;
   provider: Pick<DeepSeekProvider, 'model' | 'supportsVision' | 'understandPhotos' | 'generateStory'>;
   readUrlTtlSeconds: number;
@@ -216,6 +216,18 @@ export class StoryService {
     };
   }
 
+  async updateBookLayout(
+    userId: string,
+    tripId: string,
+    layout: Record<string, unknown>,
+  ): Promise<BookPreviewDTO> {
+    await this.requireOwnedTrip(userId, tripId);
+    validateBookLayout(layout);
+    const updated = await this.dependencies.books.updateLayoutForTrip(userId, tripId, layout);
+    if (!updated) throw new HttpError(404, 'NOT_FOUND', 'Book not found');
+    return this.bookPreview(userId, tripId);
+  }
+
   private async saveBook(
     userId: string,
     tripId: string,
@@ -282,8 +294,30 @@ function toBookDto(book: BookRecord, story: StoryContentDTO): BookPreviewDTO {
     tripTitle: book.title,
     startDate: null,
     bookStyle: book.bookStyle ?? 'travel_magazine',
+    layout: book.layout ?? {},
     story,
     createdAt: book.createdAt.toISOString(),
     updatedAt: book.updatedAt.toISOString(),
   };
+}
+
+function validateBookLayout(layout: Record<string, unknown>): void {
+  if (layout.version !== 2 || !Array.isArray(layout.pages) || layout.pages.length === 0 || layout.pages.length > 200) {
+    throw new HttpError(400, 'VALIDATION_ERROR', 'Book layout is invalid');
+  }
+  const serialized = JSON.stringify(layout);
+  if (Buffer.byteLength(serialized, 'utf8') > 240 * 1024) {
+    throw new HttpError(400, 'VALIDATION_ERROR', 'Book layout is too large');
+  }
+  for (const page of layout.pages) {
+    if (
+      typeof page !== 'object' || page === null ||
+      !('id' in page) || typeof page.id !== 'string' || page.id.length > 160 ||
+      !('kind' in page) || typeof page.kind !== 'string' ||
+      !('photoIds' in page) || !Array.isArray(page.photoIds) || page.photoIds.length > 4 ||
+      page.photoIds.some((id: unknown) => typeof id !== 'string')
+    ) {
+      throw new HttpError(400, 'VALIDATION_ERROR', 'Book layout contains an invalid page');
+    }
+  }
 }

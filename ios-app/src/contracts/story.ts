@@ -7,4 +7,5 @@ export type {
   StoryMetaDTO,
   ShareLinkDTO,
   UpdateStoryRequest,
+  UpdateBookLayoutRequest,
 } from '@trailogue/contracts';

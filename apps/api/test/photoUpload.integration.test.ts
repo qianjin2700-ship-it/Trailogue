@@ -110,6 +110,7 @@ async function createFixture() {
         latest: async () => { throw new Error('Not used by this test'); },
         versions: async () => [],
         bookPreview: async () => { throw new Error('Not used by this test'); },
+        updateBookLayout: async () => { throw new Error('Not used by this test'); },
         restore: async () => { throw new Error('Not used by this test'); },
       },
       shares: {

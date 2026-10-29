@@ -267,6 +267,10 @@ test('story versions and book-ready content remain owner scoped', async () => {
     });
     assert.equal((await books.findForTrip(alice.id, trip.id))?.id, book.id);
     assert.equal(await books.findForTrip(bob.id, trip.id), null);
+    const layout = { version: 2, pages: [{ id: 'cover', kind: 'cover', photoIds: [] }] };
+    assert.deepEqual((await books.updateLayoutForTrip(alice.id, trip.id, layout))?.layout, layout);
+    assert.equal(await books.updateLayoutForTrip(bob.id, trip.id, layout), null);
+    assert.equal((await books.findForTrip(alice.id, trip.id))?.storyId, second.id);
 
     const link = await shares.create({
       userId: alice.id, tripId: trip.id, storyId: second.id,

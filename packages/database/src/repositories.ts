@@ -862,6 +862,22 @@ export class BookRepository {
     );
     return result.rows[0] ?? null;
   }
+
+  async updateLayoutForTrip(
+    userId: string,
+    tripId: string,
+    layout: Record<string, unknown>,
+  ): Promise<BookRecord | null> {
+    const result = await this.database.query<BookRecord>(
+      `update books set layout = $3::jsonb, updated_at = now()
+       where id = (
+         select id from books where user_id = $1 and trip_id = $2
+         order by updated_at desc limit 1
+       ) and user_id = $1 returning ${BOOK_RETURNING}`,
+      [userId, tripId, JSON.stringify(layout)],
+    );
+    return result.rows[0] ?? null;
+  }
 }
 
 export class ShareLinkRepository {

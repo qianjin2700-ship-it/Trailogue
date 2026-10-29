@@ -146,6 +146,7 @@ function createService(options: {
         return { ...bookRecord, coverPhotoId: input.coverPhotoId ?? null };
       },
       findForTrip: async () => bookRecord,
+      updateLayoutForTrip: async () => bookRecord,
     },
     storage: { createReadUrl: async () => 'https://signed.example/photo.jpg' },
     provider: {

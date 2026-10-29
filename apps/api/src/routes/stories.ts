@@ -1,4 +1,4 @@
-import type { GenerateStoryRequest, UpdateStoryRequest } from '@trailogue/contracts';
+import type { GenerateStoryRequest, UpdateBookLayoutRequest, UpdateStoryRequest } from '@trailogue/contracts';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
 import type { StoryService } from '../modules/stories/storyService.js';
@@ -11,7 +11,7 @@ const tripParameterSchema = {
 export async function registerStoryRoutes(
   app: FastifyInstance,
   authenticate: preHandlerHookHandler,
-  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'restore' | 'bookPreview'>,
+  stories: Pick<StoryService, 'generate' | 'update' | 'latest' | 'versions' | 'restore' | 'bookPreview' | 'updateBookLayout'>,
 ) {
   app.post(
     '/v1/trips/:tripId/story/generate',
@@ -121,6 +121,26 @@ export async function registerStoryRoutes(
     async (request) => {
       const { tripId } = request.params as { tripId: string };
       return { data: await stories.bookPreview(request.authentication!.userId, tripId) };
+    },
+  );
+
+  app.put(
+    '/v1/trips/:tripId/book/layout',
+    {
+      bodyLimit: 256 * 1024,
+      schema: {
+        tags: ['books'], security: [{ bearerAuth: [] }], params: tripParameterSchema,
+        body: {
+          type: 'object', additionalProperties: false, required: ['layout'],
+          properties: { layout: { type: 'object' } },
+        },
+      },
+      onRequest: authenticate,
+    },
+    async (request) => {
+      const { tripId } = request.params as { tripId: string };
+      const { layout } = request.body as UpdateBookLayoutRequest;
+      return { data: await stories.updateBookLayout(request.authentication!.userId, tripId, layout) };
     },
   );
 }

@@ -4,6 +4,7 @@ import type {
   GenerateStoryRequest,
   StoryDTO,
   UpdateStoryRequest,
+  UpdateBookLayoutRequest,
 } from '@trailogue/contracts';
 
 import type { ApiClient } from './client';
@@ -15,6 +16,7 @@ export interface StoriesApi {
   listVersions(tripId: string): Promise<StoryDTO[]>;
   restore(tripId: string, storyId: string): Promise<StoryDTO>;
   getBook(tripId: string): Promise<BookPreviewDTO>;
+  updateBookLayout(tripId: string, input: UpdateBookLayoutRequest): Promise<BookPreviewDTO>;
 }
 
 export function createStoriesApi(client: ApiClient): StoriesApi {
@@ -46,6 +48,11 @@ export function createStoriesApi(client: ApiClient): StoriesApi {
     },
     async getBook(tripId) {
       return (await client.request<ApiDataResponse<BookPreviewDTO>>(`${tripPath(tripId)}/book`)).data;
+    },
+    async updateBookLayout(tripId, input) {
+      return (await client.request<ApiDataResponse<BookPreviewDTO>>(`${tripPath(tripId)}/book/layout`, {
+        method: 'PUT', body: input,
+      })).data;
     },
   };
 }

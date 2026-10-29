@@ -8,6 +8,7 @@ export interface StoryRepository {
   listVersions(tripId: string): Promise<StoryDTO[]>;
   restore(tripId: string, storyId: string): Promise<StoryDTO>;
   getBook(tripId: string): Promise<BookPreviewDTO>;
+  updateBookLayout(tripId: string, layout: Record<string, unknown>): Promise<BookPreviewDTO>;
 }
 
 export function createStoryRepository(api: StoriesApi): StoryRepository {
@@ -18,5 +19,6 @@ export function createStoryRepository(api: StoriesApi): StoryRepository {
     listVersions: (tripId) => api.listVersions(tripId),
     restore: (tripId, storyId) => api.restore(tripId, storyId),
     getBook: (tripId) => api.getBook(tripId),
+    updateBookLayout: (tripId, layout) => api.updateBookLayout(tripId, { layout }),
   };
 }
