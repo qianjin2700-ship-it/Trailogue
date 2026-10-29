@@ -24,15 +24,34 @@ describe('API client', () => {
     );
   });
 
-  it('normalizes a 401 response', async () => {
+  it('preserves the backend message and request reference in development', async () => {
     const client = createApiClient({
       baseUrl: 'https://api.example.com',
       fetch: jest.fn().mockResolvedValue(response(401, { error: { code: 'UNAUTHORIZED', message: 'raw backend message', requestId: 'request-1' } })),
+      exposeBackendErrors: true,
     });
 
     await expect(client.request('/v1/example')).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
       status: 401,
+      message: 'raw backend message',
+      requestId: 'request-1',
+    });
+  });
+
+  it('keeps the safe user message when backend errors are not exposed', async () => {
+    const client = createApiClient({
+      baseUrl: 'https://api.example.com',
+      fetch: jest.fn().mockResolvedValue(response(401, {
+        error: { code: 'UNAUTHORIZED', message: 'raw backend message', requestId: 'request-production' },
+      })),
+      exposeBackendErrors: false,
+    });
+
+    await expect(client.request('/v1/example')).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      message: 'Your session has expired. Please sign in again.',
+      requestId: 'request-production',
     });
   });
 
@@ -40,6 +59,7 @@ describe('API client', () => {
     const client = createApiClient({
       baseUrl: 'https://api.example.com',
       fetch: jest.fn().mockResolvedValue(response(500, { error: { code: 'INTERNAL_ERROR', message: 'hidden', requestId: 'request-2' } })),
+      exposeBackendErrors: false,
     });
 
     await expect(client.request('/v1/example')).rejects.toMatchObject({

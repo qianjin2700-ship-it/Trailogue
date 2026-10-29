@@ -7,17 +7,26 @@
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
+      "env": {
+        "EXPO_PUBLIC_EXPOSE_BACKEND_ERRORS": "true"
+      },
       "ios": {
         "simulator": true
       }
     },
     "preview": {
       "distribution": "internal",
-      "environment": "preview"
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_EXPOSE_BACKEND_ERRORS": "true"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_EXPOSE_BACKEND_ERRORS": "false"
+      }
     }
   },
   "submit": {

@@ -10,6 +10,7 @@ interface ApiClientOptions {
   fetch?: FetchLike;
   getToken?: TokenProvider;
   timeoutMs?: number;
+  exposeBackendErrors?: boolean;
 }
 
 interface RequestOptions {
@@ -31,6 +32,8 @@ export function createApiClient({
   fetch: fetchImplementation = globalThis.fetch,
   getToken = async () => null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  exposeBackendErrors = process.env.EXPO_PUBLIC_EXPOSE_BACKEND_ERRORS === 'true' ||
+    (typeof __DEV__ !== 'undefined' && __DEV__),
 }: ApiClientOptions = {}): ApiClient {
   const normalizedBaseUrl = baseUrl?.trim().replace(/\/$/, '');
 
@@ -65,7 +68,7 @@ export function createApiClient({
             response.status,
             undefined,
             {
-              message: ['INVALID_REQUEST', 'CONFLICT', 'AI_SERVICE_ERROR'].includes(appCode)
+              message: exposeBackendErrors || ['INVALID_REQUEST', 'CONFLICT', 'AI_SERVICE_ERROR'].includes(appCode)
                 ? backendError?.message
                 : undefined,
               requestId: backendError?.requestId,
