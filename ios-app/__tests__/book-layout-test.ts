@@ -119,6 +119,15 @@ test('three book styles produce materially different plans and HTML themes', () 
   expect(minimalist.pages.some((page) => page.variant === 'text_rail')).toBe(true);
   expect(minimalist.pages.length).toBeGreaterThanOrEqual(8);
   expect(minimalist.pages.length).toBeLessThanOrEqual(12);
+  const singlePhotoMinimalist = buildBookLayout({
+    ...baseBook,
+    bookStyle: 'minimalist',
+    story: { ...baseBook.story, chapters: [{ ...chapter(1), photoIds: ['photo-2'] }] },
+  }, photos);
+  expect(renderBookHtml(singlePhotoMinimalist, photos)).toMatch(
+    /page gallery [^\"]+ text_rail count-1/,
+  );
+  expect(renderBookHtml(singlePhotoMinimalist, photos)).toContain('width:130mm');
   expect(memoir.pages.filter((page) => page.kind !== 'cover').every(
     (page) => !page.body || page.body.length <= 191,
   )).toBe(true);
