@@ -18,7 +18,7 @@ import type {
 
 import { HttpError } from '../../errors/httpError.js';
 import type { PhotoObjectStorage } from '../photos/photoService.js';
-import type { DeepSeekProvider, StoryPhotoInput } from './deepSeekProvider.js';
+import { DeepSeekProviderError, type DeepSeekProvider, type StoryPhotoInput } from './deepSeekProvider.js';
 import { resolveStoryLanguage } from './storyLanguage.js';
 
 interface StoryServiceDependencies {
@@ -81,11 +81,11 @@ export class StoryService {
       vision = visionAvailable
         ? await this.dependencies.provider.understandPhotos(photoInputs)
         : { facts: [], totalTokens: 0 };
-    } catch {
+    } catch (error) {
       throw new HttpError(
         502,
         'AI_SERVICE_ERROR',
-        'The AI photo analysis service failed. Please try again'
+        providerFailureMessage('photo analysis', error)
       );
     }
     await Promise.all(
@@ -145,8 +145,8 @@ export class StoryService {
         languageMode: creative.generationLanguage,
         actualLanguage,
       });
-    } catch {
-      throw new HttpError(502, 'AI_SERVICE_ERROR', 'The AI story service failed. Please try again');
+    } catch (error) {
+      throw new HttpError(502, 'AI_SERVICE_ERROR', providerFailureMessage('story generation', error));
     }
     content.meta.totalTokens += vision.totalTokens;
     const record = await this.dependencies.stories.createVersion({
@@ -261,6 +261,7 @@ export class StoryService {
       coverPhotoId: trip.coverPhotoId,
       tripTitle: trip.title,
       startDate: trip.startDate,
+      bookStyle: normalizeCreativeRequirements(trip.creativeRequirements).bookStyle,
     };
   }
 
@@ -354,7 +355,7 @@ function validateBookLayout(layout: Record<string, unknown>): void {
   if (
     !Number.isInteger(version) ||
     version < 2 ||
-    version > 4 ||
+    version > 5 ||
     !Array.isArray(layout.pages) ||
     layout.pages.length === 0 ||
     layout.pages.length > 200
@@ -382,4 +383,13 @@ function validateBookLayout(layout: Record<string, unknown>): void {
       throw new HttpError(400, 'VALIDATION_ERROR', 'Book layout contains an invalid page');
     }
   }
+}
+
+function providerFailureMessage(stage: 'photo analysis' | 'story generation', error: unknown): string {
+  const detail = error instanceof DeepSeekProviderError
+    ? error.message
+    : error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
+      ? 'DeepSeek request timed out'
+      : 'The AI provider returned an unexpected error';
+  return `AI ${stage} failed: ${detail}. You can safely retry; your photos and existing story were not changed`;
 }

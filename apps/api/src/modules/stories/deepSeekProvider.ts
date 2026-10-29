@@ -204,20 +204,28 @@ User regeneration feedback: ${JSON.stringify(input.feedback ?? null)}`;
     content: string;
     totalTokens: number;
   }> {
-    const response = await this.request(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        response_format: { type: 'json_object' },
-        max_tokens: maxTokens,
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
+    let response: Response;
+    try {
+      response = await this.request(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          response_format: { type: 'json_object' },
+          max_tokens: maxTokens,
+        }),
+        signal: AbortSignal.timeout(90_000),
+      });
+    } catch (error) {
+      if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+        throw new DeepSeekProviderError('DeepSeek request timed out after 90 seconds');
+      }
+      throw new DeepSeekProviderError('DeepSeek could not be reached');
+    }
     if (!response.ok) {
       const requestId = response.headers.get('x-request-id');
       throw new DeepSeekProviderError(

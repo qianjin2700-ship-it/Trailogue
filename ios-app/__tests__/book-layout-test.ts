@@ -92,7 +92,7 @@ const baseBook: BookPreviewDTO = {
 
 test('creates a complete plan with cover fallback and no short blank text pages', () => {
   const document = buildBookLayout(baseBook, photos);
-  expect(document.version).toBe(4);
+  expect(document.version).toBe(5);
   expect(document.pages[0]?.photoIds).toEqual(['photo-1']);
   expect(document.chapters).toHaveLength(4);
   expect(inspectBookLayout(document)).toEqual([]);
@@ -114,11 +114,14 @@ test('three book styles produce materially different plans and HTML themes', () 
   expect(memoir.pages[0]?.variant).toBe('cover_memoir');
   expect(minimalist.pages[0]?.variant).toBe('cover_minimal');
   expect(renderBookHtml(magazine, photos)).toContain('editorial blocks and asymmetric rhythm');
-  expect(renderBookHtml(memoir, photos)).toContain('central keepsake card');
+  expect(renderBookHtml(memoir, photos)).toContain('photo-led keepsake pages');
   expect(renderBookHtml(minimalist, photos)).toContain('slim information rail');
   expect(minimalist.pages.some((page) => page.variant === 'text_rail')).toBe(true);
   expect(minimalist.pages.length).toBeGreaterThanOrEqual(8);
   expect(minimalist.pages.length).toBeLessThanOrEqual(12);
+  expect(memoir.pages.filter((page) => page.kind !== 'cover').every(
+    (page) => !page.body || page.body.length <= 191,
+  )).toBe(true);
 });
 
 test('layout adjustments persist and can be merged into a fresh plan', () => {
@@ -188,7 +191,7 @@ test('migrates V2 plans without discarding user layout edits', () => {
     baseBook,
     photos
   );
-  expect(restored?.version).toBe(4);
+  expect(restored?.version).toBe(5);
   expect(restored?.pages.every((page) => page.photoIds.every((id) => page.placements[id]))).toBe(
     true
   );
@@ -209,7 +212,7 @@ test('replans V3 automatic pages for the reference design while retaining manual
     baseBook,
     photos
   );
-  expect(restored?.version).toBe(4);
+  expect(restored?.version).toBe(5);
   expect(restored?.pages[0]?.variant).toBe('cover_magazine');
   expect(restored?.pages.find((page) => page.id === editable.id)?.title).toBe('Keep this edit');
 });

@@ -9,6 +9,7 @@ import { storyRepository, tripRepository } from '@/composition/services';
 import type { CreativeRequirementsDTO } from '@/contracts/trip';
 import type { ActualStoryLanguage } from '@trailogue/domain';
 import { defaultCreativeRequirements, normalizeCreativeRequirements } from '@/features/stories/creativeRequirements';
+import { recordPerformance } from '@/diagnostics/performance';
 
 const stylesList = [
   ['warm_documentary', 'Warm documentary', 'Honest, gentle and grounded in the journey.'],
@@ -35,16 +36,24 @@ export default function CreativeRequirementsScreen() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [storySnapshot, setStorySnapshot] = useState<CreativeRequirementsDTO | null>(null);
   const lastSaved = useRef('');
   const serialized = useMemo(() => JSON.stringify(form), [form]);
 
   useEffect(() => {
     if (!id) return;
     let active = true;
-    void tripRepository.getTrip(id).then((trip) => {
+    void Promise.all([
+      tripRepository.getTrip(id),
+      storyRepository.getLatest(id).catch((cause: unknown) => {
+        if (cause instanceof AppError && cause.code === 'NOT_FOUND') return null;
+        throw cause;
+      }),
+    ]).then(([trip, story]) => {
       if (!active) return;
       const next = normalizeCreativeRequirements(trip.creativeRequirements);
       setForm(next);
+      setStorySnapshot(story ? normalizeCreativeRequirements(story.creativeSnapshot) : null);
       lastSaved.current = JSON.stringify(next);
       setLoaded(true);
     }).catch(async (cause: unknown) => {
@@ -81,6 +90,7 @@ export default function CreativeRequirementsScreen() {
       setMessage(validationMessage);
       return;
     }
+    const startedAt = Date.now();
     setGenerating(true);
     setMessage(null);
     const normalized = normalizeCreativeRequirements(form);
@@ -93,13 +103,26 @@ export default function CreativeRequirementsScreen() {
       setGenerating(false);
       return;
     }
+    const action = generationAction(storySnapshot, normalized);
+    if (action === 'open-story') {
+      router.replace({ pathname: '/trips/story', params: { id } });
+      setGenerating(false);
+      return;
+    }
+    if (action === 'apply-style') {
+      router.replace({ pathname: '/trips/book', params: { id } });
+      setGenerating(false);
+      return;
+    }
     try {
-      await storyRepository.generate(id, { confirmed: true, fallbackLanguage: fallbackLanguage() });
+      const story = await storyRepository.generate(id, { confirmed: true, fallbackLanguage: fallbackLanguage() });
+      setStorySnapshot(normalizeCreativeRequirements(story.creativeSnapshot));
       router.replace({ pathname: '/trips/story', params: { id } });
     } catch (cause) {
       if (await handleProtectedError(cause, signOut)) return;
       setMessage(formatFailure('Could not start story generation', cause));
     } finally {
+      recordPerformance('story_generation', startedAt, { action: 'deepseek' });
       setGenerating(false);
     }
   };
@@ -144,14 +167,14 @@ export default function CreativeRequirementsScreen() {
           <Chip key={value} label={label} selected={form.generationLanguage === value} onPress={() => update('generationLanguage', value)} />
         ))}</View>
       </Section>
-      <Section title="Book style">
+      <Section title="Book style" subtitle="This changes the visual layout. It does not regenerate an existing story.">
         <Choice label="Travel magazine" detail="Bold imagery, modern type and varied compositions." selected={form.bookStyle === 'travel_magazine'} onPress={() => update('bookStyle', 'travel_magazine')} />
         <Choice label="Warm memoir" detail="Soft color, family moments and memory-led pacing." selected={form.bookStyle === 'warm_memoir'} onPress={() => update('bookStyle', 'warm_memoir')} />
         <Choice label="Minimalist photo book" detail="Photography first, restrained text and deliberate space." selected={form.bookStyle === 'minimalist'} onPress={() => update('bookStyle', 'minimalist')} />
       </Section>
       <Text style={styles.saveState}>{saving ? 'Saving…' : message ?? 'Changes save automatically'}</Text>
       <Pressable accessibilityRole="button" disabled={generating} onPress={() => void generate()} style={[styles.generate, generating && styles.disabled]}>
-        <Text style={styles.generateLabel}>{generating ? 'Generating story…' : 'Start generating story'}</Text>
+        <Text style={styles.generateLabel}>{generating ? 'Working…' : generationButtonLabel(storySnapshot, form)}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -194,6 +217,26 @@ function fallbackLanguage(): ActualStoryLanguage {
   if (locale.startsWith('ja')) return 'ja';
   if (locale.startsWith('ko')) return 'ko';
   return 'en';
+}
+
+function generationAction(
+  snapshot: CreativeRequirementsDTO | null,
+  current: CreativeRequirementsDTO,
+): 'generate' | 'apply-style' | 'open-story' {
+  if (!snapshot) return 'generate';
+  const withoutStyle = ({ bookStyle: _bookStyle, ...value }: CreativeRequirementsDTO) => value;
+  if (JSON.stringify(withoutStyle(snapshot)) !== JSON.stringify(withoutStyle(current))) return 'generate';
+  return snapshot.bookStyle === current.bookStyle ? 'open-story' : 'apply-style';
+}
+
+function generationButtonLabel(
+  snapshot: CreativeRequirementsDTO | null,
+  current: CreativeRequirementsDTO,
+): string {
+  const action = generationAction(snapshot, current);
+  if (action === 'apply-style') return 'Apply style to book';
+  if (action === 'open-story') return 'Open current story';
+  return snapshot ? 'Regenerate story' : 'Start generating story';
 }
 
 const styles = StyleSheet.create({

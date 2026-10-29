@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { StoryContentDTO } from '@trailogue/contracts';
+import { defaultCreativeRequirements, type StoryContentDTO } from '@trailogue/contracts';
 import type { BookRecord, StoryRecord } from '@trailogue/database';
 
 import { HttpError } from '../src/errors/httpError.js';
@@ -128,16 +128,31 @@ test('story generation reports a distinct AI service failure after settings vali
   );
 });
 
+test('all three book styles use the same story generation pipeline and persist the selected style', async () => {
+  for (const bookStyle of ['travel_magazine', 'warm_memoir', 'minimalist'] as const) {
+    let generated = 0;
+    let savedStyle: string | undefined;
+    const service = createService({
+      creativeRequirements: { ...defaultCreativeRequirements(), bookStyle },
+      onGenerate: () => { generated += 1; },
+      onBookStyle: (value) => { savedStyle = value; },
+    });
+    await service.generate(userId, tripId);
+    assert.equal(generated, 1);
+    assert.equal(savedStyle, bookStyle);
+  }
+});
+
 test('book preview always reflects the trip cover selected after generation', async () => {
   const service = createService({ bookCoverPhotoId: null });
   const result = await service.bookPreview(userId, tripId);
   assert.equal(result.coverPhotoId, photoId);
 });
 
-test('book layout persistence accepts the current V4 contract and rejects unknown versions', async () => {
+test('book layout persistence accepts the current V5 contract and rejects unknown versions', async () => {
   const service = createService();
   const layout = {
-    version: 4,
+    version: 5,
     storyId,
     style: 'minimalist',
     pages: [{ id: 'cover', kind: 'cover', photoIds: [photoId] }],
@@ -145,7 +160,7 @@ test('book layout persistence accepts the current V4 contract and rejects unknow
   const result = await service.updateBookLayout(userId, tripId, layout);
   assert.equal(result.id, '75000000-0000-4000-8000-000000000007');
   await assert.rejects(
-    () => service.updateBookLayout(userId, tripId, { ...layout, version: 5 }),
+    () => service.updateBookLayout(userId, tripId, { ...layout, version: 6 }),
     (error: unknown) =>
       error instanceof HttpError && error.statusCode === 400 && error.code === 'VALIDATION_ERROR'
   );
@@ -172,6 +187,9 @@ function createService(
     onBook?: (cover: string | null | undefined) => void;
     onVersionType?: (value: string | undefined) => void;
     failStoryProvider?: boolean;
+    creativeRequirements?: ReturnType<typeof defaultCreativeRequirements>;
+    onGenerate?: () => void;
+    onBookStyle?: (value: string | undefined) => void;
   } = {}
 ) {
   const storyRecord: StoryRecord = {
@@ -207,7 +225,14 @@ function createService(
   };
   return new StoryService({
     trips: {
-      findByIdForUser: async (id, owner) => (id === tripId && owner === userId ? trip : null),
+      findByIdForUser: async (id, owner) => (id === tripId && owner === userId
+        ? {
+            ...trip,
+            ...(options.creativeRequirements
+              ? { creativeRequirements: options.creativeRequirements }
+              : {}),
+          }
+        : null),
     },
     users: {
       findById: async () => ({
@@ -244,6 +269,7 @@ function createService(
     books: {
       upsertForTrip: async (input) => {
         options.onBook?.(input.coverPhotoId);
+        options.onBookStyle?.(input.bookStyle);
         return { ...bookRecord, coverPhotoId: input.coverPhotoId ?? null };
       },
       findForTrip: async () => bookRecord,
@@ -258,6 +284,7 @@ function createService(
         totalTokens: 10,
       }),
       generateStory: async () => {
+        options.onGenerate?.();
         if (options.failStoryProvider) throw new Error('provider detail must stay private');
         return structuredClone(content);
       },

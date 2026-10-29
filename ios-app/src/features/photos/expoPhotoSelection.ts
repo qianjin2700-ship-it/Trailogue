@@ -10,7 +10,16 @@ const MAX_EDGE = 4_096;
 const JPEG_QUALITY = 0.82;
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
-export async function selectAndPreparePhotos(limit = MAX_SELECTION): Promise<PreparedPhoto[]> {
+export interface PhotoSelectionPreview {
+  clientUploadId: string;
+  uri: string;
+  originalFilename: string;
+}
+
+export async function selectAndPreparePhotos(
+  limit = MAX_SELECTION,
+  onSelected?: (previews: PhotoSelectionPreview[]) => void,
+): Promise<PreparedPhoto[]> {
   const selectionLimit = Math.max(1, Math.min(MAX_SELECTION, limit));
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
@@ -21,14 +30,31 @@ export async function selectAndPreparePhotos(limit = MAX_SELECTION): Promise<Pre
     exif: true,
   });
   if (result.canceled) return [];
-  const prepared: PreparedPhoto[] = [];
-  for (const asset of result.assets.slice(0, selectionLimit)) {
-    prepared.push(await normalizeToJpeg(asset));
-  }
+  const selected = result.assets.slice(0, selectionLimit).map((asset) => {
+    const clientUploadId = randomUUID();
+    return { asset, clientUploadId };
+  });
+  onSelected?.(selected.map(({ asset, clientUploadId }) => ({
+    clientUploadId,
+    uri: asset.uri,
+    originalFilename: jpegFilename(asset.fileName, clientUploadId),
+  })));
+  const prepared = new Array<PreparedPhoto>(selected.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(3, selected.length) }, async () => {
+    while (cursor < selected.length) {
+      const index = cursor++;
+      const item = selected[index]!;
+      prepared[index] = await normalizeToJpeg(item.asset, item.clientUploadId);
+    }
+  }));
   return prepared;
 }
 
-async function normalizeToJpeg(asset: ImagePicker.ImagePickerAsset): Promise<PreparedPhoto> {
+async function normalizeToJpeg(
+  asset: ImagePicker.ImagePickerAsset,
+  clientUploadId: string,
+): Promise<PreparedPhoto> {
   const context = ImageManipulator.manipulate(asset.uri);
   const longestEdge = Math.max(asset.width, asset.height);
   if (longestEdge > MAX_EDGE) {
@@ -39,7 +65,6 @@ async function normalizeToJpeg(asset: ImagePicker.ImagePickerAsset): Promise<Pre
   try {
     const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY });
     const file = new File(saved.uri);
-    const clientUploadId = randomUUID();
     if (!file.exists || !file.size) throw new Error('The selected photo could not be prepared');
     if (file.size > MAX_UPLOAD_BYTES) {
       throw new Error('This photo is still larger than 15 MB after compression');

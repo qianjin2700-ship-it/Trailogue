@@ -7,8 +7,9 @@ import { handleProtectedError } from '@/auth/handleProtectedError';
 import { photoRepository, photoUploadService, tripRepository } from '@/composition/services';
 import type { LoadState } from '@/contracts/common';
 import type { Photo } from '@/domain/photo/photo';
+import { recordPerformance } from '@/diagnostics/performance';
 
-import { selectAndPreparePhotos } from './expoPhotoSelection';
+import { selectAndPreparePhotos, type PhotoSelectionPreview } from './expoPhotoSelection';
 import { runUploadQueue, type PreparedPhoto } from './photoUploadService';
 
 interface UploadItem {
@@ -34,6 +35,7 @@ export function PhotoSection({
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [selecting, setSelecting] = useState(false);
   const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [selectionPreviews, setSelectionPreviews] = useState<PhotoSelectionPreview[]>([]);
   const [batchProgress, setBatchProgress] = useState<{ completed: number; total: number } | null>(null);
 
   const loadPhotos = useCallback(async (showLoading = true) => {
@@ -79,19 +81,31 @@ export function PhotoSection({
   }, [loadPhotos, signOut, tripId]);
 
   const addPhotos = useCallback(async () => {
+    const startedAt = Date.now();
+    let processingStartedAt = startedAt;
+    let selectedCount = 0;
     setSelecting(true);
     setSelectionError(null);
     try {
       const savedCount = photos.status === 'success' ? photos.data.length : 0;
       const remaining = 50 - savedCount - uploads.length;
       if (remaining <= 0) throw new Error('This trip already has the maximum of 50 photos');
-      const selected = await selectAndPreparePhotos(Math.min(25, remaining));
+      const selected = await selectAndPreparePhotos(
+        Math.min(25, remaining),
+        (previews) => {
+          processingStartedAt = Date.now();
+          selectedCount = previews.length;
+          setSelectionPreviews(previews);
+          recordPerformance('photo_selection', processingStartedAt, { count: previews.length });
+        },
+      );
       if (selected.length === 0) return;
       setUploads((items) => selected.reduce(
         (next, photo) => upsertUpload(next, { photo, progress: 0, status: 'queued' }),
         items,
       ));
       setBatchProgress({ completed: 0, total: selected.length });
+      setSelectionPreviews([]);
       await runUploadQueue(selected, 3, async (photo) => {
         await runUpload(photo, false);
         setBatchProgress((current) => current
@@ -103,6 +117,8 @@ export function PhotoSection({
     } catch (error) {
       setSelectionError(error instanceof Error ? error.message : 'Photos could not be prepared');
     } finally {
+      recordPerformance('photo_preparation_upload', processingStartedAt, { count: selectedCount });
+      setSelectionPreviews([]);
       setSelecting(false);
     }
   }, [loadPhotos, photos, runUpload, uploads.length]);
@@ -310,8 +326,19 @@ export function PhotoSection({
           ))}
         </View>
       ) : null}
+      {selectionPreviews.length > 0 ? (
+        <View style={styles.grid}>
+          {selectionPreviews.map((preview) => (
+            <View key={preview.clientUploadId} style={styles.photoCard}>
+              <Image source={{ uri: preview.uri }} style={styles.photo} />
+              <Text numberOfLines={1} style={styles.preparingLabel}>Preparing…</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {uploads.map((item) => (
         <View key={item.photo.clientUploadId} style={styles.uploadRow}>
+          <Image source={{ uri: item.photo.uri }} style={styles.uploadThumbnail} />
           <View style={styles.uploadCopy}>
             <Text numberOfLines={1} style={styles.uploadName}>{item.photo.originalFilename}</Text>
             <Text style={item.status === 'failed' ? styles.errorText : styles.progressText}>
@@ -366,9 +393,11 @@ const styles = StyleSheet.create({
   coverAction: { color: '#7D5C3C', fontSize: 11, fontWeight: '700', marginTop: 6, textAlign: 'center' },
   coverSelected: { color: '#FFFFFF', backgroundColor: '#7D5C3C', borderRadius: 8, fontSize: 11, fontWeight: '700', marginTop: 6, overflow: 'hidden', paddingVertical: 4, textAlign: 'center' },
   uploadRow: { alignItems: 'center', backgroundColor: '#EFE9E0', borderRadius: 10, flexDirection: 'row', marginTop: 12, padding: 12 },
+  uploadThumbnail: { backgroundColor: '#E0D7CB', borderRadius: 7, height: 52, marginRight: 10, width: 52 },
   uploadCopy: { flex: 1, marginRight: 12 },
   uploadName: { color: '#24211D', fontSize: 14, fontWeight: '600' },
   progressText: { color: '#655F57', fontSize: 13, marginTop: 4 },
+  preparingLabel: { color: '#655F57', fontSize: 11, marginTop: 5, textAlign: 'center' },
 });
 
 function parsePhotoDate(value?: string): string | null | undefined {

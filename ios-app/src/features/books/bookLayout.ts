@@ -53,7 +53,7 @@ export interface BookChapterPlan {
   photoIds: string[];
 }
 export interface BookLayoutDocument {
-  version: 4;
+  version: 5;
   storyId: string;
   style: BookPreviewDTO['bookStyle'];
   language: string;
@@ -132,7 +132,7 @@ export function buildBookLayout(
     0,
     book.bookStyle === 'minimalist' ? 1 : 2
   );
-  const closingBody = joinCopy(book.story.preface, book.story.epilogue);
+  const closingBody = bookExcerpt(joinCopy(book.story.preface, book.story.epilogue), book.bookStyle);
   if (closingBody)
     pages.push(
       finalizePage(
@@ -151,7 +151,7 @@ export function buildBookLayout(
       )
     );
   return {
-    version: 4,
+    version: 5,
     storyId: book.storyId,
     style: book.bookStyle,
     language,
@@ -170,13 +170,15 @@ function planChapter(
   photos: Map<string, Photo>
 ): BookPage[] {
   const pages: BookPage[] = [];
-  const textChunks = splitNarrative(chapter.narrative, style === 'minimalist' ? 250 : 430);
+  const bookCopy = bookExcerpt(chapter.narrative, style);
   const captions = chapter.captions ?? {};
   let cursor = 0;
   const openerCount =
     style === 'travel_magazine'
       ? Math.min(ids.length, 1)
-      : Math.min(ids.length, ids.length === 3 || ids.length >= 5 ? 3 : 2);
+      : style === 'warm_memoir'
+        ? Math.min(ids.length, ids.length >= 4 ? 2 : 1)
+        : Math.min(ids.length, ids.length >= 3 ? 2 : 1);
   const openerIds = ids.slice(cursor, (cursor += openerCount));
   const selected =
     style === 'travel_magazine'
@@ -197,7 +199,7 @@ function planChapter(
         variant: openerIds.length ? openerVariant : 'default',
         eyebrow: chapterMeta(chapter),
         title: chapter.title,
-        body: textChunks.shift(),
+        body: bookCopy,
         photoIds: openerIds,
         captions,
         placements: {},
@@ -215,23 +217,19 @@ function planChapter(
     photos
   );
   gallery.forEach((page, index) => {
-    if (textChunks[index]) page.body = textChunks[index];
     if (style === 'minimalist') {
       page.variant = 'text_rail';
       page.eyebrow = chapterMeta(chapter);
-      page.title = chapter.title;
-    } else if (style === 'warm_memoir' && index === 0) {
-      page.variant = 'story_card';
-      page.eyebrow = chapterMeta(chapter);
-      page.title = chapter.title;
+      page.title = index === 0 ? chapter.title : undefined;
+      page.body = undefined;
+    } else if (style === 'warm_memoir') {
+      page.variant = index === 0 ? 'story_card' : page.variant;
+      page.eyebrow = index === 0 ? chapterMeta(chapter) : undefined;
+      page.title = index === 0 ? chapter.title : undefined;
+      page.body = undefined;
     }
   });
   pages.push(...gallery);
-  const leftover = textChunks.slice(gallery.length).join('\n\n');
-  if (leftover) {
-    const target = pages.findLast((page) => page.photoIds.length > 0) ?? pages.at(-1);
-    if (target) target.body = joinCopy(target.body, leftover);
-  }
   return pages.filter((page) => page.photoIds.length > 0 || Boolean(page.body?.trim()));
 }
 
@@ -248,7 +246,11 @@ function planGallery(
   let index = 0;
   while (offset < ids.length) {
     const left = ids.length - offset;
-    let take = style === 'travel_magazine' ? Math.min(left, left === 5 ? 3 : 4) : Math.min(left, 3);
+    let take = style === 'travel_magazine'
+      ? Math.min(left, left === 5 ? 3 : 4)
+      : style === 'warm_memoir'
+        ? Math.min(left, left === 4 ? 2 : 3)
+        : Math.min(left, 3);
     if (style === 'minimalist' && left === 4) take = 2;
     const slice = ids.slice(offset, offset + take);
     const selected = selectLayout(style, slice, photos, seed + index, false);
@@ -376,7 +378,7 @@ function layoutCandidates(
     {
       kind: 'four_grid',
       variant: 'default',
-      slotAspects: [0.82, 0.82, 0.82, 0.82],
+      slotAspects: [1.48, 1.48, 1.48, 1.48],
       areaScore: 0.82,
       styleScore: style === 'travel_magazine' ? 1 : 0.7,
     },
@@ -465,7 +467,7 @@ export function slotAspects(
   if (kind === 'hero_two') return count === 2 ? [1.5, 1.5] : [1.55, 0.82, 0.82];
   if (kind === 'three_collage')
     return variant === 'landscape_lead' ? [1.55, 1.55, 1.55] : [0.78, 1.18, 1.18];
-  if (kind === 'four_grid') return Array(count).fill(0.82);
+  if (kind === 'four_grid') return Array(count).fill(1.48);
   return Array(count).fill(1.15);
 }
 
@@ -476,7 +478,7 @@ export function restoreBookLayout(
 ): BookLayoutDocument | null {
   if (
     !raw ||
-    ![2, 3, 4].includes(Number(raw.version)) ||
+    ![2, 3, 4, 5].includes(Number(raw.version)) ||
     raw.storyId !== book.storyId ||
     raw.style !== book.bookStyle ||
     !Array.isArray(raw.pages)
@@ -493,7 +495,7 @@ export function restoreBookLayout(
   });
   if (!pages.length || pages[0]?.kind !== 'cover') return null;
   const restored: BookLayoutDocument = {
-    version: 4,
+    version: 5,
     storyId: book.storyId,
     style: book.bookStyle,
     language:
@@ -503,7 +505,7 @@ export function restoreBookLayout(
     chapters: Array.isArray(raw.chapters) ? raw.chapters.filter(isChapterPlan) : [],
     pages,
   };
-  if (Number(raw.version) === 4) return restored;
+  if (Number(raw.version) === 5) return restored;
   return mergeUserEdits(buildBookLayout(book, photos), restored);
 }
 
@@ -738,16 +740,16 @@ figure{margin:0;overflow:hidden;position:relative}figcaption{background:linear-g
 .split{display:grid;gap:10mm;grid-template-columns:1.13fr .87fr}.split.image_right{grid-template-columns:.87fr 1.13fr}.split .media{height:247mm}.split .media>figure{height:100%}.split .copy{align-self:center}
 .gallery{display:flex;flex-direction:column}.gallery .media{display:grid;gap:3mm;height:${warm ? 194 : 209}mm}.gallery .copy{margin-top:7mm}.two_photo.pair_columns .media{grid-template-columns:1fr 1fr;height:${warm ? 164 : 182}mm}.two_photo.pair_rows .media{grid-template-rows:1fr 1fr}.hero_two .media{grid-template-columns:1fr 1fr;grid-template-rows:1.48fr 1fr}.hero_two figure:first-child{grid-column:1/3}.hero_two.count-2 figure:nth-child(2){grid-column:1/3}.three_collage.portrait_lead .media{grid-template-columns:1.2fr .8fr;grid-template-rows:1fr 1fr}.three_collage.portrait_lead figure:first-child{grid-row:1/3}.three_collage.landscape_lead .media{grid-template-columns:1fr 1fr;grid-template-rows:1.35fr 1fr}.three_collage.landscape_lead figure:first-child{grid-column:1/3}.four_grid .media{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .full_bleed{padding:0}.full_bleed .media{height:100%;inset:0;position:absolute}.full_bleed .media>figure{height:100%}.full_bleed .copy{background:rgba(255,255,255,.94);bottom:12mm;left:12mm;max-width:128mm;padding:7mm;position:absolute}
-.prose{display:grid;gap:11mm;grid-template-columns:${warm ? '1.05fr .95fr' : '1fr 1fr'};align-items:center}.prose .media{height:185mm}.prose .media>figure{height:100%}.prose .media:empty{display:none}.prose.outro{grid-template-columns:1fr 1.2fr}
+.prose{display:grid;gap:11mm;grid-template-columns:${warm ? '1.05fr .95fr' : '1fr 1fr'};align-items:center}.prose .media{height:185mm}.prose .media>figure{height:100%}.prose .media:empty{display:none}.prose.outro{grid-template-columns:.52fr 1.48fr;padding:12mm}.prose.outro .media{height:255mm}
 
 /* Travel magazine: saturated photography, editorial blocks and asymmetric rhythm. */
 .travel_magazine .cover{background:#14283b;color:#fff}.travel_magazine .cover_magazine .media{height:58%;bottom:auto}.travel_magazine .cover_magazine .cover-shade{background:linear-gradient(180deg,transparent,rgba(8,17,25,.92));height:18%;left:0;right:0;top:40%}.travel_magazine .cover_magazine .cover-copy{bottom:18mm;left:17mm;max-width:178mm}.travel_magazine .cover_magazine h1{font-size:47pt;letter-spacing:-1.6px}.travel_magazine .cover_magazine p{font-size:13.5pt;max-width:145mm}.travel_magazine .cover_magazine .eyebrow{color:#fff}.travel_magazine .split .copy{border-top:2.2mm solid #d7643d;padding-top:7mm}.travel_magazine .gallery{padding:10mm}.travel_magazine .gallery:not(:has(.copy)) .media{height:259mm}.travel_magazine .gallery .copy{background:#fff;padding:5mm 7mm;margin:0;max-width:150mm;position:absolute;bottom:10mm;left:10mm;z-index:2}.travel_magazine .four_grid .copy{max-width:92mm}.travel_magazine .page-number{background:rgba(255,255,255,.85);padding:1.5mm 2mm}
 
-/* Warm memoir: tactile paper, a central keepsake card and gentle picture layers. */
-.warm_memoir .page{background-color:#f7efe4;background-image:radial-gradient(circle at 16% 12%,rgba(180,137,93,.08),transparent 28%),linear-gradient(110deg,rgba(255,255,255,.45),transparent 44%)}.warm_memoir .cover_memoir{color:#49342c;padding:17mm}.warm_memoir .cover_memoir:before,.warm_memoir .cover_memoir:after{content:"";position:absolute;border-radius:50%;background:rgba(113,132,88,.19);transform:rotate(-25deg)}.warm_memoir .cover_memoir:before{height:42mm;width:14mm;left:8mm;top:20mm}.warm_memoir .cover_memoir:after{height:33mm;width:12mm;right:9mm;bottom:18mm}.warm_memoir .cover_memoir .media{background:#fffaf2;box-shadow:0 3mm 9mm rgba(72,45,31,.18);height:166mm;left:25mm;padding:7mm;right:25mm;top:20mm}.warm_memoir .cover_memoir .media>figure{height:100%}.warm_memoir .cover_memoir .cover-shade{display:none}.warm_memoir .cover_memoir .cover-copy{bottom:23mm;left:25mm;right:25mm;text-align:center}.warm_memoir .cover_memoir h1{font-size:35pt}.warm_memoir .cover_memoir p{font-size:12pt}.warm_memoir figure{border-radius:1.5mm;box-shadow:0 1.2mm 4mm rgba(72,45,31,.13)}.warm_memoir .gallery,.warm_memoir .split{padding:18mm}.warm_memoir .gallery .copy,.warm_memoir .split .copy{background:#fffaf2;box-shadow:0 1.5mm 5mm rgba(72,45,31,.1);padding:6mm 7mm}.warm_memoir .story_card .copy{border-left:1.2mm solid #c78d72}.warm_memoir .chapter_opener.landscape_lead{background:#f7efe4}
+/* Warm memoir: photo-led keepsake pages with compact memory cards. */
+.warm_memoir .page{background-color:#f7efe4;background-image:radial-gradient(circle at 16% 12%,rgba(180,137,93,.08),transparent 28%),linear-gradient(110deg,rgba(255,255,255,.45),transparent 44%)}.warm_memoir .cover_memoir{color:#49342c;padding:12mm}.warm_memoir .cover_memoir:before,.warm_memoir .cover_memoir:after{content:"";position:absolute;border-radius:50%;background:rgba(113,132,88,.16);transform:rotate(-25deg)}.warm_memoir .cover_memoir:before{height:42mm;width:14mm;left:5mm;top:20mm}.warm_memoir .cover_memoir:after{height:33mm;width:12mm;right:5mm;bottom:11mm}.warm_memoir .cover_memoir .media{background:#fffaf2;box-shadow:0 3mm 9mm rgba(72,45,31,.18);height:202mm;left:17mm;padding:5mm;right:17mm;top:12mm}.warm_memoir .cover_memoir .media>figure{height:100%}.warm_memoir .cover_memoir .cover-shade{display:none}.warm_memoir .cover_memoir .cover-copy{background:rgba(255,250,242,.96);bottom:12mm;box-shadow:0 1.5mm 5mm rgba(72,45,31,.12);left:31mm;padding:7mm 10mm;right:31mm;text-align:center}.warm_memoir .cover_memoir h1{font-size:32pt}.warm_memoir .cover_memoir p{font-size:10.5pt;margin-top:3mm}.warm_memoir figure{border-radius:1.5mm;box-shadow:0 1.2mm 4mm rgba(72,45,31,.13)}.warm_memoir .gallery{padding:10mm}.warm_memoir .gallery .media{height:239mm}.warm_memoir .two_photo.pair_columns .media{height:232mm}.warm_memoir .gallery .copy{background:rgba(255,250,242,.95);bottom:10mm;box-shadow:0 1.5mm 5mm rgba(72,45,31,.12);left:10mm;margin:0;max-width:150mm;padding:5mm 7mm;position:absolute;z-index:2}.warm_memoir .gallery .copy p{font-size:10pt;line-height:1.6}.warm_memoir .split{gap:7mm;grid-template-columns:1.5fr .5fr;padding:11mm}.warm_memoir .split.image_right{grid-template-columns:.5fr 1.5fr}.warm_memoir .split .media{height:257mm}.warm_memoir .split .copy{align-self:end;background:#fffaf2;box-shadow:0 1.5mm 5mm rgba(72,45,31,.1);padding:6mm}.warm_memoir .split .copy p{font-size:9.6pt;line-height:1.55}.warm_memoir .story_card .copy{border-left:1.2mm solid #c78d72}.warm_memoir .chapter_opener.landscape_lead{background:#f7efe4}
 
 /* Minimalist photo book: slim information rail and broad, uninterrupted image bands. */
-.minimalist .page{padding:14mm 13mm}.minimalist .cover_minimal{color:#171914;padding:0}.minimalist .cover_minimal .media{height:68%;bottom:auto}.minimalist .cover_minimal .cover-shade{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.62));height:28%;left:0;right:0;top:40%}.minimalist .cover_minimal .cover-copy{left:17mm;right:17mm;text-align:center;top:42%}.minimalist .cover_minimal h1{font-family:"Songti SC",Georgia,serif;font-size:39pt}.minimalist .cover_minimal p{font-size:11pt}.minimalist .cover_minimal .eyebrow{color:#333}.minimalist .gallery.text_rail{display:grid;grid-template-columns:35mm 1fr;gap:6mm;padding:12mm 10mm}.minimalist .gallery.text_rail .copy{grid-column:1;grid-row:1;margin:0;padding-top:3mm}.minimalist .gallery.text_rail .media{grid-column:2;grid-row:1;height:245mm;gap:2.5mm}.minimalist .gallery.text_rail h2{color:#18365d;font-family:"Songti SC",Georgia,serif;font-size:16pt;line-height:1.3}.minimalist .gallery.text_rail p{font-size:8.6pt;line-height:1.55}.minimalist .gallery.text_rail .eyebrow{font-size:7pt;line-height:1.5}.minimalist .page-number{color:#777}.minimalist .two_photo.pair_rows .media{height:245mm}.minimalist .split{grid-template-columns:1.28fr .72fr}.minimalist .split .copy{align-self:end;padding-bottom:18mm}.minimalist .outro{padding:21mm}
+.minimalist .page{padding:14mm 13mm}.minimalist .cover_minimal{color:#171914;padding:0}.minimalist .cover_minimal .media{height:80%;bottom:auto}.minimalist .cover_minimal .cover-shade{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.7));height:26%;left:0;right:0;top:53%}.minimalist .cover_minimal .cover-copy{left:17mm;right:17mm;text-align:center;top:57%}.minimalist .cover_minimal h1{font-family:"Songti SC",Georgia,serif;font-size:39pt}.minimalist .cover_minimal p{font-size:11pt}.minimalist .cover_minimal .eyebrow{color:#333}.minimalist .gallery.text_rail{display:grid;grid-template-columns:30mm 1fr;gap:6mm;padding:12mm 10mm}.minimalist .gallery.text_rail .copy{grid-column:1;grid-row:1;margin:0;padding-top:3mm}.minimalist .gallery.text_rail .media{grid-column:2;grid-row:1;height:245mm;gap:2.5mm}.minimalist .gallery.text_rail h2{color:#18365d;font-family:"Songti SC",Georgia,serif;font-size:16pt;line-height:1.3}.minimalist .gallery.text_rail p{font-size:8.6pt;line-height:1.55}.minimalist .gallery.text_rail .eyebrow{font-size:7pt;line-height:1.5}.minimalist .page-number{color:#777}.minimalist .two_photo.pair_rows .media{height:245mm}.minimalist .split{grid-template-columns:1.28fr .72fr}.minimalist .split .copy{align-self:end;padding-bottom:18mm}.minimalist .outro{padding:12mm}
 `;
 }
 
@@ -761,18 +763,17 @@ function updatePage(
     pages: document.pages.map((page) => (page.id === pageId ? updater(page) : page)),
   };
 }
-function splitNarrative(value: string, max: number): string[] {
-  const paragraphs = value
-    .trim()
-    .split(/\n\s*\n/)
-    .filter(Boolean);
-  const chunks: string[] = [];
-  for (const paragraph of paragraphs) {
-    if (!chunks.length || chunks[chunks.length - 1]!.length + paragraph.length > max)
-      chunks.push(paragraph);
-    else chunks[chunks.length - 1] += `\n\n${paragraph}`;
-  }
-  return chunks.length ? chunks : [''];
+function bookExcerpt(value: string, style: BookPreviewDTO['bookStyle']): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  const cjk = /[\u3000-\u9fff\uf900-\ufaff]/.test(normalized);
+  const limit = cjk
+    ? style === 'minimalist' ? 42 : style === 'warm_memoir' ? 78 : 110
+    : style === 'minimalist' ? 105 : style === 'warm_memoir' ? 190 : 260;
+  if (normalized.length <= limit) return normalized;
+  const clipped = normalized.slice(0, limit);
+  const boundary = Math.max(clipped.lastIndexOf('。'), clipped.lastIndexOf('！'), clipped.lastIndexOf('？'), clipped.lastIndexOf('. '));
+  return `${clipped.slice(0, boundary > limit * 0.55 ? boundary + 1 : limit).trim()}…`;
 }
 function joinCopy(...values: (string | undefined | null)[]): string {
   return values

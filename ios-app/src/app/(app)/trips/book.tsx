@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,20 +17,18 @@ import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { handleProtectedError } from '@/auth/handleProtectedError';
-import { photoRepository, sharesApi, storyRepository } from '@/composition/services';
+import { photoRepository, sharesApi, storyRepository, tripRepository } from '@/composition/services';
 import type { BookPreviewDTO, ShareLinkDTO } from '@/contracts/story';
 import type { Photo } from '@/domain/photo/photo';
+import { recordPerformance } from '@/diagnostics/performance';
 import {
   buildBookLayout,
   changePageLayout,
-  cyclePhotoFocus,
   makePdfFilename,
-  mergeUserEdits,
   renderBookHtml,
   restoreBookLayout,
   rotatePagePhotos,
   swapPageLeadPhoto,
-  togglePhotoFit,
   type BookLayoutDocument,
   type BookPage,
 } from '@/features/books/bookLayout';
@@ -46,19 +44,25 @@ export default function BookPreviewScreen() {
   const [exporting, setExporting] = useState(false);
   const [exportStage, setExportStage] = useState<string | null>(null);
   const [activeShare, setActiveShare] = useState<ShareLinkDTO | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [changingStyle, setChangingStyle] = useState(false);
+  const [savingLayout, setSavingLayout] = useState(false);
   useEffect(() => {
     if (!id) return;
     let active = true;
+    const startedAt = Date.now();
     void Promise.all([storyRepository.getBook(id), photoRepository.getPhotos(id)])
       .then(([nextBook, nextPhotos]) => {
         if (!active) return;
         const photoMap = new Map(nextPhotos.map((photo) => [photo.id, photo]));
+        const restored = restoreBookLayout(nextBook.layout, nextBook, photoMap);
         setBook(nextBook);
         setPhotos(photoMap);
-        setDocument(
-          restoreBookLayout(nextBook.layout, nextBook, photoMap) ??
-            buildBookLayout(nextBook, photoMap)
-        );
+        setDocument(restored ?? buildBookLayout(nextBook, photoMap));
+        recordPerformance('book_preview', startedAt, {
+          photoCount: nextPhotos.length,
+          restoredLayout: Boolean(restored),
+        });
       })
       .catch(async (cause: unknown) => {
         if (!active || (await handleProtectedError(cause, signOut))) return;
@@ -85,6 +89,7 @@ export default function BookPreviewScreen() {
   const saveLayout = async (next: BookLayoutDocument) => {
     if (!id) return;
     const previous = document;
+    setSavingLayout(true);
     setDocument(next);
     setError(null);
     try {
@@ -93,9 +98,41 @@ export default function BookPreviewScreen() {
       setDocument(previous);
       if (!(await handleProtectedError(cause, signOut)))
         setError(cause instanceof Error ? cause.message : 'Could not save the book layout');
+    } finally {
+      setSavingLayout(false);
+    }
+  };
+  const regenerateLayout = async () => {
+    await saveLayout(buildBookLayout(book, photos));
+  };
+  const changeStyle = async (bookStyle: BookPreviewDTO['bookStyle']) => {
+    if (!id || bookStyle === book.bookStyle) return;
+    setChangingStyle(true);
+    setError(null);
+    try {
+      const trip = await tripRepository.getTrip(id);
+      await tripRepository.updateCreativeRequirements(id, {
+        ...trip.creativeRequirements,
+        bookStyle,
+      });
+      const nextBook = { ...book, bookStyle, layout: {} };
+      const nextDocument = buildBookLayout(nextBook, photos);
+      const saved = await storyRepository.updateBookLayout(
+        id,
+        nextDocument as unknown as Record<string, unknown>,
+      );
+      setBook(saved);
+      setDocument(nextDocument);
+    } catch (cause) {
+      if (!(await handleProtectedError(cause, signOut))) {
+        setError(cause instanceof Error ? cause.message : 'Could not change the book style');
+      }
+    } finally {
+      setChangingStyle(false);
     }
   };
   const exportPdf = async () => {
+    const startedAt = Date.now();
     setExporting(true);
     setError(null);
     try {
@@ -128,6 +165,7 @@ export default function BookPreviewScreen() {
       const named = new File(Paths.cache, makePdfFilename(book.tripTitle, book.startDate));
       if (named.exists) named.delete();
       await new File(printed.uri).copy(named);
+      recordPerformance('pdf_export', startedAt, { pageCount: document.pages.length });
       if (!(await Sharing.isAvailableAsync())) throw new Error('File sharing is not available');
       setExportStage('Opening share sheet…');
       await Sharing.shareAsync(named.uri, {
@@ -185,18 +223,30 @@ export default function BookPreviewScreen() {
       <Text style={styles.subheading}>
         {styleLabel(book.bookStyle)} · {document.pages.length} pages · preview matches PDF structure
       </Text>
-      <View style={styles.planActions}>
-        <Pressable
-          onPress={() => void saveLayout(mergeUserEdits(buildBookLayout(book, photos), document))}
-          style={styles.planButton}
-        >
-          <Text style={styles.planLabel}>Replan unedited pages</Text>
+      <Text style={styles.styleHeading}>Choose a style</Text>
+      <View style={styles.styleChoices}>
+        {(['travel_magazine', 'warm_memoir', 'minimalist'] as const).map((style) => (
+          <Pressable
+            accessibilityRole="radio"
+            accessibilityState={{ checked: book.bookStyle === style, disabled: changingStyle }}
+            disabled={changingStyle}
+            key={style}
+            onPress={() => void changeStyle(style)}
+            style={[styles.styleChoice, book.bookStyle === style && styles.styleChoiceSelected]}
+          >
+            <Text style={[styles.styleChoiceLabel, book.bookStyle === style && styles.styleChoiceLabelSelected]}>
+              {styleLabel(style)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      {changingStyle ? <Text style={styles.applyingStyle}>Applying style without regenerating your story…</Text> : null}
+      <View style={styles.primaryActions}>
+        <Pressable disabled={savingLayout} onPress={() => void regenerateLayout()} style={styles.compactButton}>
+          <Text style={styles.compactButtonLabel}>{savingLayout ? 'Saving…' : 'Regenerate layout'}</Text>
         </Pressable>
-        <Pressable
-          onPress={() => void saveLayout(buildBookLayout(book, photos))}
-          style={styles.planButton}
-        >
-          <Text style={styles.planLabel}>Reset all layout edits</Text>
+        <Pressable onPress={() => setEditing((value) => !value)} style={styles.compactButton}>
+          <Text style={styles.compactButtonLabel}>{editing ? 'Finish editing' : 'Simple edit'}</Text>
         </Pressable>
       </View>
       {document.pages.map((page, index) => (
@@ -207,18 +257,18 @@ export default function BookPreviewScreen() {
             pageNumber={index + 1}
             styleName={document.style}
           />
-          {page.kind !== 'cover' ? (
+          {editing && page.kind !== 'cover' ? (
             <View style={styles.pageTools}>
               <Pressable
                 onPress={() => void saveLayout(changePageLayout(document, page.id, photos))}
               >
-                <Text style={styles.toolLabel}>Change layout</Text>
+                <Text style={styles.toolLabel}>Try another layout</Text>
               </Pressable>
               {page.photoIds.length > 1 ? (
                 <Pressable
                   onPress={() => void saveLayout(rotatePagePhotos(document, page.id, photos))}
                 >
-                  <Text style={styles.toolLabel}>Rotate photos</Text>
+                  <Text style={styles.toolLabel}>Reorder photos</Text>
                 </Pressable>
               ) : null}
               {page.photoIds.length ? (
@@ -228,22 +278,6 @@ export default function BookPreviewScreen() {
                   >
                     <Text style={styles.toolLabel}>Swap lead</Text>
                   </Pressable>
-                  <Pressable
-                    onPress={() =>
-                      void saveLayout(togglePhotoFit(document, page.id, page.photoIds[0]!))
-                    }
-                  >
-                    <Text style={styles.toolLabel}>
-                      Fit: {page.placements[page.photoIds[0]!]?.fit ?? 'auto'}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() =>
-                      void saveLayout(cyclePhotoFocus(document, page.id, page.photoIds[0]!))
-                    }
-                  >
-                    <Text style={styles.toolLabel}>Move focus</Text>
-                  </Pressable>
                 </>
               ) : null}
             </View>
@@ -252,6 +286,15 @@ export default function BookPreviewScreen() {
       ))}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={styles.actions}>
+        {editing ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/trips/story', params: { id } })}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryLabel}>Edit story text</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           disabled={exporting}
@@ -352,7 +395,7 @@ function PagePreview({
       ) : null}
       {page.body ? (
         <Text
-          numberOfLines={cover ? 7 : 12}
+          numberOfLines={bookCover ? 3 : styleName === 'minimalist' ? 4 : 7}
           style={[
             styles.body,
             cover && styleName === 'travel_magazine' && styles.light,
@@ -491,18 +534,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
   },
-  magazineCoverMedia: { flex: 0.58 },
+  magazineCoverMedia: { flex: 0.6 },
   memoirCover: { padding: 22 },
   memoirCoverMedia: {
     backgroundColor: '#FFFAF2',
     borderRadius: 2,
-    flex: 0.68,
+    flex: 0.76,
     marginHorizontal: 18,
     marginTop: 10,
     padding: 7,
   },
   memoirCoverCopy: { alignItems: 'center', paddingHorizontal: 24 },
-  minimalCoverMedia: { flex: 0.68 },
+  minimalCoverMedia: { flex: 0.8 },
   minimalCoverCopy: { alignItems: 'center', paddingHorizontal: 24 },
   minimalRailPage: { flexDirection: 'row', padding: 10 },
   minimalRailCopy: { flex: 0.23, paddingHorizontal: 5, paddingTop: 8 },
@@ -529,9 +572,16 @@ const styles = StyleSheet.create({
   pageNumber: { bottom: 8, color: '#8C8379', fontSize: 9, position: 'absolute', right: 10 },
   memoirPage: { backgroundColor: '#F7EEE4', borderColor: '#E8D4C2', borderWidth: 4 },
   minimalPage: { backgroundColor: '#FFFFFF' },
-  planActions: { flexDirection: 'row', gap: 8, marginBottom: 18 },
-  planButton: { borderColor: '#8B735D', borderRadius: 8, borderWidth: 1, flex: 1, padding: 10 },
-  planLabel: { color: '#5E4C3A', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  styleHeading: { color: '#4F453B', fontSize: 14, fontWeight: '800', marginBottom: 8 },
+  styleChoices: { flexDirection: 'row', gap: 7, marginBottom: 10 },
+  styleChoice: { backgroundColor: '#F7F2EA', borderColor: '#B9AA98', borderRadius: 999, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 6 },
+  styleChoiceSelected: { backgroundColor: '#5D4631', borderColor: '#5D4631' },
+  styleChoiceLabel: { color: '#5E5145', fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  styleChoiceLabelSelected: { color: '#FFFFFF' },
+  applyingStyle: { color: '#6A5D51', fontSize: 12, marginBottom: 10, textAlign: 'center' },
+  primaryActions: { flexDirection: 'row', gap: 8, marginBottom: 18 },
+  compactButton: { borderColor: '#8B735D', borderRadius: 10, borderWidth: 1, flex: 1, padding: 12 },
+  compactButtonLabel: { color: '#5E4C3A', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   pageTools: {
     flexDirection: 'row',
     flexWrap: 'wrap',

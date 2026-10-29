@@ -34,13 +34,32 @@ export async function registerStoryRoutes(
     async (request, reply) => {
       const { tripId } = request.params as { tripId: string };
       const body = request.body as GenerateStoryRequest;
-      const result = await stories.generate(
-        request.authentication!.userId,
-        tripId,
-        body.feedback?.trim() || null,
-        body.fallbackLanguage,
-      );
-      return reply.code(201).send({ data: result });
+      const startedAt = Date.now();
+      request.log.info({ requestId: request.id, tripId }, 'Story generation started');
+      try {
+        const result = await stories.generate(
+          request.authentication!.userId,
+          tripId,
+          body.feedback?.trim() || null,
+          body.fallbackLanguage,
+        );
+        request.log.info({
+          requestId: request.id,
+          tripId,
+          durationMs: Date.now() - startedAt,
+          storyVersion: result.version,
+        }, 'Story generation completed');
+        return reply.code(201).send({ data: result });
+      } catch (error) {
+        request.log.warn({
+          requestId: request.id,
+          tripId,
+          durationMs: Date.now() - startedAt,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        }, 'Story generation failed');
+        throw error;
+      }
     },
   );
 
