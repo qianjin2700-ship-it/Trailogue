@@ -190,7 +190,7 @@ export async function registerTripRoutes(
         creativeRequirements: body.creativeRequirements ?? current.creativeRequirements ?? {},
       };
       if (
-        !update.title || !update.destinationName ||
+        !update.title || (body.destinationName !== undefined && !update.destinationName) ||
         (update.startDate !== null && !isValidDate(update.startDate)) ||
         (update.endDate !== null && !isValidDate(update.endDate)) ||
         (update.startDate !== null && update.endDate !== null && update.startDate > update.endDate)

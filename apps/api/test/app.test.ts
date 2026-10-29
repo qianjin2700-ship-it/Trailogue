@@ -306,6 +306,27 @@ test('PATCH /v1/trips/:id accepts the complete creative requirements payload fro
   assert.deepEqual(received, creativeRequirements);
 });
 
+test('PATCH /v1/trips/:id can save creative requirements for a legacy trip without a destination', async () => {
+  const legacyTrip = { ...trip, destinationName: null };
+  const services = createServices();
+  services.trips.findByIdForUser = async (id, ownerId) =>
+    id === tripId && ownerId === userId ? legacyTrip : null;
+  services.trips.updateForUser = async (id, ownerId, input) =>
+    id === tripId && ownerId === userId ? { ...legacyTrip, ...input } : null;
+  const app = await createApp(services);
+
+  const response = await app.inject({
+    method: 'PATCH',
+    url: `/v1/trips/${tripId}`,
+    headers: { authorization: `Bearer ${bearerToken}` },
+    payload: { creativeRequirements: defaultCreativeRequirements() },
+  });
+  await app.close();
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json().data.creativeRequirements, defaultCreativeRequirements());
+});
+
 test('creative requirements normalization strips legacy keys and repairs legacy length values', () => {
   const normalized = normalizeCreativeRequirements({
     ...defaultCreativeRequirements(),
