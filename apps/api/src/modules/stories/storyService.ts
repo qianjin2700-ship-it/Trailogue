@@ -21,6 +21,11 @@ import type { PhotoObjectStorage } from '../photos/photoService.js';
 import { DeepSeekProviderError, type DeepSeekProvider, type StoryPhotoInput } from './deepSeekProvider.js';
 import { resolveStoryLanguage } from './storyLanguage.js';
 
+/** 照片仍在上传时，故事生成最多等待多久（毫秒）。 */
+const UPLOAD_WAIT_TIMEOUT_MS = 45_000;
+/** 等待期间重新统计 pending 照片的间隔（毫秒）。 */
+const UPLOAD_POLL_INTERVAL_MS = 1_500;
+
 interface StoryServiceDependencies {
   trips: Pick<TripRepository, 'findByIdForUser'>;
   users: Pick<UserRepository, 'findById'>;
@@ -37,6 +42,9 @@ interface StoryServiceDependencies {
   >;
   readUrlTtlSeconds: number;
   logger?: (event: string, data: Record<string, unknown>) => void;
+  /** 测试可覆盖等待时长；生产使用默认 45 秒。 */
+  uploadWaitTimeoutMs?: number;
+  uploadPollIntervalMs?: number;
 }
 
 export class StoryService {
@@ -59,10 +67,21 @@ export class StoryService {
       );
     }
     // 竞态闸门：本地缩略图立即可见 ≠ R2 上传完成 ≠ 可交给 AI 分析。
-    // 只要仍有照片处于 pending，就不进入分析，避免用未完成的图集生成残缺故事。
-    const pending = await this.dependencies.photos.countPendingForTrip(userId, tripId);
+    // 这里不再立刻报错，而是短暂等待上传完成（最多 45 秒），
+    // 这样「点得太早」只会慢一点，不会变成一次失败。
+    const waitDeadline = Date.now() + (this.dependencies.uploadWaitTimeoutMs ?? UPLOAD_WAIT_TIMEOUT_MS);
+    let pending = await this.dependencies.photos.countPendingForTrip(userId, tripId);
     if (pending > 0) {
-      this.log('story.generation_blocked_uploading', { userId, tripId, pending });
+      this.log('story.generation_waiting_for_uploads', { userId, tripId, pending });
+      while (pending > 0 && Date.now() < waitDeadline) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, this.dependencies.uploadPollIntervalMs ?? UPLOAD_POLL_INTERVAL_MS));
+        pending = await this.dependencies.photos.countPendingForTrip(userId, tripId);
+      }
+    }
+    if (pending > 0) {
+      // 等待超时仍在上传：明确告知，而不是让上游以 400 失败。
+      this.log('story.generation_still_uploading', { userId, tripId, pending });
       throw new HttpError(
         409,
         'PHOTOS_UPLOADING',
