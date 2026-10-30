@@ -80,3 +80,36 @@ test('applies a new book style to an existing story without calling DeepSeek aga
   expect(mockGenerate).not.toHaveBeenCalled();
   expect(mockReplace).toHaveBeenCalledWith({ pathname: '/trips/book', params: { id: 'trip-1' } });
 });
+
+test('waits for in-flight photo uploads instead of showing an AI failure', async () => {
+  mockGetLatest.mockRejectedValue(new AppError('NOT_FOUND', 404));
+  mockGetTrip.mockResolvedValue({ id: 'trip-1', creativeRequirements: defaultCreativeRequirements() });
+  mockUpdateCreativeRequirements.mockResolvedValue({ id: 'trip-1' });
+  jest.useFakeTimers();
+  try {
+    // 前两次上传未完成 → 服务端返回 PHOTOS_UPLOADING；第三次成功。
+    mockGenerate
+      .mockRejectedValueOnce(new AppError('PHOTOS_UPLOADING', 409, undefined, {
+        message: 'Preparing photos… 2 photos still uploading',
+      }))
+      .mockRejectedValueOnce(new AppError('PHOTOS_UPLOADING', 409, undefined, {
+        message: 'Preparing photos… 1 photo still uploading',
+      }))
+      .mockResolvedValue({ id: 'story-1', creativeSnapshot: defaultCreativeRequirements() });
+
+    const screen = render(<CreativeRequirementsScreen />);
+    await act(async () => { await Promise.resolve(); });
+    await waitFor(() => expect(screen.getByText('Creative requirements')).toBeTruthy());
+    fireEvent.press(screen.getByRole('button', { name: 'Start generating story' }));
+
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { jest.advanceTimersByTime(2_000); await Promise.resolve(); });
+    await act(async () => { jest.advanceTimersByTime(2_000); await Promise.resolve(); });
+
+    await waitFor(() => expect(mockGenerate).toHaveBeenCalledTimes(3));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/trips/story', params: { id: 'trip-1' } });
+    expect(screen.queryByText(/AI photo analysis failed/i)).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
+});

@@ -68,7 +68,7 @@ export function createApiClient({
             response.status,
             undefined,
             {
-              message: exposeBackendErrors || ['INVALID_REQUEST', 'CONFLICT', 'AI_SERVICE_ERROR'].includes(appCode)
+              message: exposeBackendErrors || ['INVALID_REQUEST', 'CONFLICT', 'AI_SERVICE_ERROR', 'PHOTOS_UPLOADING'].includes(appCode)
                 ? backendError?.message
                 : undefined,
               requestId: backendError?.requestId,

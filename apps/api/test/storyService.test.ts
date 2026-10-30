@@ -190,6 +190,8 @@ function createService(
     creativeRequirements?: ReturnType<typeof defaultCreativeRequirements>;
     onGenerate?: () => void;
     onBookStyle?: (value: string | undefined) => void;
+    /** 模拟「本地缩略图已显示、但仍有照片在上传」的竞态场景。 */
+    pendingPhotos?: number;
   } = {}
 ) {
   const storyRecord: StoryRecord = {
@@ -251,6 +253,7 @@ function createService(
     },
     photos: {
       listReadyForTrip: async () => [photo],
+      countPendingForTrip: async () => options.pendingPhotos ?? 0,
       updateVision: async () => {
         options.onVision?.();
         return true;
@@ -292,3 +295,17 @@ function createService(
     readUrlTtlSeconds: 600,
   });
 }
+
+test('story generation waits for in-flight photo uploads instead of failing the AI request', async () => {
+  let providerCalls = 0;
+  const service = createService({ pendingPhotos: 3, onVision: () => { providerCalls += 1; } });
+  await assert.rejects(
+    () => service.generate(userId, tripId),
+    (error: unknown) =>
+      error instanceof HttpError &&
+      error.statusCode === 409 &&
+      error.code === 'PHOTOS_UPLOADING' &&
+      /still uploading/.test(error.message)
+  );
+  assert.equal(providerCalls, 0, 'no photo may be analysed while uploads are still pending');
+});

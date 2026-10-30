@@ -7,6 +7,7 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'INVALID_REQUEST'
   | 'CONFLICT'
+  | 'PHOTOS_UPLOADING'
   | 'AI_SERVICE_ERROR'
   | 'SERVER_ERROR'
   | 'UNKNOWN';
@@ -20,6 +21,7 @@ const USER_MESSAGES: Record<ApiErrorCode, string> = {
   NOT_FOUND: 'This item could not be found.',
   INVALID_REQUEST: 'Some information is not valid. Review your entries and try again.',
   CONFLICT: 'This request cannot be completed yet. Check the required details and try again.',
+  PHOTOS_UPLOADING: 'Preparing photos…',
   AI_SERVICE_ERROR: 'The AI story service could not complete this request. Please try again.',
   SERVER_ERROR: 'The service is unavailable right now. Please try again.',
   UNKNOWN: 'Something went wrong. Please try again.',
@@ -69,6 +71,7 @@ export function mapBackendCode(code: string): ApiErrorCode {
   if (code === 'NOT_FOUND') return 'NOT_FOUND';
   if (code === 'VALIDATION_ERROR') return 'INVALID_REQUEST';
   if (code === 'CONFLICT') return 'CONFLICT';
+  if (code === 'PHOTOS_UPLOADING') return 'PHOTOS_UPLOADING';
   if (code === 'AI_SERVICE_ERROR') return 'AI_SERVICE_ERROR';
   if (code === 'INTERNAL_ERROR') return 'SERVER_ERROR';
   return 'UNKNOWN';

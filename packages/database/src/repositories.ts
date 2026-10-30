@@ -553,6 +553,20 @@ export class PhotoRepository {
     );
   }
 
+  /**
+   * 统计仍在上传中的照片数量。
+   * 用于故事生成前的闸门：本地缩略图已可见 ≠ 对象存储已完成 ≠ 可交给 AI 分析。
+   */
+  async countPendingForTrip(userId: string, tripId: string): Promise<number> {
+    const result = await this.database.query<{ count: number }>(
+      `select count(*)::int as count
+       from photos
+       where user_id = $1 and trip_id = $2 and status = 'pending' and deleted_at is null`,
+      [userId, tripId],
+    );
+    return result.rows[0]?.count ?? 0;
+  }
+
   async listReadyForTrip(userId: string, tripId: string, limit: number): Promise<PhotoRecord[]> {
     const result = await this.database.query<PhotoRecord>(
       `select ${PHOTO_RETURNING}

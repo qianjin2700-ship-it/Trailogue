@@ -24,7 +24,7 @@ import { resolveStoryLanguage } from './storyLanguage.js';
 interface StoryServiceDependencies {
   trips: Pick<TripRepository, 'findByIdForUser'>;
   users: Pick<UserRepository, 'findById'>;
-  photos: Pick<PhotoRepository, 'listReadyForTrip' | 'updateVision'>;
+  photos: Pick<PhotoRepository, 'listReadyForTrip' | 'updateVision' | 'countPendingForTrip'>;
   stories: Pick<
     StoryRepository,
     'createVersion' | 'findLatestForTrip' | 'listVersionsForTrip' | 'findByIdForUser'
@@ -36,6 +36,7 @@ interface StoryServiceDependencies {
     'model' | 'supportsVision' | 'understandPhotos' | 'generateStory'
   >;
   readUrlTtlSeconds: number;
+  logger?: (event: string, data: Record<string, unknown>) => void;
 }
 
 export class StoryService {
@@ -55,6 +56,17 @@ export class StoryService {
         409,
         'CONFLICT',
         'Accept the AI photo privacy agreement in Settings first'
+      );
+    }
+    // 竞态闸门：本地缩略图立即可见 ≠ R2 上传完成 ≠ 可交给 AI 分析。
+    // 只要仍有照片处于 pending，就不进入分析，避免用未完成的图集生成残缺故事。
+    const pending = await this.dependencies.photos.countPendingForTrip(userId, tripId);
+    if (pending > 0) {
+      this.log('story.generation_blocked_uploading', { userId, tripId, pending });
+      throw new HttpError(
+        409,
+        'PHOTOS_UPLOADING',
+        `Preparing photos… ${pending} photo${pending === 1 ? '' : 's'} still uploading`
       );
     }
     const photos = await this.dependencies.photos.listReadyForTrip(userId, tripId, 50);
@@ -82,11 +94,32 @@ export class StoryService {
         ? await this.dependencies.provider.understandPhotos(photoInputs)
         : { facts: [], totalTokens: 0 };
     } catch (error) {
+      this.log('story.photo_analysis_failed', {
+        userId,
+        tripId,
+        photoCount: photos.length,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
       throw new HttpError(
         502,
         'AI_SERVICE_ERROR',
         providerFailureMessage('photo analysis', error)
       );
+    }
+    // 部分照片未能完成视觉分析（预检失败或分批失败）时，明确记录，避免「静默少图」。
+    const analysedIds = new Set(vision.facts.map((fact) => fact.photoId));
+    const missingPhotoIds = photoInputs.filter((photo) => !analysedIds.has(photo.id)).map((photo) => photo.id);
+    const missingNote = missingPhotoIds.length > 0
+      ? `有 ${missingPhotoIds.length} 张照片未完成画面分析，故事仅使用其元数据。`
+      : null;
+    if (missingPhotoIds.length > 0) {
+      this.log('story.photo_analysis_partial', {
+        userId,
+        tripId,
+        missingPhotoIds,
+        analysed: analysedIds.size,
+        total: photoInputs.length,
+      });
     }
     await Promise.all(
       vision.facts.map((fact) =>
@@ -149,6 +182,7 @@ export class StoryService {
       throw new HttpError(502, 'AI_SERVICE_ERROR', providerFailureMessage('story generation', error));
     }
     content.meta.totalTokens += vision.totalTokens;
+    if (missingNote) content.meta.uncertainNotes = [...content.meta.uncertainNotes, missingNote];
     const record = await this.dependencies.stories.createVersion({
       userId,
       tripId,
@@ -301,6 +335,11 @@ export class StoryService {
     if (!(await this.dependencies.trips.findByIdForUser(tripId, userId))) {
       throw new HttpError(404, 'NOT_FOUND', 'Trip not found');
     }
+  }
+
+  /** 结构化诊断日志。只记录 id / 计数 / 上游错误码，不记录图片内容、签名 URL 或密钥。 */
+  private log(event: string, data: Record<string, unknown>): void {
+    this.dependencies.logger?.(event, data);
   }
 }
 

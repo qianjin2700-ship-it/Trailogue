@@ -115,7 +115,7 @@ export default function CreativeRequirementsScreen() {
       return;
     }
     try {
-      const story = await storyRepository.generate(id, { confirmed: true, fallbackLanguage: fallbackLanguage() });
+      const story = await generateWhenPhotosReady(id, () => setMessage('Preparing photos…'));
       setStorySnapshot(normalizeCreativeRequirements(story.creativeSnapshot));
       router.replace({ pathname: '/trips/story', params: { id } });
     } catch (cause) {
@@ -239,9 +239,40 @@ function generationButtonLabel(
   return snapshot ? 'Regenerate story' : 'Start generating story';
 }
 
+/**
+ * 发起故事生成；当服务端表示「照片仍在上传」时显示准备提示并自动等待重新尝试。
+ * 放在组件外，避免在渲染期定义异步副作用函数。
+ */
+async function generateWhenPhotosReady(
+  tripId: string,
+  onPreparing: () => void,
+): Promise<Awaited<ReturnType<typeof storyRepository.generate>>> {
+  const maxAttempts = 30;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await storyRepository.generate(tripId, { confirmed: true, fallbackLanguage: fallbackLanguage() });
+    } catch (cause) {
+      const stillUploading = cause instanceof AppError && cause.code === 'PHOTOS_UPLOADING';
+      if (stillUploading && attempt < maxAttempts) {
+        onPreparing();
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        continue;
+      }
+      if (stillUploading) {
+        throw new AppError('PHOTOS_UPLOADING', undefined, undefined, {
+          message: 'Photos are still uploading. Please try again in a moment.',
+        });
+      }
+      throw cause;
+    }
+  }
+  throw new AppError('PHOTOS_UPLOADING', undefined, undefined, {
+    message: 'Photos are still uploading. Please try again in a moment.',
+  });
+}
+
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#F7F4EE', flex: 1 }, content: { padding: 22, paddingBottom: 60 },
-  loader: { backgroundColor: '#F7F4EE', flex: 1 }, center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  screen: { backgroundColor: '#F7F4EE', flex: 1 }, content: { padding: 22, paddingBottom: 60 },  loader: { backgroundColor: '#F7F4EE', flex: 1 }, center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   title: { color: '#211D18', fontSize: 34, fontWeight: '800' }, intro: { color: '#655F57', fontSize: 16, lineHeight: 24, marginTop: 10 },
   section: { borderTopColor: '#D8CDBE', borderTopWidth: StyleSheet.hairlineWidth, marginTop: 30, paddingTop: 22 },
   sectionTitle: { color: '#24211D', fontSize: 22, fontWeight: '700' }, sectionSubtitle: { color: '#71685F', lineHeight: 20, marginTop: 5 },

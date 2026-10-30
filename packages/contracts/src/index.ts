@@ -98,6 +98,7 @@ export type ApiErrorCode =
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'CONFLICT'
+  | 'PHOTOS_UPLOADING'
   | 'RATE_LIMITED'
   | 'INVALID_APPLE_TOKEN'
   | 'NOT_IMPLEMENTED'

@@ -11,6 +11,7 @@ import {
 } from '@trailogue/database';
 
 import { buildApp } from './app.js';
+import type { ProviderLogger } from './modules/stories/deepSeekProvider.js';
 import { AppleJwksIdentityVerifier } from './modules/auth/appleIdentityVerifier.js';
 import { PostgresAppleUserResolver } from './modules/auth/appleUserResolver.js';
 import { TrailogueAuthenticationService } from './modules/auth/authService.js';
@@ -24,6 +25,16 @@ import { ShareService } from './modules/shares/shareService.js';
 import { UserService } from './modules/users/userService.js';
 
 const config = loadApiConfig();
+/**
+ * 诊断日志出口：app 实例在服务构造之后才存在，因此用延迟绑定。
+ * 只输出结构化事件名 + 元数据（模型、状态码、上游错误码、照片 id/数量）；
+ * 绝不输出 API Key、Bearer Token、图片 base64 或带签名的完整 URL。
+ */
+let logSink: ((event: string, data: Record<string, unknown>) => void) | null = null;
+const providerLogger: ProviderLogger = (event, data) => {
+  if (logSink) logSink(event, data);
+  else console.log(JSON.stringify({ event, ...data }));
+};
 const database = createDatabase(config.DATABASE_URL);
 const sessions = new SessionService(
   new SessionRepository(database.executor),
@@ -63,8 +74,15 @@ const stories = new StoryService({
     config.DEEPSEEK_API_KEY,
     config.DEEPSEEK_BASE_URL,
     config.DEEPSEEK_MODEL,
+    fetch,
+    {
+      logger: providerLogger,
+      // 生产环境启用「能不能被外部匿名抓取」预检；测试注入自定义 request 时不影响。
+      imageFetch: fetch,
+    },
   ),
   readUrlTtlSeconds: config.R2_READ_URL_TTL_SECONDS,
+  logger: providerLogger,
 });
 const users = new UserService(
   userRepository,
@@ -96,6 +114,11 @@ const app = await buildApp({
     redact: ['req.headers.authorization'],
   },
 });
+
+// app 就绪后把诊断日志接到 Fastify 的结构化日志（Railway 中可按 event 名检索）。
+logSink = (event, data) => {
+  app.log.info({ event, ...data }, event);
+};
 
 const shutdown = async () => {
   await app.close();
