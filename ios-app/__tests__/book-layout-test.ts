@@ -3,12 +3,14 @@ import type { Photo } from '@/domain/photo/photo';
 import {
   buildBookLayout,
   changePageLayout,
+  cycleBookLayout,
   cyclePhotoFocus,
   formatBookDate,
   inspectBookLayout,
   makePdfFilename,
   mergeUserEdits,
   renderBookHtml,
+  renderBookPreviewHtml,
   restoreBookLayout,
   rotatePagePhotos,
   togglePhotoFit,
@@ -152,6 +154,37 @@ test('layout adjustments persist and can be merged into a fresh plan', () => {
       (page) => page.id === target.id
     )
   ).toEqual(adjusted.pages.find((page) => page.id === target.id));
+});
+
+test('Try another design produces a visible, persistent layout change', () => {
+  const original = buildBookLayout(baseBook, photos);
+  const changed = cycleBookLayout(original, photos);
+  const originalKinds = original.pages.map((page) => page.kind);
+  const changedKinds = changed.pages.map((page) => page.kind);
+  expect(changed.pages[0]).toEqual(original.pages[0]);
+  expect(changedKinds).not.toEqual(originalKinds);
+  expect(changed.pages.filter((page) => page.kind !== 'cover').some((page) => page.userEdited)).toBe(
+    true
+  );
+  expect(changed.pages.flatMap((page) => page.photoIds).sort()).toEqual(
+    original.pages.flatMap((page) => page.photoIds).sort()
+  );
+});
+
+test('App preview and PDF render the same pages and photo placements', () => {
+  const document = buildBookLayout({ ...baseBook, bookStyle: 'minimalist' }, photos);
+  const pdf = renderBookHtml(document, photos);
+  const preview = renderBookPreviewHtml(document, photos);
+  const pageCount = (preview.match(/<section class="page /g) ?? []).length;
+  expect(pageCount).toBe(document.pages.length);
+  expect(preview).toContain('<meta name="viewport" content="width=860');
+  expect(preview).toContain('ReactNativeWebView');
+  expect(preview).toContain('photo-load-error');
+  expect(preview).toContain('Photo unavailable');
+  expect(preview).toContain('data-photo-id="photo-1"');
+  expect(pdf).toContain('data-photo-id="photo-1"');
+  expect(preview).toContain(document.pages[1]!.title!);
+  expect(pdf).toContain(document.pages[1]!.title!);
 });
 
 test('classifies display geometry after EXIF rotation and never stretches an image', () => {

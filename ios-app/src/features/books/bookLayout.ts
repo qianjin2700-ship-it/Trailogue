@@ -534,6 +534,18 @@ export function changePageLayout(
     return finalizePage({ ...page, kind, variant, userEdited: true }, photos, document.style);
   });
 }
+export function cycleBookLayout(
+  document: BookLayoutDocument,
+  photos: Map<string, Photo> = new Map()
+): BookLayoutDocument {
+  return document.pages.reduce(
+    (next, page) =>
+      page.kind === 'cover' || (!page.photoIds.length && !page.body?.trim())
+        ? next
+        : changePageLayout(next, page.id, photos),
+    document
+  );
+}
 export function rotatePagePhotos(
   document: BookLayoutDocument,
   pageId: string,
@@ -683,7 +695,30 @@ export function formatBookDate(
   return `${monthName(Number(month))} ${Number(day)}, ${year}`;
 }
 export function renderBookHtml(document: BookLayoutDocument, photos: Map<string, Photo>): string {
-  return `<!doctype html><html lang="${escapeHtml(document.language)}"><head><meta charset="utf-8"><style>${bookCss(document.style)}</style></head><body class="${document.style}">${document.pages.map((page, index) => renderPage(page, photos, index)).join('')}</body></html>`;
+  return `<!doctype html><html lang="${escapeHtml(document.language)}"><head><meta charset="utf-8"><style>${bookCss(document.style)}</style></head><body class="${document.style}">${renderPages(document, photos)}</body></html>`;
+}
+export function renderBookPreviewHtml(
+  document: BookLayoutDocument,
+  photos: Map<string, Photo>
+): string {
+  const photoCount = document.pages.reduce((total, page) => total + page.photoIds.length, 0);
+  return `<!doctype html><html lang="${escapeHtml(document.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=860, initial-scale=1, maximum-scale=1, user-scalable=no"><style>${bookCss(document.style)}${previewCss()}</style></head><body class="${document.style} preview">${renderPages(document, photos)}<script>(()=>{const send=(value)=>window.ReactNativeWebView?.postMessage(JSON.stringify(value));document.querySelectorAll('img.photo').forEach((image)=>{image.addEventListener('error',()=>{image.closest('figure')?.classList.add('photo-load-error');send({type:'photo-error',photoId:image.getAttribute('data-photo-id')||''});},{once:true});});send({type:'preview-ready',photoCount:${photoCount}});})();true;</script></body></html>`;
+}
+
+function renderPages(document: BookLayoutDocument, photos: Map<string, Photo>): string {
+  return document.pages.map((page, index) => renderPage(page, photos, index)).join('');
+}
+
+function previewCss(): string {
+  return `
+html{background:#eae3d8}
+body.preview{background:#eae3d8;padding:22px;width:860px}
+body.preview .page{box-shadow:0 8px 24px rgba(51,41,31,.18);break-after:auto;margin:0 auto 26px}
+body.preview .page:last-of-type{margin-bottom:0}
+body.preview figure.photo-load-error{align-items:center;background:#eeeae3;display:flex;justify-content:center}
+body.preview figure.photo-load-error .photo{display:none}
+body.preview figure.photo-load-error:after{color:#746b62;content:'Photo unavailable';font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13pt}
+`;
 }
 
 function renderPage(page: BookPage, photos: Map<string, Photo>, index: number): string {
