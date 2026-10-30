@@ -51,9 +51,9 @@ export default function CreativeRequirementsScreen() {
       }),
     ]).then(([trip, story]) => {
       if (!active) return;
-      const next = normalizeCreativeRequirements(trip.creativeRequirements);
+      const next = magazineOnly(normalizeCreativeRequirements(trip.creativeRequirements));
       setForm(next);
-      setStorySnapshot(story ? normalizeCreativeRequirements(story.creativeSnapshot) : null);
+      setStorySnapshot(story ? magazineOnly(normalizeCreativeRequirements(story.creativeSnapshot)) : null);
       lastSaved.current = JSON.stringify(next);
       setLoaded(true);
     }).catch(async (cause: unknown) => {
@@ -106,11 +106,6 @@ export default function CreativeRequirementsScreen() {
     const action = generationAction(storySnapshot, normalized);
     if (action === 'open-story') {
       router.replace({ pathname: '/trips/story', params: { id } });
-      setGenerating(false);
-      return;
-    }
-    if (action === 'apply-style') {
-      router.replace({ pathname: '/trips/book', params: { id } });
       setGenerating(false);
       return;
     }
@@ -167,11 +162,6 @@ export default function CreativeRequirementsScreen() {
           <Chip key={value} label={label} selected={form.generationLanguage === value} onPress={() => update('generationLanguage', value)} />
         ))}</View>
       </Section>
-      <Section title="Book style" subtitle="This changes the visual layout. It does not regenerate an existing story.">
-        <Choice label="Travel magazine" detail="Bold imagery, modern type and varied compositions." selected={form.bookStyle === 'travel_magazine'} onPress={() => update('bookStyle', 'travel_magazine')} />
-        <Choice label="Warm memoir" detail="Soft color, family moments and memory-led pacing." selected={form.bookStyle === 'warm_memoir'} onPress={() => update('bookStyle', 'warm_memoir')} />
-        <Choice label="Minimalist photo book" detail="Photography first, restrained text and deliberate space." selected={form.bookStyle === 'minimalist'} onPress={() => update('bookStyle', 'minimalist')} />
-      </Section>
       <Text style={styles.saveState}>{saving ? 'Saving…' : message ?? 'Changes save automatically'}</Text>
       <Pressable accessibilityRole="button" disabled={generating} onPress={() => void generate()} style={[styles.generate, generating && styles.disabled]}>
         <Text style={styles.generateLabel}>{generating ? 'Working…' : generationButtonLabel(storySnapshot, form)}</Text>
@@ -219,23 +209,30 @@ function fallbackLanguage(): ActualStoryLanguage {
   return 'en';
 }
 
+/**
+ * 首发版只保留 Travel Magazine 一种画册排版，因此创作要求不再暴露画册风格。
+ * 旧数据里的 warm_memoir / minimalist 在这里归一到 magazine，底层渲染代码保持兼容。
+ */
+function magazineOnly(value: CreativeRequirementsDTO): CreativeRequirementsDTO {
+  return value.bookStyle === 'travel_magazine' ? value : { ...value, bookStyle: 'travel_magazine' };
+}
+
 function generationAction(
   snapshot: CreativeRequirementsDTO | null,
   current: CreativeRequirementsDTO,
-): 'generate' | 'apply-style' | 'open-story' {
+): 'generate' | 'open-story' {
   if (!snapshot) return 'generate';
-  const withoutStyle = ({ bookStyle: _bookStyle, ...value }: CreativeRequirementsDTO) => value;
-  if (JSON.stringify(withoutStyle(snapshot)) !== JSON.stringify(withoutStyle(current))) return 'generate';
-  return snapshot.bookStyle === current.bookStyle ? 'open-story' : 'apply-style';
+  const requirements = ({ bookStyle: _bookStyle, ...value }: CreativeRequirementsDTO) => value;
+  return JSON.stringify(requirements(snapshot)) === JSON.stringify(requirements(current))
+    ? 'open-story'
+    : 'generate';
 }
 
 function generationButtonLabel(
   snapshot: CreativeRequirementsDTO | null,
   current: CreativeRequirementsDTO,
 ): string {
-  const action = generationAction(snapshot, current);
-  if (action === 'apply-style') return 'Apply style to book';
-  if (action === 'open-story') return 'Open current story';
+  if (generationAction(snapshot, current) === 'open-story') return 'Open current story';
   return snapshot ? 'Regenerate story' : 'Start generating story';
 }
 

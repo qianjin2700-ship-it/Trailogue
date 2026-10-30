@@ -5,8 +5,6 @@ import BookPreviewScreen from '@/app/(app)/trips/book';
 const mockGetBook = jest.fn();
 const mockUpdateBookLayout = jest.fn();
 const mockGetPhotos = jest.fn();
-const mockGetTrip = jest.fn();
-const mockUpdateCreativeRequirements = jest.fn();
 const mockSignOut = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('@/auth/AuthProvider', () => ({
@@ -18,10 +16,6 @@ jest.mock('@/composition/services', () => ({
   storyRepository: {
     getBook: (...args: unknown[]) => mockGetBook(...args),
     updateBookLayout: (...args: unknown[]) => mockUpdateBookLayout(...args),
-  },
-  tripRepository: {
-    getTrip: (...args: unknown[]) => mockGetTrip(...args),
-    updateCreativeRequirements: (...args: unknown[]) => mockUpdateCreativeRequirements(...args),
   },
 }));
 jest.mock('expo-router', () => ({
@@ -109,28 +103,41 @@ describe('<BookPreviewScreen />', () => {
     mockGetBook.mockResolvedValue(book);
     mockGetPhotos.mockResolvedValue([photo('https://example.test/original.jpg')]);
     mockUpdateBookLayout.mockResolvedValue(book);
-    mockGetTrip.mockResolvedValue({ creativeRequirements: { bookStyle: 'minimalist' } });
-    mockUpdateCreativeRequirements.mockResolvedValue({});
   });
 
-  it('uses the PDF renderer in the app and exposes only working primary actions', async () => {
+  it('defaults to the plain story view and keeps only the shipped actions', async () => {
     const screen = render(<BookPreviewScreen />);
     await waitFor(() => expect(screen.getByTestId('book-web-preview')).toBeTruthy());
 
-    const source = screen.getByTestId('book-web-preview').props.source as { html: string };
-    expect(source.html).toContain('The lighthouse');
-    expect(source.html).toContain('https://example.test/original.jpg');
-    expect(screen.getByRole('button', { name: 'Try another design' })).toBeTruthy();
+    const storySource = screen.getByTestId('book-web-preview').props.source as { html: string };
+    // 基础图文版：故事文字 + 照片，没有画册分页结构。
+    expect(storySource.html).toContain('The lighthouse');
+    expect(storySource.html).toContain('https://example.test/original.jpg');
+    expect(storySource.html).not.toContain('class="page');
+
     expect(screen.getByRole('button', { name: 'Edit story text' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Export PDF' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Private share' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try another design' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Warm memoir' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Minimalist' })).toBeNull();
     expect(screen.queryByText('Reorder photos')).toBeNull();
     expect(screen.queryByText('Swap lead')).toBeNull();
+    expect(mockUpdateBookLayout).not.toHaveBeenCalled();
+  });
 
-    fireEvent.press(screen.getByRole('button', { name: 'Try another design' }));
-    await waitFor(() => expect(mockUpdateBookLayout).toHaveBeenCalledTimes(1));
-    expect(mockUpdateBookLayout.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({ version: 5 }),
-    );
+  it('renders the magazine layout on demand without changing the saved story', async () => {
+    const screen = render(<BookPreviewScreen />);
+    await waitFor(() => expect(screen.getByTestId('book-web-preview')).toBeTruthy());
+
+    fireEvent.press(screen.getByRole('button', { name: 'Magazine' }));
+
+    await waitFor(() => {
+      const magazineSource = screen.getByTestId('book-web-preview').props.source as { html: string };
+      expect(magazineSource.html).toContain('class="page');
+      expect(magazineSource.html).toContain('travel_magazine');
+    });
+    expect(mockUpdateBookLayout).not.toHaveBeenCalled();
   });
 
   it('refreshes expired photo URLs once and updates the preview HTML', async () => {

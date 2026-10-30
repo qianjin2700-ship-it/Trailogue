@@ -61,24 +61,41 @@ test('persists creative requirements and only generates after explicit confirmat
   expect(mockGenerate).toHaveBeenCalledWith('trip-1', expect.objectContaining({ confirmed: true }));
 }, 15_000);
 
-test('applies a new book style to an existing story without calling DeepSeek again', async () => {
-  const original = defaultCreativeRequirements();
-  mockGetTrip.mockResolvedValue({ id: 'trip-1', creativeRequirements: original });
-  mockGetLatest.mockResolvedValue({ id: 'story-1', creativeSnapshot: original });
+test('no longer asks for a book style and always saves the magazine layout', async () => {
+  const legacy = { ...defaultCreativeRequirements(), bookStyle: 'warm_memoir' as const };
+  mockGetTrip.mockResolvedValue({ id: 'trip-1', creativeRequirements: legacy });
+  mockGetLatest.mockResolvedValue({ id: 'story-1', creativeSnapshot: legacy });
   mockUpdateCreativeRequirements.mockResolvedValue({ id: 'trip-1' });
   const screen = render(<CreativeRequirementsScreen />);
   await waitFor(() => expect(screen.getByText('Creative requirements')).toBeTruthy());
 
-  fireEvent.press(screen.getByText('Warm memoir'));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Apply style to book' })).toBeTruthy());
-  fireEvent.press(screen.getByRole('button', { name: 'Apply style to book' }));
+  // 画册风格不再出现在创作要求里，也不再有两处重复选择。
+  expect(screen.queryByText('Book style')).toBeNull();
+  expect(screen.queryByText('Travel magazine')).toBeNull();
+  expect(screen.queryByText('Warm memoir')).toBeNull();
+  expect(screen.queryByText('Minimalist photo book')).toBeNull();
+  expect(screen.queryByText('Apply style to book')).toBeNull();
 
-  await waitFor(() => expect(mockUpdateCreativeRequirements).toHaveBeenCalledWith(
-    'trip-1',
-    expect.objectContaining({ bookStyle: 'warm_memoir' }),
-  ));
+  // 故事未变化时主按钮直接打开已有故事，不重新调用 AI。
+  fireEvent.press(screen.getByRole('button', { name: 'Open current story' }));
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: '/trips/story', params: { id: 'trip-1' } }));
   expect(mockGenerate).not.toHaveBeenCalled();
-  expect(mockReplace).toHaveBeenCalledWith({ pathname: '/trips/book', params: { id: 'trip-1' } });
+});
+
+test('saves magazine as the only book style when generating', async () => {
+  const legacy = { ...defaultCreativeRequirements(), bookStyle: 'minimalist' as const };
+  mockGetLatest.mockRejectedValue(new AppError('NOT_FOUND', 404));
+  mockGetTrip.mockResolvedValue({ id: 'trip-1', creativeRequirements: legacy });
+  mockUpdateCreativeRequirements.mockResolvedValue({ id: 'trip-1' });
+  mockGenerate.mockResolvedValue({ id: 'story-1', creativeSnapshot: legacy });
+  const screen = render(<CreativeRequirementsScreen />);
+  await waitFor(() => expect(screen.getByText('Creative requirements')).toBeTruthy());
+
+  fireEvent.press(screen.getByRole('button', { name: 'Start generating story' }));
+  await waitFor(() => expect(mockGenerate).toHaveBeenCalled());
+  expect(mockUpdateCreativeRequirements).toHaveBeenCalledWith('trip-1', expect.objectContaining({
+    bookStyle: 'travel_magazine',
+  }));
 });
 
 test('waits for in-flight photo uploads instead of showing an AI failure', async () => {

@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import type { ShareLinkRecord, StoryRecord, TripRecord } from '@trailogue/database';
 
-import { ShareService } from '../src/modules/shares/shareService.js';
+import { ShareService, renderSharedStoryHtml } from '../src/modules/shares/shareService.js';
 
 const now = new Date('2026-10-27T00:00:00.000Z');
 const trip: TripRecord = {
@@ -63,4 +63,28 @@ test('share links store only a hash and resolve owner-scoped story content', asy
   assert.equal(storedLink.tokenHash.length, 64);
   assert.equal((await service.resolve(token)).story.title, 'Story');
   assert.equal(visits, 1);
+});
+
+test('the private share page stays a plain photo-and-text reading page', () => {
+  const html = renderSharedStoryHtml({
+    tripTitle: trip.title,
+    story: {
+      title: 'Story', subtitle: 'Sub', preface: 'Preface',
+      chapters: [{
+        chapterId: 'chapter-1', title: 'The lighthouse', dateLabel: 'August 24, 2025',
+        locationLabel: 'Guishan Island', narrative: 'The path reached the sea.',
+        photoIds: ['photo-1'], captions: { 'photo-1': 'Sea light' },
+        locked: false, userEdited: false,
+      }],
+      epilogue: 'End', shareSummary: null, meta: story.content.meta as never,
+    },
+    photos: [{ id: 'photo-1', url: 'https://signed.example/photo-1.jpg' }],
+  });
+
+  // 基础图文版：文字在前、照片按章节顺序穿插，不使用画册分页/网格布局。
+  assert.ok(html.includes('<h2>The lighthouse</h2>'));
+  assert.ok(html.includes('<figure><img src="https://signed.example/photo-1.jpg"'));
+  assert.ok(html.includes('<figcaption>Sea light</figcaption>'));
+  assert.ok(!html.includes('class="page'));
+  assert.ok(!/grid-template|@page/.test(html));
 });

@@ -8,20 +8,21 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { handleProtectedError } from '@/auth/handleProtectedError';
-import { photoRepository, sharesApi, storyRepository, tripRepository } from '@/composition/services';
+import { photoRepository, sharesApi, storyRepository } from '@/composition/services';
 import type { BookPreviewDTO, ShareLinkDTO } from '@/contracts/story';
 import type { Photo } from '@/domain/photo/photo';
 import { recordPerformance } from '@/diagnostics/performance';
 import {
   buildBookLayout,
-  cycleBookLayout,
   makePdfFilename,
   renderBookHtml,
   renderBookPreviewHtml,
-  restoreBookLayout,
   type BookLayoutDocument,
 } from '@/features/books/bookLayout';
 import { materializeBookPhotos, withTimeout } from '@/features/books/pdfExport';
+import { renderStoryReadingHtml } from '@/features/books/storyReading';
+
+type BookView = 'story' | 'magazine';
 
 export default function BookPreviewScreen() {
   const { signOut } = useAuth();
@@ -29,14 +30,13 @@ export default function BookPreviewScreen() {
   const [book, setBook] = useState<BookPreviewDTO | null>(null);
   const [photos, setPhotos] = useState<Map<string, Photo>>(new Map());
   const [document, setDocument] = useState<BookLayoutDocument | null>(null);
+  const [view, setView] = useState<BookView>('story');
   const [error, setError] = useState<string | null>(null);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
   const [previewNeedsRetry, setPreviewNeedsRetry] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportStage, setExportStage] = useState<string | null>(null);
   const [activeShare, setActiveShare] = useState<ShareLinkDTO | null>(null);
-  const [changingStyle, setChangingStyle] = useState(false);
-  const [savingLayout, setSavingLayout] = useState(false);
   const photoRefreshAttemptedRef = useRef(false);
   const photoRefreshInFlightRef = useRef(false);
 
@@ -48,14 +48,13 @@ export default function BookPreviewScreen() {
       .then(([nextBook, nextPhotos]) => {
         if (!active) return;
         const photoMap = new Map(nextPhotos.map((photo) => [photo.id, photo]));
-        const restored = restoreBookLayout(nextBook.layout, nextBook, photoMap);
-        setBook(nextBook);
+        // 首发版只提供 Magazine 一种画册排版：不读取历史保存的暖回忆/极简布局，
+        // 每次进入都按当前故事与照片重新排版，避免旧布局缺图或缺页。
+        const magazineBook: BookPreviewDTO = { ...nextBook, bookStyle: 'travel_magazine', layout: {} };
+        setBook(magazineBook);
         setPhotos(photoMap);
-        setDocument(restored ?? buildBookLayout(nextBook, photoMap));
-        recordPerformance('book_preview', startedAt, {
-          photoCount: nextPhotos.length,
-          restoredLayout: Boolean(restored),
-        });
+        setDocument(buildBookLayout(magazineBook, photoMap));
+        recordPerformance('book_preview', startedAt, { photoCount: nextPhotos.length });
       })
       .catch(async (cause: unknown) => {
         if (!active || (await handleProtectedError(cause, signOut))) return;
@@ -66,10 +65,12 @@ export default function BookPreviewScreen() {
     };
   }, [id, signOut]);
 
-  const previewHtml = useMemo(
-    () => (document ? renderBookPreviewHtml(document, photos) : ''),
-    [document, photos],
-  );
+  const previewHtml = useMemo(() => {
+    if (!document) return '';
+    return view === 'magazine'
+      ? renderBookPreviewHtml(document, photos)
+      : renderStoryReadingHtml(book?.story ?? null, photos);
+  }, [book?.story, document, photos, view]);
 
   if (error && !book)
     return (
@@ -85,60 +86,6 @@ export default function BookPreviewScreen() {
         style={styles.loader}
       />
     );
-
-  const saveLayout = async (next: BookLayoutDocument, status = 'Saving design…') => {
-    if (!id) return;
-    const previous = document;
-    setSavingLayout(true);
-    setPreviewStatus(status);
-    setDocument(next);
-    setError(null);
-    try {
-      await storyRepository.updateBookLayout(id, next as unknown as Record<string, unknown>);
-      setPreviewStatus('Design saved');
-    } catch (cause) {
-      setDocument(previous);
-      setPreviewStatus(null);
-      if (!(await handleProtectedError(cause, signOut)))
-        setError(cause instanceof Error ? cause.message : 'Could not save the book design');
-    } finally {
-      setSavingLayout(false);
-    }
-  };
-
-  const tryAnotherDesign = async () => {
-    await saveLayout(cycleBookLayout(document, photos), 'Trying another design…');
-  };
-
-  const changeStyle = async (bookStyle: BookPreviewDTO['bookStyle']) => {
-    if (!id || bookStyle === book.bookStyle) return;
-    setChangingStyle(true);
-    setPreviewStatus('Applying style…');
-    setError(null);
-    try {
-      const trip = await tripRepository.getTrip(id);
-      await tripRepository.updateCreativeRequirements(id, {
-        ...trip.creativeRequirements,
-        bookStyle,
-      });
-      const nextBook = { ...book, bookStyle, layout: {} };
-      const nextDocument = buildBookLayout(nextBook, photos);
-      const saved = await storyRepository.updateBookLayout(
-        id,
-        nextDocument as unknown as Record<string, unknown>,
-      );
-      setBook({ ...saved, bookStyle });
-      setDocument(nextDocument);
-      setPreviewStatus('Style applied');
-    } catch (cause) {
-      setPreviewStatus(null);
-      if (!(await handleProtectedError(cause, signOut))) {
-        setError(cause instanceof Error ? cause.message : 'Could not change the book style');
-      }
-    } finally {
-      setChangingStyle(false);
-    }
-  };
 
   const refreshPreviewPhotos = async () => {
     if (!id || photoRefreshInFlightRef.current) return;
@@ -270,45 +217,31 @@ export default function BookPreviewScreen() {
     }
   };
 
-  const busy = changingStyle || savingLayout || exporting;
+  const busy = exporting;
 
   return (
     <View style={styles.screen}>
       <View style={styles.controls}>
-        <Text style={styles.subheading}>
-          {styleLabel(book.bookStyle)} · {document.pages.length} pages
-        </Text>
-        <View accessibilityRole="radiogroup" style={styles.styleChoices}>
-          {(['travel_magazine', 'warm_memoir', 'minimalist'] as const).map((style) => (
+        <View style={styles.viewSwitch}>
+          {([['story', 'Story'], ['magazine', 'Magazine']] as const).map(([value, label]) => (
             <Pressable
-              accessibilityLabel={styleLabel(style)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: book.bookStyle === style, disabled: busy }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: view === value, disabled: busy }}
               disabled={busy}
-              key={style}
-              onPress={() => void changeStyle(style)}
-              style={[styles.styleChoice, book.bookStyle === style && styles.styleChoiceSelected]}
+              key={value}
+              onPress={() => setView(value)}
+              style={[styles.viewChoice, view === value && styles.viewChoiceSelected]}
             >
-              <Text
-                style={[
-                  styles.styleChoiceLabel,
-                  book.bookStyle === style && styles.styleChoiceLabelSelected,
-                ]}
-              >
-                {shortStyleLabel(style)}
+              <Text style={[styles.viewChoiceLabel, view === value && styles.viewChoiceLabelSelected]}>
+                {label}
               </Text>
             </Pressable>
           ))}
         </View>
         <View style={styles.primaryActions}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={() => void tryAnotherDesign()}
-            style={[styles.compactButton, busy && styles.disabled]}
-          >
-            <Text style={styles.compactButtonLabel}>Try another design</Text>
-          </Pressable>
+          <Text style={styles.meta}>
+            {view === 'magazine' ? `${document.pages.length} pages` : `${photos.size} photos · story text`}
+          </Text>
           <Pressable
             accessibilityRole="button"
             disabled={busy}
@@ -328,7 +261,7 @@ export default function BookPreviewScreen() {
       </View>
 
       <WebView
-        accessibilityLabel="Book page preview"
+        accessibilityLabel="Book preview"
         mixedContentMode="never"
         onMessage={handlePreviewMessage}
         originWhitelist={['*']}
@@ -369,34 +302,13 @@ export default function BookPreviewScreen() {
   );
 }
 
-function styleLabel(value: BookPreviewDTO['bookStyle']) {
-  return (
-    {
-      travel_magazine: 'Travel magazine',
-      warm_memoir: 'Warm memoir',
-      minimalist: 'Minimalist photo book',
-    } as const
-  )[value];
-}
-
-function shortStyleLabel(value: BookPreviewDTO['bookStyle']) {
-  return (
-    {
-      travel_magazine: 'Magazine',
-      warm_memoir: 'Memoir',
-      minimalist: 'Minimalist',
-    } as const
-  )[value];
-}
-
 const styles = StyleSheet.create({
   screen: { backgroundColor: '#EAE3D8', flex: 1 },
   loader: { backgroundColor: '#EAE3D8', flex: 1 },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center', padding: 32 },
   controls: { backgroundColor: '#F4EFE7', paddingHorizontal: 14, paddingVertical: 10 },
-  subheading: { color: '#5F5348', fontSize: 13, fontWeight: '700', marginBottom: 8 },
-  styleChoices: { flexDirection: 'row', gap: 7 },
-  styleChoice: {
+  viewSwitch: { flexDirection: 'row', gap: 7 },
+  viewChoice: {
     alignItems: 'center',
     backgroundColor: '#FBF8F2',
     borderColor: '#B9AA98',
@@ -407,10 +319,11 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 6,
   },
-  styleChoiceSelected: { backgroundColor: '#5D4631', borderColor: '#5D4631' },
-  styleChoiceLabel: { color: '#5E5145', fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  styleChoiceLabelSelected: { color: '#FFFFFF' },
-  primaryActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  viewChoiceSelected: { backgroundColor: '#5D4631', borderColor: '#5D4631' },
+  viewChoiceLabel: { color: '#5E5145', fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  viewChoiceLabelSelected: { color: '#FFFFFF' },
+  primaryActions: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
+  meta: { color: '#6A5D51', flex: 1, fontSize: 12, fontWeight: '600' },
   compactButton: {
     alignItems: 'center',
     borderColor: '#8B735D',
