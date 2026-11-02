@@ -13,6 +13,11 @@ const environmentSchema = z.object({
 const apiEnvironmentSchema = environmentSchema.extend({
   R2_ENDPOINT: z.string().url(),
   R2_BUCKET: z.string().min(1),
+  /**
+   * 多环境共用一个 bucket 时的对象键前缀（例如 production/）。
+   * 默认空字符串表示沿用原有键格式，不影响 staging 与本地开发。
+   */
+  R2_KEY_PREFIX: z.string().trim().default(''),
   R2_ACCESS_KEY_ID: z.string().min(1),
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),

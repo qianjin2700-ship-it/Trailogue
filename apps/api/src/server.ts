@@ -53,6 +53,7 @@ const photoStorage = new R2PhotoStorage(config.R2_BUCKET, {
   endpoint: config.R2_ENDPOINT,
   accessKeyId: config.R2_ACCESS_KEY_ID,
   secretAccessKey: config.R2_SECRET_ACCESS_KEY,
+  keyPrefix: config.R2_KEY_PREFIX,
 });
 const photos = new PhotoService({
   photos: photoRepository,
