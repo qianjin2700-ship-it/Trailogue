@@ -10,7 +10,9 @@ web-build/
 expo-env.d.ts
 
 # Generated starter artwork is not product branding.
-/assets/
+# The official app icon is tracked explicitly (EAS uploads git-tracked files only).
+/assets/*
+!/assets/icon.png
 
 # Agent-specific generated settings
 /.claude/
