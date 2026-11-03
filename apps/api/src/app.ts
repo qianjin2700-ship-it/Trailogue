@@ -16,6 +16,7 @@ import type { ShareService } from './modules/shares/shareService.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPhotoRoutes } from './routes/photos.js';
 import { registerSystemRoutes, type ReadinessDependency } from './routes/system.js';
+import { registerPrivacyRoutes } from './routes/privacy.js';
 import { registerStoryRoutes } from './routes/stories.js';
 import { registerShareRoutes } from './routes/shares.js';
 import { registerTripRoutes } from './routes/trips.js';
@@ -113,6 +114,7 @@ export async function buildApp({ readiness, services, logger = false }: BuildApp
   );
 
   await registerSystemRoutes(app, readiness);
+  await registerPrivacyRoutes(app);
   const authenticate = createBearerAuthenticator(services.sessions);
   await registerAuthRoutes(app, services.authentication);
   await registerUserRoutes(app, authenticate, services.users);
