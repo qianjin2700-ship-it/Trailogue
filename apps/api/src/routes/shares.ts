@@ -1,6 +1,6 @@
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 
-import { renderSharedStoryHtml, type ShareService } from '../modules/shares/shareService.js';
+import { renderSharedMagazineHtml, renderSharedStoryHtml, type ShareService } from '../modules/shares/shareService.js';
 
 const tripParameters = {
   type: 'object', required: ['tripId'],
@@ -56,7 +56,10 @@ export async function registerShareRoutes(
     { schema: { tags: ['shares'], params: tokenParameters } },
     async (request, reply) => {
       const { token } = request.params as { token: string };
-      return reply.type('text/html; charset=utf-8').send(renderSharedStoryHtml(await shares.resolve(token)));
+      const view = (request.query as { view?: string }).view;
+      const shared = await shares.resolve(token);
+      const html = view === 'magazine' ? renderSharedMagazineHtml(shared) : renderSharedStoryHtml(shared);
+      return reply.type('text/html; charset=utf-8').send(html);
     },
   );
 }

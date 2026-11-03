@@ -188,11 +188,13 @@ export default function BookPreviewScreen() {
     setError(null);
     try {
       const link = await sharesApi.create(id);
-      setActiveShare(link);
+      // 所见即所得：Story tab 分享图文网页，Magazine tab 分享画册网页。
+      const sharedUrl = `${link.url}${link.url.includes('?') ? '&' : '?'}view=${view}`;
+      setActiveShare({ ...link, url: sharedUrl });
       await Share.share({
         title: book.title,
-        message: `${book.title}\n\n${book.story.shareSummary ?? book.story.preface}\n\n${link.url}`,
-        url: link.url,
+        message: `${book.title}\n\n${book.story.shareSummary ?? book.story.preface}\n\n${sharedUrl}`,
+        url: sharedUrl,
       });
     } catch (cause) {
       if (!(await handleProtectedError(cause, signOut)))
@@ -248,7 +250,7 @@ export default function BookPreviewScreen() {
             onPress={() => router.push({ pathname: '/trips/story', params: { id } })}
             style={[styles.compactButton, busy && styles.disabled]}
           >
-            <Text style={styles.compactButtonLabel}>Edit story text</Text>
+            <Text style={styles.compactButtonLabel}>Edit story</Text>
           </Pressable>
         </View>
         {previewStatus ? <Text style={styles.status}>{previewStatus}</Text> : null}
@@ -285,7 +287,7 @@ export default function BookPreviewScreen() {
           onPress={() => void shareLink()}
           style={[styles.shareButton, busy && styles.disabled]}
         >
-          <Text style={styles.shareLabel}>Private share</Text>
+          <Text style={styles.shareLabel}>Share</Text>
         </Pressable>
       </View>
       {activeShare ? (

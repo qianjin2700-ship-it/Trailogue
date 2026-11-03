@@ -77,6 +77,9 @@ export default function SettingsScreen() {
       <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={styles.saveButton}>
         <Text style={styles.saveLabel}>{saving ? 'Saving…' : 'Save settings'}</Text>
       </Pressable>
+      <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOutButton}>
+        <Text style={styles.signOutLabel}>Sign out</Text>
+      </Pressable>
       <View style={styles.dangerZone}>
         <Text style={styles.dangerHeading}>Delete account and all data</Text>
         <Text style={styles.copy}>Deletion removes private R2 objects before deleting database records.</Text>
@@ -105,6 +108,8 @@ const styles = StyleSheet.create({
   message: { color: '#684F37', fontSize: 14, marginTop: 18 },
   saveButton: { backgroundColor: '#24211D', borderRadius: 12, marginTop: 24, padding: 14 },
   saveLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  signOutButton: { borderColor: '#7D5C3C', borderRadius: 12, borderWidth: 1, marginTop: 12, padding: 13 },
+  signOutLabel: { color: '#684F37', fontSize: 15, fontWeight: '700', textAlign: 'center' },
   dangerZone: { borderTopColor: '#D8CDBE', borderTopWidth: StyleSheet.hairlineWidth, marginTop: 38, paddingTop: 22 },
   dangerHeading: { color: '#A33B2B', fontSize: 18, fontWeight: '700' },
   deleteButton: { borderColor: '#B85C4A', borderRadius: 12, borderWidth: 1, marginTop: 16, padding: 13 },

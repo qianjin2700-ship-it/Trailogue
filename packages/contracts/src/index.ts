@@ -311,7 +311,7 @@ export interface ShareLinkDTO {
 export interface SharedStoryDTO {
   tripTitle: string;
   story: StoryContentDTO;
-  photos: Array<{ id: string; url: string }>;
+  photos: Array<{ id: string; url: string; width?: number | null; height?: number | null }>;
 }
 
 export type PhotoMimeType = 'image/jpeg' | 'image/png';

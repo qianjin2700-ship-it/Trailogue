@@ -89,9 +89,6 @@ export default function TripListScreen() {
         <Pressable accessibilityRole="button" onPress={() => router.push('/settings')}>
           <Text style={styles.settings}>Settings</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => void signOut()}>
-          <Text style={styles.signOut}>Sign out</Text>
-        </Pressable>
       </View>
       <TripListContent
         onCreateTrip={() => router.push('/trips/new')}
@@ -114,7 +111,6 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: '#F7F4EE', flex: 1 },
   toolbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 },
   createTrip: { color: '#7D5C3C', fontSize: 15, fontWeight: '700', padding: 8 },
-  signOut: { color: '#655F57', fontSize: 14, fontWeight: '600', padding: 8 },
   settings: { color: '#655F57', fontSize: 14, fontWeight: '600', padding: 8 },
 });
 

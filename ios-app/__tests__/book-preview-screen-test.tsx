@@ -115,9 +115,9 @@ describe('<BookPreviewScreen />', () => {
     expect(storySource.html).toContain('https://example.test/original.jpg');
     expect(storySource.html).not.toContain('class="page');
 
-    expect(screen.getByRole('button', { name: 'Edit story text' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Edit story' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Export PDF' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Private share' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Try another design' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Warm memoir' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Minimalist' })).toBeNull();

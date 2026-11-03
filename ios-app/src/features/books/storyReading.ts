@@ -27,12 +27,12 @@ export function renderStoryReadingHtml(
       ${chapter.photoIds.map((photoId) => figure(photoId, chapter.captions[photoId])).join('')}
     </section>`).join('');
   return `<!doctype html><html lang="${escapeHtml(story.meta.actualLanguage ?? 'en')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-body{margin:0 auto;max-width:760px;padding:28px 20px 64px;background:#f7f4ee;color:#29251f;font:18px/1.8 Georgia,"Songti SC",serif}
-h1{font-size:1.9rem;line-height:1.25;margin:0 0 8px}
-h2{font-size:1.4rem;line-height:1.3;margin:0 0 10px}
+body{margin:0 auto;max-width:760px;padding:28px 20px 64px;background:#f7f4ee;color:#29251f;font:16.5px/1.75 Georgia,"Songti SC",serif}
+h1{font-size:1.8rem;line-height:1.25;margin:0 0 8px}
+h2{font-size:1.32rem;line-height:1.3;margin:0 0 10px}
 .subtitle{color:#7d5c3c;font-style:italic;margin:0 0 20px}
 .meta{color:#8b6d50;font-size:.8rem;font-weight:700;margin:0 0 6px;letter-spacing:.04em}
-.copy{margin:0 0 20px;white-space:pre-wrap}
+.copy{margin:0 0 16px;white-space:pre-wrap}
 section{border-top:1px solid #d8cdbe;margin-top:34px;padding-top:26px}
 figure{margin:22px 0}img.photo{display:block;width:100%;height:auto;border-radius:10px;background:#eae3d8}
 figcaption{color:#6f655a;font-size:.78rem;margin-top:8px;text-align:center}

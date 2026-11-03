@@ -401,7 +401,7 @@ User regeneration feedback: ${JSON.stringify(input.feedback ?? null)}`;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
         const completion = await this.complete([
-          { role: 'system', content: 'You are a careful travel-book editor. Respond with valid JSON and obey factual constraints.' },
+          { role: 'system', content: 'You are a careful travel-book editor. Respond with valid JSON and obey factual constraints. Use standard punctuation with no space before commas, periods, colons, or other punctuation marks.' },
           { role: 'user', content: attempt === 1 ? prompt : `${prompt}\nPrevious output failed strict validation. Return a complete corrected JSON object.` },
         ], 8_000);
         totalTokens += completion.totalTokens;

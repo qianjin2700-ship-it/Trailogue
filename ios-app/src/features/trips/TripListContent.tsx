@@ -100,7 +100,6 @@ function TripCard({ trip, onPress }: { trip: TripSummary; onPress(): void }) {
           {trip.photoCount} {trip.photoCount === 1 ? 'photo' : 'photos'} · Updated{' '}
           {formatDate(trip.updatedAt)}
         </Text>
-        <Text style={styles.status}>{trip.status.replace('_', ' ')}</Text>
       </View>
     </Pressable>
   );
@@ -136,7 +135,6 @@ const styles = StyleSheet.create({
   cardMeta: { color: '#655F57', fontSize: 14, lineHeight: 20, marginTop: 8 },
   tripDates: { color: '#4A443D', fontSize: 14, fontWeight: '600', marginTop: 8 },
   destination: { color: '#7D5C3C', fontSize: 14, marginTop: 5 },
-  status: { color: '#7D5C3C', fontSize: 12, fontWeight: '700', marginTop: 12, textTransform: 'uppercase' },
   refreshError: { alignItems: 'center', backgroundColor: '#F4E5DF', borderRadius: 12, flexDirection: 'row', gap: 12, justifyContent: 'space-between', padding: 14 },
   refreshErrorCopy: { flex: 1 },
   refreshErrorTitle: { color: '#7A2E22', fontSize: 14, fontWeight: '700' },

@@ -24,11 +24,14 @@ describe('<TripListScreen />', () => {
     jest.clearAllMocks();
   });
 
-  it('offers sign out while trips are loading', () => {
+  it('routes to Settings and keeps sign out off the trip list', () => {
     const screen = render(<TripListScreen />);
 
-    fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    // 首发版：Sign out 移入 Settings，My Trips 首页不再作为主操作。
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Settings' }));
+    expect(mockPush).toHaveBeenCalledWith('/settings');
   });
 
   it('offers trip creation independently of list state', () => {
