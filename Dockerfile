@@ -9,6 +9,7 @@ COPY tsconfig.base.json ./
 COPY scripts/node-runtime-bootstrap.mjs scripts/node-runtime-bootstrap.mjs
 COPY packages/domain packages/domain
 COPY packages/contracts packages/contracts
+COPY packages/book packages/book
 COPY packages/config packages/config
 COPY packages/database packages/database
 COPY apps/api apps/api
