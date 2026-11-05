@@ -1,5 +1,10 @@
 import { classNames, escapeHtml, escapeMultiline, safeImageUrl } from './html.js';
-import { figureFit, imageTextFigureHeightMm } from './layoutEngine.js';
+import {
+  figureFit,
+  imageTextFigureHeightMm,
+  pageSlotAspects,
+  stackedRowWeights,
+} from './layoutEngine.js';
 import { MAGAZINE_TOKENS, PAGE } from './tokens.js';
 import type { BlockPhoto, MagazineDocument, MagazinePage } from './types.js';
 
@@ -70,13 +75,19 @@ figcaption{bottom:0;color:#fff;font-size:7.5pt;left:0;line-height:1.35;padding:8
 .cover .eyebrow{color:#fff;opacity:.86}
 .cover.portrait figure img.photo{object-position:50% 32%}
 
-/* Trip info */
-.trip_info{background:${t.cover};color:#fff;display:flex;flex-direction:column;justify-content:space-between}
+/* Trip info：标题在上、日期居中、事实在下 —— 三块之间留白对称，
+   不会出现「一整页只有上下两行字」的悬空感 */
+.trip_info{background:${t.cover};color:#fff;display:flex;flex-direction:column}
 .trip_info .eyebrow{color:${t.accent}}
-.trip_info .facts{display:grid;grid-template-columns:1fr 1fr;gap:9mm 6mm;margin-top:auto}
-.trip_info .fact-label{color:rgba(255,255,255,.55);font-size:8pt;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:2mm}
-.trip_info .fact-value{font-family:${t.display};font-size:15pt;line-height:1.25}
+.trip_info h2{font-size:26pt;max-width:160mm}
+.trip_info .subtitle{color:rgba(255,255,255,.7);font-family:${t.display};font-size:12pt;line-height:1.4;margin-top:5mm;max-width:140mm}
+.trip_info .middle{margin:auto 0}
 .trip_info .rule{background:${t.accent};height:2.4mm;width:32mm;margin-bottom:9mm}
+.trip_info .dates{font-family:${t.display};font-size:20pt;line-height:1.32;max-width:160mm;opacity:.95}
+.trip_info .facts{display:flex;gap:12mm}
+.trip_info .fact{flex:1 1 0;min-width:0}
+.trip_info .fact-label{color:rgba(255,255,255,.55);font-size:8pt;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:2mm}
+.trip_info .fact-value{font-family:${t.display};font-size:14pt;line-height:1.25;overflow-wrap:break-word}
 
 /* Chapter divider */
 .chapter_divider{display:flex;flex-direction:column;justify-content:center;background:${t.paper}}
@@ -94,9 +105,11 @@ figcaption{bottom:0;color:#fff;font-size:7.5pt;left:0;line-height:1.35;padding:8
 .hero .copy{color:#fff;margin-top:5mm;max-width:130mm;opacity:.94;display:-webkit-box;-webkit-line-clamp:9;-webkit-box-orient:vertical;overflow:hidden}
 .hero.portrait figure img.photo{object-position:50% 34%}
 
-/* Image + text：竖构图主图分栏 */
-.image_text{display:grid;grid-template-columns:1.06fr .94fr;gap:9mm;align-items:center}
-.image_text.right{grid-template-columns:.94fr 1.06fr}
+/* Image + text：竖构图主图分栏。图片列给到 1.16fr —— 1.06 时
+   一张 2:3 竖图只有 68mm 宽，摆在 Letter 页面上小得像缩略图，
+   四周留出的白比图本身还多。 */
+.image_text{display:grid;grid-template-columns:1.16fr .84fr;gap:9mm;align-items:center}
+.image_text.right{grid-template-columns:.84fr 1.16fr}
 .image_text figure{height:${PAGE.heightMm - PAGE.marginMm * 2}mm;max-height:${PAGE.heightMm - PAGE.marginMm * 2}mm}
 .image_text .text{max-height:100%;overflow:hidden}
 .image_text h2{font-size:24pt;margin-bottom:5mm}
@@ -114,7 +127,8 @@ figcaption{bottom:0;color:#fff;font-size:7.5pt;left:0;line-height:1.35;padding:8
 /* Two spread */
 .two_spread{padding:0;display:grid;grid-template-columns:1fr 1fr;gap:0}
 .two_spread figure{height:100%;background:${t.cover}}
-.two_spread .caption-band{position:absolute;bottom:0;left:0;right:0;height:18%;background:linear-gradient(transparent,rgba(8,16,24,.7));z-index:2}
+/* 两张都不是竖图时上下分栏：整宽 × 半高，槽位比例 1.56，横图几乎不用裁 */
+.two_spread.stacked{grid-template-columns:1fr;grid-template-rows:1fr 1fr;gap:3mm;padding:3mm 0}
 
 /* Three collage */
 .three_collage{padding:${PAGE.marginMm}mm;display:grid;grid-template-columns:1.24fr .76fr;grid-template-rows:1fr 1fr;gap:3mm}
@@ -151,10 +165,11 @@ function renderPage(
       return `<section class="${classNames('page', 'cover', page.lead)}">${figure(page.kind, 0, page.photos[0], lead)}<div class="scrim"></div><div class="cover-copy">${page.eyebrow ? `<p class="eyebrow">${escapeHtml(page.eyebrow)}</p>` : ''}<h1>${escapeHtml(page.title ?? document.title)}</h1>${page.body ? `<p class="subtitle">${escapeHtml(page.body)}</p>` : ''}</div></section>`;
 
     case 'trip_info':
-      return `<section class="${classNames('page', 'trip_info')}"><div><p class="eyebrow">Trip notes</p><h2>${escapeHtml(document.title)}</h2></div><div><div class="rule"></div><div class="facts">${fact('Dates', document.trip.dateLabel)}${fact('Places', document.trip.locationLabel)}${fact('Photos', String(document.trip.photoCount))}${fact('Chapters', String(document.trip.chapterCount))}</div></div>${label}</section>`;
+      return `<section class="${classNames('page', 'trip_info')}"><div class="head"><p class="eyebrow">Trip notes</p><h2>${escapeHtml(document.title)}</h2>${document.subtitle ? `<p class="subtitle">${escapeHtml(document.subtitle)}</p>` : ''}</div><div class="middle"><div class="rule"></div><p class="dates">${escapeHtml(document.trip.dateLabel ?? '')}</p></div><div class="facts">${fact('Places', document.trip.locationLabel)}${fact('Photos', String(document.trip.photoCount))}${fact('Chapters', String(document.trip.chapterCount))}</div>${label}</section>`;
 
     case 'chapter_divider':
-      return `<section class="${classNames('page', 'chapter_divider')}"><p class="index">${String(number ?? 1).padStart(2, '0')}</p><h2>${escapeHtml(page.title ?? '')}</h2>${page.eyebrow ? `<p class="meta">${escapeHtml(page.eyebrow)}</p>` : ''}<div class="rule"></div>${label}</section>`;
+      // 大号数字 = 章节序号（不是页码）；页码照常落在右下角
+      return `<section class="${classNames('page', 'chapter_divider')}"><p class="index">${String(page.ordinal ?? 1).padStart(2, '0')}</p><h2>${escapeHtml(page.title ?? '')}</h2>${page.eyebrow ? `<p class="meta">${escapeHtml(page.eyebrow)}</p>` : ''}<div class="rule"></div>${label}</section>`;
 
     case 'hero':
       return `<section class="${classNames('page', 'hero', page.lead)}">${figure(page.kind, 0, page.photos[0], lead)}<div class="scrim"></div><div class="hero-copy">${page.eyebrow ? `<p class="eyebrow">${escapeHtml(page.eyebrow)}</p>` : ''}${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}${page.body ? `<p class="copy">${escapeMultiline(page.body)}</p>` : ''}</div>${label}</section>`;
@@ -173,11 +188,19 @@ function renderPage(
     case 'full_width':
       return `<section class="${classNames('page', 'full_width')}">${figure(page.kind, 0, page.photos[0], lead)}<div class="scrim"></div>${label}</section>`;
 
-    case 'two_spread':
-      return `<section class="${classNames('page', 'two_spread')}">${page.photos
+    case 'two_spread': {
+      // 上下分栏时每行高度按 1/宽高比 分配，两张图的裁切比例才会一致；
+      // 这个权重同时决定了 figureFit 判定用的槽位（见 pageSlotAspects）。
+      const weights = page.lead === 'portrait' ? [] : stackedRowWeights(page.photos.slice(0, 2));
+      const gridStyle = weights.length
+        ? ` style="grid-template-rows:${weights.map((weight) => weight.toFixed(3)).join('fr ')}fr"`
+        : '';
+      const slots = pageSlotAspects(page);
+      return `<section class="${classNames('page', 'two_spread', page.lead !== 'portrait' && 'stacked')}"${gridStyle}>${page.photos
         .slice(0, 2)
-        .map((photo, index) => figure(page.kind, index, photo, lead))
+        .map((photo, index) => figure(page.kind, index, photo, lead, '', slots[index]))
         .join('')}${label}</section>`;
+    }
 
     case 'three_collage':
       return `<section class="${classNames('page', 'three_collage', page.lead === 'landscape' ? 'landscape_lead' : '')}">${page.photos
@@ -219,17 +242,19 @@ function figure(
   photo: BlockPhoto | undefined,
   lead: 'portrait' | 'landscape',
   boxStyle = '',
+  /** 显式槽位比例（上下分栏的行高是变化的，不能查常量表） */
+  slot?: number,
 ): string {
   if (!photo) return '<figure class="photo-missing"></figure>';
   const src = safeImageUrl(photo.url);
   if (!src) return '<figure class="photo-missing"></figure>';
   const caption = CAPTION_KINDS.has(kind) ? photo.caption?.trim() : undefined;
-  const fit = figureFit(kind, index, photo, lead);
+  const fit = figureFit(kind, index, photo, lead, slot);
   const classes = classNames('photo', fit.strategy === 'contain' && 'fit-contain');
   return `<figure${boxStyle}><img class="${classes}" data-photo-id="${escapeHtml(photo.id)}" data-fit="${fit.strategy}" src="${src}" alt="">${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}</figure>`;
 }
 
 function fact(label: string, value: string | undefined): string {
   if (!value) return '';
-  return `<div><p class="fact-label">${escapeHtml(label)}</p><p class="fact-value">${escapeHtml(value)}</p></div>`;
+  return `<div class="fact"><p class="fact-label">${escapeHtml(label)}</p><p class="fact-value">${escapeHtml(value)}</p></div>`;
 }

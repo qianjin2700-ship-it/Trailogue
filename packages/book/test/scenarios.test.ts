@@ -8,7 +8,7 @@ import {
   renderMagazineHtml,
   renderStoryHtml,
 } from '../src/index.js';
-import { magazineViolations, storyViolations } from './invariants.js';
+import { magazineViolations, storyViolations, visualViolations } from './invariants.js';
 import { SCENARIOS } from './fixtures/scenarios.js';
 
 /**
@@ -25,6 +25,7 @@ for (const scenario of SCENARIOS) {
   test(`Magazine · ${scenario.name}｜${scenario.focus}`, () => {
     const plan = planMagazine(scenario.source);
     assert.deepEqual(magazineViolations(plan.document), [], `${scenario.name} 违反 Magazine 不变量`);
+    assert.deepEqual(visualViolations(plan.document), [], `${scenario.name} 违反视觉不变量`);
     assert.ok(plan.document.pages.length >= 2, '至少要有封面 + 尾页');
 
     // 章节不能凭空消失：有内容的章节必须至少贡献一页

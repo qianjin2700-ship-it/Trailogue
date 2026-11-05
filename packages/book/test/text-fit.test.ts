@@ -29,13 +29,15 @@ test('estimateLineCount：空文本为 0 行，单行短句为 1 行', () => {
   assert.equal(estimateLineCount('潮水退了。', 20), 1);
 });
 
-test('estimateLineCount：只高估不低估（长文本行数 ≥ 字符数 / 每行字符数）', () => {
+test('estimateLineCount：只高估不低估（长文本行数 ≥ 字符数 / 每行 em）', () => {
   const capacity = magazineTextCapacity('image_text');
   for (const length of [30, 120, 400, 1200]) {
     const text = '潮'.repeat(length);
     const lines = estimateLineCount(text, capacity.lineWidthEm);
+    // 用 lineWidthEm（可含小数）比较，而不是 floor 过的 charsPerLine：
+    // 后者是给「每行能放几个字」的人看的整数，拿来算行数会把边界算多一行。
     assert.ok(
-      lines >= Math.ceil(length / capacity.charsPerLine),
+      lines >= Math.ceil(length / capacity.lineWidthEm),
       `${length} 字的行数估算被低估：${lines}`,
     );
   }

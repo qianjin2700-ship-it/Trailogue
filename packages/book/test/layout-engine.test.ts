@@ -8,12 +8,17 @@ import {
   DEFAULT_ASPECT,
   figureFit,
   figureSlotAspect,
+  MIN_FULL_BLEED_VISIBLE,
   MIN_VISIBLE_FRACTION,
+  pageSlotAspects,
   photoAspect,
   pickLead,
   placeholderPhoto,
   resolvePhotos,
+  planPlates,
   splitPhotoRun,
+  stackedRowWeights,
+  twoSpreadOrientation,
 } from '../src/index.js';
 
 /**
@@ -93,19 +98,67 @@ test('coverVisibleFraction：可见比例永远 ≤ 1，且左右对称', () => 
   }
 });
 
-test('figureFit：比例差异过大时改用 contain，避免异常裁图', () => {
-  // 横图放进竖页面（Letter 满幅）：可见 0.77/1.6 ≈ 0.48 → contain
-  const wide = { width: 1600, height: 1000 };
-  assert.equal(figureFit('hero', 0, wide).strategy, 'contain');
-  assert.ok(figureFit('hero', 0, wide).visible < MIN_VISIBLE_FRACTION);
+test('figureFit：满幅页允许更大裁切，只有极端比例才留白', () => {
+  // 3:2 横图放进 Letter 竖版：可见 0.77/1.5 ≈ 0.51 → cover。
+  // 满幅页留白会露出底色，看起来像渲染失败，所以这里必须铺满。
+  const wide = { width: 1500, height: 1000 };
+  assert.equal(figureFit('hero', 0, wide).strategy, 'cover');
+
+  // 3:1 全景：可见 0.26 < MIN_FULL_BLEED_VISIBLE → contain（裁了就只剩一条缝）
+  const panorama = { width: 3000, height: 1000 };
+  assert.equal(figureFit('hero', 0, panorama).strategy, 'contain');
+  assert.ok(figureFit('hero', 0, panorama).visible < MIN_FULL_BLEED_VISIBLE);
 
   // 接近页面比例的竖图 → cover 满幅
   const nearPage = { width: 780, height: 1000 };
   assert.equal(figureFit('hero', 0, nearPage).strategy, 'cover');
 
-  // 三图拼版的窄槽位里，竖图能铺满，横图必须留白
+  // 有图框的槽位阈值更严：0.56 的竖槽放竖图铺满，放横图就留白
   assert.equal(figureFit('three_collage', 1, { width: 700, height: 1000 }).strategy, 'cover');
-  assert.equal(figureFit('three_collage', 1, { width: 1600, height: 1000 }).strategy, 'contain');
+  assert.equal(figureFit('three_collage', 1, { width: 1500, height: 1000 }).strategy, 'contain');
+});
+
+test('twoSpreadOrientation：只有两张都是竖图才并排', () => {
+  const portrait = placeholderPhoto(1, 0.72, 'p');
+  const square = placeholderPhoto(2, 1.0, 's');
+  const landscape = placeholderPhoto(3, 1.5, 'l');
+  assert.equal(twoSpreadOrientation([portrait, portrait]), 'portrait');
+  // 方图在 0.39 的竖槽里只剩 39% 可见，必须改成上下分栏
+  assert.equal(twoSpreadOrientation([square, square]), 'landscape');
+  assert.equal(twoSpreadOrientation([landscape, landscape]), 'landscape');
+  assert.equal(twoSpreadOrientation([portrait, landscape]), 'landscape');
+});
+
+test('stackedRowWeights / pageSlotAspects：上下分栏让两张图裁切比例相同', () => {
+  const landscape = placeholderPhoto(1, 1.5, 'l');
+  const portrait = placeholderPhoto(2, 0.7, 'p');
+  const weights = stackedRowWeights([landscape, portrait]);
+  assert.ok(weights[0]! < weights[1]!, '横图那一行应当更矮');
+
+  const slots = pageSlotAspects({
+    kind: 'two_spread',
+    lead: 'landscape',
+    photos: [landscape, portrait],
+  });
+  const visibleA = figureFit('two_spread', 0, landscape, 'landscape', slots[0]).visible;
+  const visibleB = figureFit('two_spread', 1, portrait, 'landscape', slots[1]).visible;
+  assert.ok(Math.abs(visibleA - visibleB) < 0.02, `两张图可见比例应接近：${visibleA} / ${visibleB}`);
+  assert.ok(visibleA > MIN_VISIBLE_FRACTION);
+});
+
+test('planPlates：方向混合与极端比例不再挤进同一页', () => {
+  const portrait = placeholderPhoto(1, 0.72, 'p');
+  const landscape = placeholderPhoto(2, 1.5, 'l');
+  const square = placeholderPhoto(3, 1.0, 's');
+
+  // 三张同方向 → 一页
+  assert.equal(planPlates([landscape, landscape, landscape]).length, 1);
+  // 混合方向 → 拆成 1 + 2
+  const mixed = planPlates([portrait, landscape, landscape]);
+  assert.deepEqual(mixed.map((chunk) => chunk.length), [1, 2]);
+  // 全景 → 单独成页
+  const panorama = placeholderPhoto(4, 3.2, 'w');
+  assert.deepEqual(planPlates([landscape, panorama, landscape, square]).map((c) => c.length), [1, 1, 2]);
 });
 
 test('figureSlotAspect：满幅页接近 Letter 比例，拼版槽位比满幅更窄', () => {

@@ -114,13 +114,34 @@ test('Magazine：Letter 纸张、页码从封面的下一页开始', () => {
   assert.ok(!withoutNumbers.includes('class="page-number"'));
 });
 
-test('Magazine：横向照片在满幅页标记为 contain，竖幅接近页面比例用 cover', () => {
+test('Magazine：示例画册全部铺满，不出现信箱化的空框', () => {
   const document = buildMagazineDocument(createMockSource());
   const html = renderMagazineHtml(document);
-  assert.ok(html.includes('data-fit="contain"'), '横图满幅页需要留白而不是硬裁');
   assert.ok(html.includes('data-fit="cover"'));
-  assert.ok(html.includes('fit-contain'));
+  // 示例画册的比例都在正常范围，不该有任何一张图被留白
+  assert.ok(!html.includes('data-fit="contain"'), '示例画册不应出现留白图');
+  // 留白能力本身仍要保留（全景 / 超长竖图用）
   assert.ok(html.includes('object-fit:contain'));
+});
+
+test('Magazine：全景单独成页并标记 contain，不与他人共页', () => {
+  const panorama = placeholderPhoto(0, 3.2, 'panorama');
+  const document = buildMagazineDocument(
+    createDocumentSource({
+      language: 'zh',
+      title: '全景测试',
+      startDate: '2026-10-03',
+      endDate: '2026-10-03',
+      photos: [panorama],
+      chapters: [
+        { chapterId: 'pano', title: '很宽的一张', narrative: '站在堤上按了一张全景。', photoIds: [panorama.id] },
+      ],
+    }),
+  );
+  const html = renderMagazineHtml(document);
+  assert.ok(html.includes('data-fit="contain"'));
+  // 全景所在页只有一张图
+  assert.ok(html.includes('class="page cover'));
 });
 
 test('两个渲染器输出完整 HTML 骨架（可被 WebView / expo-print 直接加载）', () => {

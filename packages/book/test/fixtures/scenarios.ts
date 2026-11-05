@@ -183,6 +183,89 @@ export const SCENARIOS: Scenario[] = [
     focus: '文字-only 章节仍然成页，且没有空的图片槽位',
     source: sourceFromChapters([{ index: 0, photos: [], narrative: textOf(SENTENCE, 30) }]),
   },
+  /* ------------------------------------------------------------------ */
+  /* Phase B1 补充：分组边界、极端比例、字段缺失、规模上界               */
+  /* ------------------------------------------------------------------ */
+  {
+    name: '5 张照片',
+    focus: '切分为 2 + 3，双图页用上下分栏（横图不裁）',
+    source: sourceFromChapters([{ index: 0, photos: photoSeries(5, () => 1.5), narrative: textOf(SENTENCE, 2) }]),
+  },
+  {
+    name: '6 张照片',
+    focus: '切分为 3 + 3，两页图版节奏一致',
+    source: sourceFromChapters([{ index: 0, photos: photoSeries(6, (i) => (i % 2 ? 1.6 : 0.75)), narrative: textOf(SENTENCE, 2) }]),
+  },
+  {
+    name: '7 张照片',
+    focus: '切分为 1 + 3 + 3，首图整版、后两页图版',
+    source: sourceFromChapters([{ index: 0, photos: photoSeries(7, () => 1.5), narrative: textOf(SENTENCE, 2) }]),
+  },
+  {
+    name: '30 张照片（20+ 上界）',
+    focus: '大画册页数线性增长、不留白、不空白',
+    source: sourceFromChapters(splitChapters(photoSeries(30, (i) => [0.75, 1.0, 1.5, 1.78][i % 4]!), 6, textOf(SENTENCE, 3))),
+  },
+  {
+    name: '全方图',
+    focus: '方图在竖槽与横槽里的裁切都在允许范围内',
+    source: sourceFromChapters(splitChapters(photoSeries(9, () => 1.0), 3, textOf(SENTENCE, 2))),
+  },
+  {
+    name: '3:1 全景',
+    focus: '极端横图退回留白而不是被裁成一条缝',
+    source: sourceFromChapters([{ index: 0, photos: photoSeries(3, () => 3.0), narrative: textOf(SENTENCE, 1) }]),
+  },
+  {
+    name: '9:16 极端竖图',
+    focus: '极端竖图走文图分栏，不撑破版心',
+    source: sourceFromChapters([{ index: 0, photos: photoSeries(3, () => 0.5625), narrative: textOf(SENTENCE, 2) }]),
+  },
+  {
+    name: '超长标题 + 极短正文',
+    focus: '标题吃掉半个版心时正文仍能落位，不溢出',
+    source: sourceFromChapters(
+      [{ index: 0, photos: photoSeries(2, () => 0.75), narrative: SHORT }],
+      { title: TITLE_LONG, subtitle: TITLE_LONG },
+    ),
+  },
+  {
+    name: '单图单句（最小内容）',
+    focus: '内容极薄时仍然是「封面 + 尾页」的完整小册子',
+    source: sourceFromChapters([{ index: 0, photos: photoSeries(1, () => 1.5), narrative: SHORT }], { epilogue: null }),
+  },
+  {
+    name: '双章节（最小多章节）',
+    focus: '只有两章时不插分隔页',
+    source: sourceFromChapters(splitChapters(photoSeries(6, () => 1.5), 2, textOf(SENTENCE, 2))),
+  },
+  {
+    name: '12 章节',
+    focus: '章节数上界：分隔页受硬上限 3 约束，页序不交错',
+    source: sourceFromChapters(splitChapters(photoSeries(24, (i) => (i % 3 ? 1.5 : 0.7)), 12, textOf(SENTENCE, 2))),
+  },
+  {
+    name: '无封面照片',
+    focus: 'coverPhotoId 为空时回退到第一张，不产生空封面',
+    source: createDocumentSource({
+      language: 'zh',
+      title: '没有指定封面',
+      subtitle: null,
+      startDate: '2026-10-03',
+      endDate: '2026-10-03',
+      coverPhotoId: null,
+      photos: photoSeries(3, (i) => [0.75, 1.5, 1.0][i]!),
+      chapters: [{ chapterId: 'no-cover', title: '只有一章', narrative: textOf(SENTENCE, 2), photoIds: ['p-0', 'p-1', 'p-2'] }],
+    }),
+  },
+  {
+    name: '空字段全缺',
+    focus: '没有 subtitle / preface / epilogue 时页面结构不塌',
+    source: sourceFromChapters(
+      [{ index: 0, photos: photoSeries(4, (i) => (i % 2 ? 0.8 : 1.5)), narrative: textOf(SENTENCE, 2) }],
+      { subtitle: null, preface: null, epilogue: null },
+    ),
+  },
   {
     name: '英文长文',
     focus: '拉丁文本换行估算保守，不因词宽低估而溢出',

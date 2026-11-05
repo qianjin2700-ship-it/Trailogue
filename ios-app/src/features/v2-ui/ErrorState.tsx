@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from './Button';
+import { Retry } from './Retry';
 import { V2_COLORS, V2_RADIUS, V2_SPACING, V2_TYPE } from './theme';
 
 export interface ErrorStateProps {
@@ -16,6 +16,10 @@ export interface ErrorStateProps {
   onRetry?: () => void | Promise<void>;
   retryLabel?: string;
   retryingLabel?: string;
+  /** 已经自动重试过的次数（用于显示 "Attempt 2 of 3"） */
+  attempt?: number;
+  /** 自动重试上限 */
+  maxAttempts?: number;
   /** 外部已经知道正在重试（例如父组件在跑请求） */
   retrying?: boolean;
   /** 次要出口，例如「返回书架」 */
@@ -44,36 +48,28 @@ export function ErrorState({
   onRetry,
   retryLabel = 'Try again',
   retryingLabel = 'Retrying…',
+  attempt = 0,
+  maxAttempts,
   retrying = false,
   secondaryAction,
   testID = 'v2-error-state',
 }: ErrorStateProps) {
-  const [pending, setPending] = useState(false);
-  const busy = pending || retrying;
-
-  const handleRetry = useCallback(() => {
-    if (!onRetry || busy) return;
-    setPending(true);
-    // 同步回调也要走一次微任务，保证 busy 至少渲染一帧，避免「点了没反应」的错觉
-    void Promise.resolve()
-      .then(() => onRetry())
-      .catch(() => undefined)
-      .finally(() => setPending(false));
-  }, [busy, onRetry]);
-
   return (
     <View style={styles.container} testID={testID}>
       <Text style={styles.title}>{title}</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
       <View style={styles.actions}>
         {onRetry ? (
-          <Button
+          <Retry
             testID={`${testID}-retry`}
-            label={retryLabel}
-            loadingLabel={retryingLabel}
-            loading={busy}
-            onPress={handleRetry}
-            accessibilityHint="Attempts to load this content again"
+            onRetry={onRetry}
+            attempt={attempt}
+            maxAttempts={maxAttempts}
+            retryLabel={retryLabel}
+            retryingLabel={retryingLabel}
+            busy={retrying}
+            variant="primary"
+            showAttempts={attempt > 0}
           />
         ) : null}
         {secondaryAction ? (

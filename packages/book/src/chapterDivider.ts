@@ -20,6 +20,10 @@
  *     保证分隔页永远只是少数页（≤ 1/8 的篇幅节奏）。
  *  R7 间距 → 两个分隔页之间至少隔 3 个内容页；
  *     冲突时保留分量更重的一章（同分保留靠前的）。
+ *  R8 长书兜底 → 书够长（≥ 16 页且 ≥ 6 章）却一个分隔页都没选出来时，
+ *     按等距节奏补 1~3 个。理由：12 章 27 页的「照片日记」每章只有 2 页，
+ *     单章分量永远过不了 R5，结果全书画册一页呼吸都没有 —— 那不是紧凑，是平。
+ *     兜底只在「一个都没有」时触发，不会推翻前七条已选出的结果。
  *
  * 所有阈值都在 `DIVIDER_RULES` 里，测试与文档引用同一份常量。
  */
@@ -37,6 +41,9 @@ export const DIVIDER_RULES = {
   maxDividersHardCap: 3,
   /** R7：两个分隔页之间至少隔多少个内容页 */
   minPagesBetween: 3,
+  /** R8：长书兜底节奏的触发条件 */
+  rhythmMinChapters: 6,
+  rhythmMinPages: 16,
 } as const;
 
 export interface ChapterDividerInput {
@@ -164,6 +171,36 @@ export function planChapterDividers(context: ChapterDividerContext): ChapterDivi
       skipped.push({ chapterId: previous.chapterId, reason: 'too-close' });
     } else {
       skipped.push({ chapterId: chapter.chapterId, reason: 'too-close' });
+    }
+  }
+
+  // R8：长书兜底节奏（只在 R1–R7 一个都没选中时触发）
+  if (
+    kept.length === 0 &&
+    chapters.length >= DIVIDER_RULES.rhythmMinChapters &&
+    estimatedPageCount >= DIVIDER_RULES.rhythmMinPages
+  ) {
+    const step = chapters.length / (maxDividers + 1);
+    const picked: ChapterDividerInput[] = [];
+    for (let slot = 1; slot <= maxDividers; slot += 1) {
+      const target = Math.round(step * slot);
+      const chapter = chapters.find((item) => item.index === target && item.hasContent);
+      if (!chapter) continue;
+      const previous = picked[picked.length - 1];
+      if (previous) {
+        const gap = chapters
+          .filter((item) => item.index > previous.index && item.index < chapter.index)
+          .reduce((total, item) => total + item.pageCount, 0);
+        if (gap < DIVIDER_RULES.minPagesBetween) continue;
+      }
+      picked.push(chapter);
+    }
+    if (picked.length) {
+      kept.push(...picked);
+      const chosen = new Set(picked.map((chapter) => chapter.chapterId));
+      for (let i = skipped.length - 1; i >= 0; i -= 1) {
+        if (chosen.has(skipped[i]!.chapterId)) skipped.splice(i, 1);
+      }
     }
   }
 

@@ -99,8 +99,8 @@ export const MAGAZINE_TYPE = {
   bodySizePt: 10.5,
   /** hero 页文字压在满幅图上，宽度限制更窄 */
   heroTextWidthMm: 130,
-  /** image_text 页文字列：内容宽 183.9mm × .94/2（含 9mm gutter） */
-  imageTextWidthMm: (PAGE.widthMm - PAGE.marginMm * 2 - 9) * (0.94 / 2),
+  /** image_text 页文字列：内容宽 183.9mm × .84/2（含 9mm gutter） */
+  imageTextWidthMm: (PAGE.widthMm - PAGE.marginMm * 2 - 9) * (0.84 / 2),
   /** hero 正文行数上限：超出的正文分页到后续文字页，不裁字 */
   heroCapacityLines: 9,
   /** image_text 正文行数上限 */

@@ -141,5 +141,43 @@ test('规则常量被冻结：阈值变更需要同时改文档与测试', () =>
     weightTextLength: 700,
     maxDividersHardCap: 3,
     minPagesBetween: 3,
+    rhythmMinChapters: 6,
+    rhythmMinPages: 16,
   });
+});
+
+test('R8 长书兜底：12 章 30 页一个分隔页都没选中时，按等距补 3 个', () => {
+  const chapters = Array.from({ length: 12 }, (_, index) => ({
+    chapterId: `ch-${index}`,
+    index,
+    photoCount: 3,
+    textLength: 40,
+    pageCount: 2,
+    hasContent: true,
+  }));
+  const plan = planChapterDividers({
+    chapters,
+    estimatedPageCount: 30,
+    totalPhotoCount: 36,
+  });
+  // 单章 3 图 40 字过不了 R5，全靠 R8 兜底；12 章 → 上限 3，等距落在第 4/7/10 章
+  assert.deepEqual(plan.chapterIds, ['ch-3', 'ch-6', 'ch-9']);
+  assert.equal(plan.enabled, true);
+});
+
+test('R8 不推翻 R1–R7 的结果：短书仍然一个都不插', () => {
+  const chapters = Array.from({ length: 6 }, (_, index) => ({
+    chapterId: `ch-${index}`,
+    index,
+    photoCount: 2,
+    textLength: 30,
+    pageCount: 2,
+    hasContent: true,
+  }));
+  const plan = planChapterDividers({
+    chapters,
+    estimatedPageCount: 14,
+    totalPhotoCount: 12,
+  });
+  assert.deepEqual(plan.chapterIds, []);
 });

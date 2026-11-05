@@ -157,7 +157,7 @@ const html = renderMagazineHtml(doc, { preview: true });
 | 封面第一页且带照片/标题 | `__tests__/v2-magazine-document-test.ts` |
 | 行程页是第二页，事实数据正确 | 同上 |
 | 分隔页按规则出现（示例旅行 4 章 → 1 页） | `packages/book/test/chapter-divider.test.ts` |
-| 完整页序与预期数组完全一致（11 页） | 同上 |
+| 完整页序与预期数组完全一致（12 页） | 同上 |
 | 竖构图主图 → `image_text`，横构图 → `hero` | 同上 |
 | 无照片章节仍保留文字页 | 同上 |
 | 引语页插入 | 同上 |
@@ -172,7 +172,7 @@ const html = renderMagazineHtml(doc, { preview: true });
 
 ## 10. 预览产物
 
-- `docs/v2/previews/magazine-preview.html` —— 11 页完整画册（4 章 9 图，1 个分隔页）
+- `docs/v2/previews/magazine-preview.html` —— 12 页完整画册（4 章 9 图，1 个分隔页）
 - `docs/v2/previews/magazine-compact-preview.html` —— 7 页紧凑短途（2 章 4 图，**无**分隔页）
 - `docs/v2/previews/story-preview.html` —— 同一份 source 的图文版
 - 生成命令：`npm --prefix packages/book run build && node scripts/render-v2-previews.mjs`
@@ -190,7 +190,7 @@ const html = renderMagazineHtml(doc, { preview: true });
 
 ---
 
-## 11. Chapter Divider 启用规则（Phase B0 冻结）
+## 11. Chapter Divider 启用规则（Phase B0 冻结，Phase B1 增补 R8）
 
 > 原文「每章开头（可关）」在 Phase B0 被推翻：机械地每章一页会把页数翻倍，
 > 短旅行会变成一堆几乎相同的空页。规则实现见 `packages/book/src/chapterDivider.ts`，
@@ -205,6 +205,7 @@ const html = renderMagazineHtml(doc, { preview: true });
 | R5 | 该章照片 < 4 **且** 正文 < 700 字 | 不插（分量不够） |
 | R6 | 数量上限 | `min(3, ⌊章节数/2⌋, ⌊页数/8⌋)` |
 | R7 | 与上一个分隔页之间内容页 < 3 | 冲突时保留分量更重的一章 |
+| R8 | 书 ≥ 16 页且 ≥ 6 章，但 R1–R7 一个都没选出 | 按等距补 1–3 个（长书兜底节奏） |
 
 示例（`createMockSource`，4 章 9 图 10 页）：
 
@@ -214,3 +215,25 @@ chapter-flats    → ✅ 插（4 张照片）
 chapter-mangrove → below-weight（1 张照片，30 字）
 chapter-sunset   → below-weight（2 张照片，75 字）
 ```
+
+### Phase B1 增补：R8 长书兜底节奏
+
+R5 的分量门槛在「照片日记」型内容上会失灵：12 章、每章 3 张照片、正文 40 字，
+单章永远过不了 R5，结果 30 页的画册一页呼吸都没有。R8 只在 R1–R7 一个都没选中时
+按等距补 1–3 个，并继续受 R7 间距约束。
+
+完整规则、实测节奏表与手动覆盖方式见 [`CHAPTER_DIVIDER.md`](./CHAPTER_DIVIDER.md)。
+
+### Phase B1 版式修订（视觉验收后）
+
+| 位置 | 修订 | 原因 |
+|---|---|---|
+| 满幅页 | 可见比例下限 0.6 → 0.34（有图框的版式 0.45） | 0.6 让每张 3:2 横图都变成上下留黑的信箱版，封面出现大片空边 |
+| 三图拼版 | 依据首图方向选「竖主图 / 横主图」骨架 | 图版页此前不带 `lead`，横图被塞进 0.56 的竖槽（可见 37%） |
+| 图版分页 | 同页方向混合时拆成「1 张整版 + 2 张同页」；全景单独成页 | 一张页里混排两种方向，必然有一半留白 |
+| 双图页 | 上下分栏的行高 = 1/宽高比 | 两张图的裁切比例一致，都不出现空边 |
+| 文图分栏 | 图片列 1.06 → 1.16fr，图框最小高度 = 版心 68% | 2:3 竖图原本只有 68mm 宽，像缩略图 |
+| 文图分栏 | 图框高度按图片比例 + 最小高度 | 避免「图很小 + 一片白」与「图铺满 + 切掉一半」两个极端 |
+| 行程页 | 标题 / 日期 / 事实三段垂直分布 | 原来只有上下两行字，中间 55% 全是空的 |
+| 分隔页 | 大号数字改用章节序号 `ordinal` | 原来显示页码，第 2 章排在第 6 页就显示「06」 |
+| 满幅页 | 不渲染照片说明 | 说明与书名 / 正文 / 页码必然重叠 |

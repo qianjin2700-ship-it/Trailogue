@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint src test --max-warnings 0",
+    "lint": "eslint src test examples --max-warnings 0",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --test test/*.test.ts"
   }

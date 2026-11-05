@@ -31,8 +31,10 @@ describe('Magazine 2.0 page composer', () => {
     expect(dividers.map((page) => page.title)).toEqual(['滩涂上的第一次相遇']);
   });
 
-  it('横构图主图用满幅 hero，剩余照片切成整版/拼版', () => {
+  it('横构图主图用满幅 hero，剩余照片按方向分页', () => {
     const kinds = document.pages.map((page) => page.kind);
+    // 第 2 章剩下的 3 张是「横、竖、横」，方向不一致，
+    // 所以拆成「整版单图 + 上下分栏双图」两页，而不是硬塞进三图拼版。
     expect(kinds).toEqual([
       'cover',
       'trip_info',
@@ -40,12 +42,16 @@ describe('Magazine 2.0 page composer', () => {
       'full_width',
       'chapter_divider',
       'hero',
-      'three_collage',
+      'full_width',
+      'two_spread',
       'hero',
       'hero',
       'full_width',
       'closing',
     ]);
+    // 双图页要带上方向，渲染器据此选择并排还是上下分栏
+    const spread = document.pages.find((page) => page.kind === 'two_spread');
+    expect(spread?.lead).toBe('landscape');
   });
 
   it('竖构图主图改用文图分栏，不强行满幅裁切', () => {

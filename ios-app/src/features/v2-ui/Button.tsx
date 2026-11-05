@@ -17,6 +17,8 @@ export interface ButtonProps {
   /** 加载中的替代文案，默认沿用 label */
   loadingLabel?: string;
   icon?: ReactNode;
+  /** 撑满父容器宽度（表单底部的主动作常用） */
+  fullWidth?: boolean;
   accessibilityHint?: string;
   testID?: string;
 }
@@ -40,6 +42,7 @@ export function Button({
   loading = false,
   loadingLabel,
   icon,
+  fullWidth = false,
   accessibilityHint,
   testID,
 }: ButtonProps) {
@@ -58,6 +61,7 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         size === 'sm' ? styles.sm : styles.md,
+        fullWidth ? styles.full : null,
         { backgroundColor: palette.background, borderColor: palette.border },
         pressed && !inactive ? styles.pressed : null,
         inactive ? styles.inactive : null,
@@ -93,6 +97,7 @@ const styles = StyleSheet.create({
   },
   md: { paddingHorizontal: V2_SPACING.xl, paddingVertical: V2_SPACING.md },
   sm: { minHeight: 36, paddingHorizontal: V2_SPACING.lg, paddingVertical: V2_SPACING.sm },
+  full: { alignSelf: 'stretch' },
   pressed: { opacity: 0.82 },
   inactive: { opacity: 0.45 },
   row: { alignItems: 'center', flexDirection: 'row', gap: V2_SPACING.sm },

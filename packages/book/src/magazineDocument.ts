@@ -4,7 +4,14 @@ import {
   type ChapterDividerPlan,
 } from './chapterDivider.js';
 import { formatDateRange } from './format.js';
-import { chunkPhotos, pickLead, resolvePhotos } from './layoutEngine.js';
+import {
+  EXTREME_ASPECT,
+  photoAspect,
+  pickLead,
+  planPlates,
+  resolvePhotos,
+  twoSpreadOrientation,
+} from './layoutEngine.js';
 import { captionFor, chapterEyebrow, photoIndex, type DocumentSource, type SourceChapter } from './source.js';
 import { estimateLineCount, magazineTextCapacity, splitTextIntoPages } from './textFit.js';
 import type {
@@ -131,6 +138,8 @@ export function planMagazine(
         eyebrow: chapterEyebrow(chapter),
         title: chapter.title,
         photos: [],
+        // 大号数字是章节序号，不是页码
+        ordinal: plan.index + 1,
       });
     }
 
@@ -161,11 +170,16 @@ export function planMagazine(
     });
 
     plan.plates.forEach((chunk, pageIndex) => {
+      const kind = plateKind(chunk.length);
       pages.push({
         id: `${chapter.chapterId}-plate-${pageIndex}`,
-        kind: plateKind(chunk.length),
+        kind,
         chapterId: chapter.chapterId,
         photos: chunk,
+        // 图版页也要声明方向：三图拼版据此选「竖主图」还是「横主图」骨架，
+        // 双图页据此选「并排」还是「上下分栏」。缺了这个字段，任何图版
+        // 都会按竖主图骨架排，横图进去就只能留出上下两条空白。
+        lead: kind === 'two_spread' ? twoSpreadOrientation(chunk) : pickLead(chunk),
         align: pageIndex % 2 === 0 ? 'right' : 'left',
       });
     });
@@ -247,7 +261,7 @@ function buildChapterPlan(
     ? splitTextIntoPages(chapter.narrative, magazineTextCapacity(leadKind === 'hero' ? 'hero' : 'image_text'))
     : [];
 
-  const plates = chunkPhotos(photos.slice(1));
+  const plates = planPlates(photos.slice(1));
   const acceptedQuote = quote && quote.text.trim() && fitsQuote(quote.text.trim())
     ? { text: quote.text.trim(), attribution: quote.attribution?.trim() || undefined }
     : undefined;
@@ -323,7 +337,12 @@ function resolveClosingPhotos(
     .flatMap((chapter) => chapter.photoIds)
     .slice(-2)
     .reverse();
-  return resolvePhotos(tail, index);
+  // 尾页的两个格位是固定 0.76 的方框：全景 / 超长竖图进去只能留白，
+  // 干脆让尾页留字不留图 —— 收束页安静一点更好，也避免出现「半页空框」。
+  return resolvePhotos(tail, index).filter((photo) => {
+    const aspect = photoAspect(photo);
+    return aspect <= EXTREME_ASPECT.wide && aspect >= EXTREME_ASPECT.tall;
+  });
 }
 
 /* ------------------------------------------------------------------ */

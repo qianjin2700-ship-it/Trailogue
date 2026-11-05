@@ -42,15 +42,18 @@ p{margin:0}
 .copy{margin:0 0 ${STORY_METRICS.paragraphGapPx}px;white-space:pre-wrap}
 .chapter{border-top:1px solid ${t.rule};margin-top:${STORY_METRICS.sectionGapPx}px;padding-top:26px}
 .chapter .meta{color:${t.accent};font-size:.8rem;font-weight:700;letter-spacing:.04em;margin:0 0 6px}
-figure{margin:0;overflow:hidden}
+figure{margin:0;overflow:hidden;min-width:0}
 img.photo{display:block;width:100%;height:auto;background:${t.paperAlt};border-radius:8px}
-figcaption{color:${t.muted};font-size:.78rem;line-height:1.5;margin-top:8px;text-align:center}
+figcaption{color:${t.muted};font-size:.78rem;line-height:1.5;margin-top:8px;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .figure-large{margin:26px 0 26px}
 .figure-large img.photo{border-radius:10px}
 .figure-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:24px 0}
-.figure-pair img.photo{height:100%;object-fit:cover;aspect-ratio:3/4}
-.figure-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:24px 0}
-.figure-gallery img.photo{height:100%;object-fit:cover;aspect-ratio:1/1;border-radius:6px}
+/* 并排图统一 3:4 框：宽度写死 100%，高度由比例推出，
+   否则 height:100% + aspect-ratio 会让浏览器按高度反推宽度，
+   给图片排出一个不等的宽度（实测第一张会比后两张宽出一截）。 */
+.figure-pair img.photo{width:100%;height:auto;object-fit:cover;aspect-ratio:3/4}
+.figure-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:24px 0;align-items:start}
+.figure-gallery img.photo{width:100%;height:auto;object-fit:cover;aspect-ratio:1/1;border-radius:6px}
 .pull{border-left:3px solid ${t.accent};margin:32px 0;padding:4px 0 4px 18px}
 .pull p{color:${t.ink};font-family:${t.display};font-size:1.18rem;line-height:1.5;white-space:pre-wrap}
 .pull cite{color:${t.muted};display:block;font-size:.78rem;font-style:normal;margin-top:8px}
