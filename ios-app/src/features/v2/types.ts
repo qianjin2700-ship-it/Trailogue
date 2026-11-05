@@ -1,0 +1,131 @@
+/**
+ * Trailogue 2.0 文档模型。
+ *
+ * 设计目标：**AI 只产出内容，版式由程序决定**。
+ * 因此这里的类型全部是「内容块」而不是「像素」——
+ * 没有任何 margin / fontSize / 坐标，渲染器才负责把内容块变成具体版式。
+ *
+ * 这一层是纯数据（可 JSON 序列化），因此可以：
+ *  - 存库（未来扩展）
+ *  - 做 diff（改版前后对比）
+ *  - 单元测试（不需要渲染器）
+ */
+
+/** 照片块。宽高是可选的：历史数据可能没有，缺省按 3:2 处理。 */
+export interface BlockPhoto {
+  id: string;
+  url: string;
+  caption?: string;
+  width?: number | null;
+  height?: number | null;
+}
+
+export type PhotoAspectClass = 'portrait' | 'square' | 'landscape' | 'wide';
+
+/* ------------------------------------------------------------------ */
+/* Story：以阅读为核心，块顺序即阅读顺序                                 */
+/* ------------------------------------------------------------------ */
+
+export interface StoryHeaderBlock {
+  type: 'header';
+  title: string;
+  subtitle?: string;
+  eyebrow?: string;
+}
+
+export interface StoryParagraphBlock {
+  type: 'paragraph';
+  text: string;
+}
+
+export interface StorySectionBlock {
+  type: 'section';
+  title: string;
+  text?: string;
+  /** 章节元信息，例如「10 月 3 日 · 深圳湾」 */
+  eyebrow?: string;
+}
+
+export type StoryFigureLayout = 'large' | 'pair' | 'gallery';
+
+export interface StoryFigureBlock {
+  type: 'figure';
+  layout: StoryFigureLayout;
+  photos: BlockPhoto[];
+}
+
+export interface StoryQuoteBlock {
+  type: 'quote';
+  text: string;
+  attribution?: string;
+}
+
+export interface StoryClosingBlock {
+  type: 'closing';
+  text: string;
+}
+
+export type StoryBlock =
+  | StoryHeaderBlock
+  | StoryParagraphBlock
+  | StorySectionBlock
+  | StoryFigureBlock
+  | StoryQuoteBlock
+  | StoryClosingBlock;
+
+export interface StoryDocument {
+  version: 1;
+  language: string;
+  title: string;
+  blocks: StoryBlock[];
+  stats: {
+    chapterCount: number;
+    photoCount: number;
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Magazine：以视觉成品感为核心，页序即翻页顺序                          */
+/* ------------------------------------------------------------------ */
+
+export type MagazinePageKind =
+  | 'cover'
+  | 'trip_info'
+  | 'chapter_divider'
+  | 'hero'
+  | 'image_text'
+  | 'two_spread'
+  | 'three_collage'
+  | 'full_width'
+  | 'quote'
+  | 'closing';
+
+export interface MagazinePage {
+  id: string;
+  kind: MagazinePageKind;
+  chapterId?: string;
+  eyebrow?: string;
+  title?: string;
+  body?: string;
+  photos: BlockPhoto[];
+  /** 文图页的图片在左还是右 */
+  align?: 'left' | 'right';
+  /** 主图是竖构图还是横构图，决定 hero 的裁切策略 */
+  lead?: 'portrait' | 'landscape';
+}
+
+export interface MagazineTripInfo {
+  dateLabel?: string;
+  locationLabel?: string;
+  photoCount: number;
+  chapterCount: number;
+}
+
+export interface MagazineDocument {
+  version: 1;
+  language: string;
+  title: string;
+  subtitle?: string;
+  trip: MagazineTripInfo;
+  pages: MagazinePage[];
+}
