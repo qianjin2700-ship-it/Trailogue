@@ -9,12 +9,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { AppError } from '@/api/errors';
 import { useAuth } from '@/auth/AuthProvider';
 import { handleProtectedError } from '@/auth/handleProtectedError';
-import { storyRepository } from '@/composition/services';
+import { photoRepository, storyRepository } from '@/composition/services';
 import type { StoryContentDTO, StoryDTO } from '@/contracts/story';
+import type { Photo } from '@/domain/photo/photo';
+import { buildStoryDocument, renderStoryHtml, sourceFromStory } from '@/features/v2';
 
 export default function StoryScreen() {
   const { signOut } = useAuth();
@@ -25,15 +28,17 @@ export default function StoryScreen() {
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     let active = true;
-    void storyRepository.getLatest(id).then((result) => {
+    void Promise.all([storyRepository.getLatest(id), photoRepository.getPhotos(id)]).then(([result, nextPhotos]) => {
       if (!active) return;
       setStory(result);
       setDraft(result.content);
+      setPhotos(nextPhotos);
       void storyRepository.listVersions(id).then((items) => active && setVersionCount(items.length)).catch(() => undefined);
     }).catch(async (cause: unknown) => {
       if (!active || await handleProtectedError(cause, signOut)) return;
@@ -75,6 +80,46 @@ export default function StoryScreen() {
   }
 
   const update = (change: Partial<StoryContentDTO>) => setDraft((current) => current ? { ...current, ...change } : current);
+  if (!editing) {
+    const document = buildStoryDocument(sourceFromStory(draft, photos));
+    const html = renderStoryHtml(document, { preview: true });
+    const handleMessage = (event: WebViewMessageEvent) => {
+      try {
+        const message = JSON.parse(event.nativeEvent.data) as { type?: string };
+        if (message.type === 'photo-error') {
+          setError('Some photos could not be loaded. Check your connection and try again.');
+        }
+      } catch {
+        // Ignore messages outside the shared preview protocol.
+      }
+    };
+    return (
+      <View style={styles.readerScreen}>
+        <View style={styles.readerHeader}>
+          <Text style={styles.version}>CURRENT V{story?.version ?? 1} · {versionCount || 1} SAVED {(versionCount || 1) === 1 ? 'VERSION' : 'VERSIONS'}</Text>
+          {draft.meta.visionAvailable ? null : (
+            <Text style={styles.notice}>This story used trip and photo metadata only because the configured model does not support image input.</Text>
+          )}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={styles.row}>
+            <ActionButton label="Edit story" onPress={() => setEditing(true)} secondary />
+            <ActionButton label="Book preview" onPress={() => router.push({ pathname: '/trips/book', params: { id } })} />
+            <ActionButton label="History & compare" onPress={() => router.push({ pathname: '/trips/story-versions', params: { id } })} secondary />
+          </View>
+          <ActionButton label="Adjust requirements & regenerate" onPress={() => router.push({ pathname: '/trips/creative', params: { id } })} secondary />
+        </View>
+        <WebView
+          accessibilityLabel="Story reading preview"
+          mixedContentMode="never"
+          onMessage={handleMessage}
+          originWhitelist={['*']}
+          setSupportMultipleWindows={false}
+          source={{ html }}
+          style={styles.storyPreview}
+        />
+      </View>
+    );
+  }
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
       <Text style={styles.version}>CURRENT V{story?.version ?? 1} · {versionCount || 1} SAVED {(versionCount || 1) === 1 ? 'VERSION' : 'VERSIONS'}</Text>
@@ -110,21 +155,10 @@ export default function StoryScreen() {
       ))}
       <EditableParagraph editing={editing} label="Epilogue" onChange={(epilogue) => update({ epilogue })} value={draft.epilogue} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {editing ? (
-        <View style={styles.row}>
-          <ActionButton disabled={working} label={working ? 'Saving…' : 'Save new version'} onPress={save} />
-          <ActionButton label="Cancel" onPress={() => { setDraft(story?.content ?? draft); setEditing(false); }} secondary />
-        </View>
-      ) : (
-        <>
-          <View style={styles.row}>
-            <ActionButton label="Edit story" onPress={() => setEditing(true)} secondary />
-            <ActionButton label="Book preview" onPress={() => router.push({ pathname: '/trips/book', params: { id } })} />
-            <ActionButton label="History & compare" onPress={() => router.push({ pathname: '/trips/story-versions', params: { id } })} secondary />
-          </View>
-          <ActionButton label="Adjust requirements & regenerate" onPress={() => router.push({ pathname: '/trips/creative', params: { id } })} secondary />
-        </>
-      )}
+      <View style={styles.row}>
+        <ActionButton disabled={working} label={working ? 'Saving…' : 'Save new version'} onPress={save} />
+        <ActionButton label="Cancel" onPress={() => { setDraft(story?.content ?? draft); setEditing(false); }} secondary />
+      </View>
     </ScrollView>
   );
 }
@@ -158,6 +192,9 @@ const inputStyle = {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: '#F7F4EE', flex: 1 },
+  readerScreen: { backgroundColor: '#F7F4EE', flex: 1 },
+  readerHeader: { backgroundColor: '#F7F4EE', paddingHorizontal: 18, paddingVertical: 12 },
+  storyPreview: { backgroundColor: '#F7F4EE', flex: 1 },
   content: { padding: 24, paddingBottom: 60 },
   loader: { backgroundColor: '#F7F4EE', flex: 1 },
   empty: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center', padding: 32 },

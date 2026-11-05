@@ -1,5 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 
+import {
+  buildMagazineDocument,
+  buildStoryDocument,
+  renderMagazineHtml,
+  renderStoryHtml,
+  sourceFromStory,
+} from '@trailogue/book';
 import type { ShareLinkDTO, SharedStoryDTO, StoryContentDTO } from '@trailogue/contracts';
 import type {
   PhotoRepository,
@@ -103,6 +110,24 @@ export function renderSharedMagazineHtml(shared: SharedStoryDTO): string {
     return `<section class="chapter">${meta ? `<p class="eyebrow">${escapeHtml(meta)}</p>` : ''}<h2>${escapeHtml(chapter.title)}</h2><p class="body">${escapeHtml(chapter.narrative)}</p>${chapter.photoIds.map((id) => figure(id, chapter.captions[id])).join('')}</section>`;
   }).join('');
   return `<!doctype html><html lang="${escapeHtml(shared.story.meta.actualLanguage ?? 'zh-CN')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(shared.story.title)}</title><style>body{margin:0;background:#f3eee6;color:#17262c;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","PingFang TC","Yu Gothic",sans-serif;-webkit-font-smoothing:antialiased}.cover{position:relative;min-height:62vh;display:flex;align-items:flex-end;background:#14283b;color:#fff;overflow:hidden}.cover>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.cover .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,17,25,.12) 30%,rgba(8,17,25,.92) 100%)}.cover-copy{position:relative;z-index:2;padding:26px 22px 34px;max-width:680px;width:100%}.cover .eyebrow{color:#fff;text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;font-weight:800;margin:0}.cover h1{font-family:Georgia,"Songti SC",serif;font-size:2.35rem;line-height:1.12;margin:10px 0 6px;letter-spacing:-.5px}.cover .subtitle{color:#e7d8c8;font-style:italic;font-size:1.02rem;margin:0}.preface{max-width:680px;margin:0 auto;padding:32px 22px 4px}.chapter{max-width:680px;margin:0 auto;padding:34px 22px;border-top:2px solid #d7643d}.preface+.chapter{border-top:none}.eyebrow{color:#d7643d;font-size:.75rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin:0 0 8px}h2{font-family:Georgia,"Songti SC",serif;font-size:1.7rem;line-height:1.2;margin:0 0 14px}.body{margin:0;font-size:1rem;line-height:1.78;color:#24343a;white-space:pre-wrap}figure{margin:26px 0}.frame{overflow:hidden;border-radius:8px;background:#e8e1d7}.frame img{display:block;width:100%;max-height:74vh;object-fit:cover;object-position:center}figcaption{margin-top:9px;color:#6f655a;font-size:.82rem;text-align:center}</style></head><body><header class="cover">${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="">` : ''}<div class="shade"></div><div class="cover-copy"><p class="eyebrow">${escapeHtml(shared.tripTitle)}</p><h1>${escapeHtml(shared.story.title)}</h1>${shared.story.subtitle ? `<p class="subtitle">${escapeHtml(shared.story.subtitle)}</p>` : ''}</div></header>${shared.story.preface ? `<section class="preface"><p class="body">${escapeHtml(shared.story.preface)}</p></section>` : ''}${chapters}${shared.story.epilogue ? `<section class="chapter epilogue"><p class="body">${escapeHtml(shared.story.epilogue)}</p></section>` : ''}</body></html>`;
+}
+
+/**
+ * Opt-in Trailogue 2.0 share renderer.
+ *
+ * The legacy renderers above remain the default for every existing 1.0 URL.
+ * New clients explicitly request `renderer=v2`, allowing server share, iOS
+ * preview and PDF to consume the same deterministic document model without
+ * changing the meaning of `/share/:token` for installed 1.0 clients.
+ */
+export function renderSharedV2Html(
+  shared: SharedStoryDTO,
+  view: 'story' | 'magazine',
+): string {
+  const source = sourceFromStory(shared.story, shared.photos);
+  return view === 'magazine'
+    ? renderMagazineHtml(buildMagazineDocument(source), { preview: true })
+    : renderStoryHtml(buildStoryDocument(source), { preview: true });
 }
 
 function hashToken(token: string): string {

@@ -8,11 +8,13 @@ const mockGetLatest = jest.fn();
 const mockGenerate = jest.fn();
 const mockUpdate = jest.fn();
 const mockListVersions = jest.fn();
+const mockGetPhotos = jest.fn();
 
 jest.mock('@/auth/AuthProvider', () => ({
   useAuth: () => ({ signOut: jest.fn().mockResolvedValue(undefined) }),
 }));
 jest.mock('@/composition/services', () => ({
+  photoRepository: { getPhotos: (...args: unknown[]) => mockGetPhotos(...args) },
   storyRepository: {
     getLatest: (...args: unknown[]) => mockGetLatest(...args),
     generate: (...args: unknown[]) => mockGenerate(...args),
@@ -20,6 +22,13 @@ jest.mock('@/composition/services', () => ({
     listVersions: (...args: unknown[]) => mockListVersions(...args),
   },
 }));
+jest.mock('react-native-webview', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View } = require('react-native');
+  return { WebView: (props: Record<string, unknown>) => React.createElement(View, { ...props, testID: 'story-web-preview' }) };
+});
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: () => ({ id: 'trip-1' }),
@@ -58,6 +67,11 @@ describe('<StoryScreen />', () => {
     mockGenerate.mockResolvedValue(story);
     mockUpdate.mockResolvedValue({ ...story, version: 2 });
     mockListVersions.mockResolvedValue([story]);
+    mockGetPhotos.mockResolvedValue([{
+      id: 'photo-1', tripId: 'trip-1', status: 'ready', url: 'https://example.test/photo.jpg',
+      originalFilename: 'photo.jpg', mimeType: 'image/jpeg', fileSize: 10, width: 1200, height: 800,
+      capturedAt: null, createdAt: new Date(0), uploadedAt: new Date(0), caption: null, locationName: null,
+    }]);
   });
 
   it('requires creative confirmation before generating from an empty state', async () => {
@@ -70,7 +84,10 @@ describe('<StoryScreen />', () => {
   it('edits story text and persists a new version', async () => {
     mockGetLatest.mockResolvedValueOnce(story);
     const screen = render(<StoryScreen />);
-    await waitFor(() => expect(screen.getByText('Kyoto in autumn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('story-web-preview')).toBeTruthy());
+    const source = screen.getByTestId('story-web-preview').props.source as { html: string };
+    expect(source.html).toContain('Kyoto in autumn');
+    expect(source.html).toContain('https://example.test/photo.jpg');
     fireEvent.press(screen.getByRole('button', { name: 'Edit story' }));
     fireEvent.changeText(screen.getByLabelText('Story title'), 'Edited Kyoto');
     fireEvent.press(screen.getByRole('button', { name: 'Save new version' }));

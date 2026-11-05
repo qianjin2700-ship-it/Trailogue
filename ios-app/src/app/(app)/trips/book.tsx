@@ -1,6 +1,6 @@
 import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, StyleSheet, Text, View } from 'react-native';
@@ -12,15 +12,16 @@ import { photoRepository, sharesApi, storyRepository } from '@/composition/servi
 import type { BookPreviewDTO, ShareLinkDTO } from '@/contracts/story';
 import type { Photo } from '@/domain/photo/photo';
 import { recordPerformance } from '@/diagnostics/performance';
-import {
-  buildBookLayout,
-  makePdfFilename,
-  renderBookHtml,
-  renderBookPreviewHtml,
-  type BookLayoutDocument,
-} from '@/features/books/bookLayout';
+import { makePdfFilename } from '@/features/books/bookLayout';
 import { materializeBookPhotos, withTimeout } from '@/features/books/pdfExport';
-import { renderStoryReadingHtml } from '@/features/books/storyReading';
+import { ErrorState } from '@/features/v2-ui';
+import {
+  renderMagazineHtml,
+  renderStoryHtml,
+  type MagazineDocument,
+  type StoryDocument,
+} from '@/features/v2';
+import { createV2DocumentsFromBook } from '@/features/v2/bookDocuments';
 
 type BookView = 'story' | 'magazine';
 
@@ -29,7 +30,8 @@ export default function BookPreviewScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const [book, setBook] = useState<BookPreviewDTO | null>(null);
   const [photos, setPhotos] = useState<Map<string, Photo>>(new Map());
-  const [document, setDocument] = useState<BookLayoutDocument | null>(null);
+  const [storyDocument, setStoryDocument] = useState<StoryDocument | null>(null);
+  const [magazineDocument, setMagazineDocument] = useState<MagazineDocument | null>(null);
   const [view, setView] = useState<BookView>('story');
   const [error, setError] = useState<string | null>(null);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export default function BookPreviewScreen() {
   const [activeShare, setActiveShare] = useState<ShareLinkDTO | null>(null);
   const photoRefreshAttemptedRef = useRef(false);
   const photoRefreshInFlightRef = useRef(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -48,12 +51,12 @@ export default function BookPreviewScreen() {
       .then(([nextBook, nextPhotos]) => {
         if (!active) return;
         const photoMap = new Map(nextPhotos.map((photo) => [photo.id, photo]));
-        // 首发版只提供 Magazine 一种画册排版：不读取历史保存的暖回忆/极简布局，
-        // 每次进入都按当前故事与照片重新排版，避免旧布局缺图或缺页。
-        const magazineBook: BookPreviewDTO = { ...nextBook, bookStyle: 'travel_magazine', layout: {} };
-        setBook(magazineBook);
+        const documents = createV2DocumentsFromBook(nextBook, photoMap.values());
+        setBook(nextBook);
         setPhotos(photoMap);
-        setDocument(buildBookLayout(magazineBook, photoMap));
+        setStoryDocument(documents.story);
+        setMagazineDocument(documents.magazine);
+        setError(null);
         recordPerformance('book_preview', startedAt, { photoCount: nextPhotos.length });
       })
       .catch(async (cause: unknown) => {
@@ -63,22 +66,27 @@ export default function BookPreviewScreen() {
     return () => {
       active = false;
     };
-  }, [id, signOut]);
+  }, [id, loadAttempt, signOut]);
 
   const previewHtml = useMemo(() => {
-    if (!document) return '';
+    if (!storyDocument || !magazineDocument) return '';
     return view === 'magazine'
-      ? renderBookPreviewHtml(document, photos)
-      : renderStoryReadingHtml(book?.story ?? null, photos);
-  }, [book?.story, document, photos, view]);
+      ? renderMagazineHtml(magazineDocument, { preview: true })
+      : renderStoryHtml(storyDocument, { preview: true });
+  }, [magazineDocument, storyDocument, view]);
 
   if (error && !book)
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error}</Text>
+        <ErrorState
+          title="Book preview could not be loaded"
+          message={error}
+          onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+          retryLabel="Retry"
+        />
       </View>
     );
-  if (!book || !document)
+  if (!book || !storyDocument || !magazineDocument)
     return (
       <ActivityIndicator
         accessibilityLabel="Loading book preview"
@@ -95,7 +103,11 @@ export default function BookPreviewScreen() {
     setError(null);
     try {
       const nextPhotos = await photoRepository.getPhotos(id);
-      setPhotos(new Map(nextPhotos.map((photo) => [photo.id, photo])));
+      const nextMap = new Map(nextPhotos.map((photo) => [photo.id, photo]));
+      const documents = createV2DocumentsFromBook(book, nextMap.values());
+      setPhotos(nextMap);
+      setStoryDocument(documents.story);
+      setMagazineDocument(documents.magazine);
       setPreviewStatus('Photos refreshed');
     } catch (cause) {
       setPreviewStatus(null);
@@ -143,7 +155,9 @@ export default function BookPreviewScreen() {
         'Refreshing the photos took too long. Check your connection and try again.',
       );
       const freshPhotoMap = new Map(freshPhotos.map((photo) => [photo.id, photo]));
-      const usedPhotoIds = new Set(document.pages.flatMap((page) => page.photoIds));
+      const usedPhotoIds = new Set(
+        magazineDocument.pages.flatMap((page) => page.photos.map((photo) => photo.id)),
+      );
       const usedPhotos = new Map(
         [...freshPhotoMap].filter(([photoId]) => usedPhotoIds.has(photoId)),
       );
@@ -156,15 +170,19 @@ export default function BookPreviewScreen() {
         throw new Error('The photos could not be prepared. Check your connection and try again.');
       }
       setExportStage('Creating PDF…');
+      const printDocuments = createV2DocumentsFromBook(book, prepared.photos.values());
       const printed = await withTimeout(
-        Print.printToFileAsync({ html: renderBookHtml(document, prepared.photos), base64: false }),
+        Print.printToFileAsync({
+          html: renderMagazineHtml(printDocuments.magazine),
+          base64: false,
+        }),
         60_000,
         'Creating the PDF took too long. Please try again.',
       );
       const named = new File(Paths.cache, makePdfFilename(book.tripTitle, book.startDate));
       if (named.exists) named.delete();
       await new File(printed.uri).copy(named);
-      recordPerformance('pdf_export', startedAt, { pageCount: document.pages.length });
+      recordPerformance('pdf_export', startedAt, { pageCount: magazineDocument.pages.length });
       if (!(await Sharing.isAvailableAsync())) throw new Error('File sharing is not available');
       setExportStage('Opening share sheet…');
       await Sharing.shareAsync(named.uri, {
@@ -189,7 +207,7 @@ export default function BookPreviewScreen() {
     try {
       const link = await sharesApi.create(id);
       // 所见即所得：Story tab 分享图文网页，Magazine tab 分享画册网页。
-      const sharedUrl = `${link.url}${link.url.includes('?') ? '&' : '?'}view=${view}`;
+      const sharedUrl = `${link.url}${link.url.includes('?') ? '&' : '?'}view=${view}&renderer=v2`;
       setActiveShare({ ...link, url: sharedUrl });
       await Share.share({
         title: book.title,
@@ -242,16 +260,8 @@ export default function BookPreviewScreen() {
         </View>
         <View style={styles.primaryActions}>
           <Text style={styles.meta}>
-            {view === 'magazine' ? `${document.pages.length} pages` : `${photos.size} photos · story text`}
+            {view === 'magazine' ? `${magazineDocument.pages.length} pages` : `${photos.size} photos · story text`}
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={() => router.push({ pathname: '/trips/story', params: { id } })}
-            style={[styles.compactButton, busy && styles.disabled]}
-          >
-            <Text style={styles.compactButtonLabel}>Edit story</Text>
-          </Pressable>
         </View>
         {previewStatus ? <Text style={styles.status}>{previewStatus}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -326,17 +336,6 @@ const styles = StyleSheet.create({
   viewChoiceLabelSelected: { color: '#FFFFFF' },
   primaryActions: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
   meta: { color: '#6A5D51', flex: 1, fontSize: 12, fontWeight: '600' },
-  compactButton: {
-    alignItems: 'center',
-    borderColor: '#8B735D',
-    borderRadius: 10,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 8,
-  },
-  compactButtonLabel: { color: '#5E4C3A', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   disabled: { opacity: 0.5 },
   status: { color: '#6A5D51', fontSize: 12, marginTop: 7, textAlign: 'center' },
   error: { color: '#A33B2B', fontSize: 13, marginTop: 7, textAlign: 'center' },

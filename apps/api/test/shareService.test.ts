@@ -3,7 +3,11 @@ import test from 'node:test';
 
 import type { ShareLinkRecord, StoryRecord, TripRecord } from '@trailogue/database';
 
-import { ShareService, renderSharedStoryHtml } from '../src/modules/shares/shareService.js';
+import {
+  ShareService,
+  renderSharedStoryHtml,
+  renderSharedV2Html,
+} from '../src/modules/shares/shareService.js';
 
 const now = new Date('2026-10-27T00:00:00.000Z');
 const trip: TripRecord = {
@@ -87,4 +91,28 @@ test('the private share page stays a plain photo-and-text reading page', () => {
   assert.ok(html.includes('<figcaption>Sea light</figcaption>'));
   assert.ok(!html.includes('class="page'));
   assert.ok(!/grid-template|@page/.test(html));
+});
+
+test('the opt-in V2 share renderer uses the shared Story and Magazine documents', () => {
+  const shared = {
+    tripTitle: trip.title,
+    story: {
+      title: 'Story', subtitle: 'Sub', preface: 'Preface',
+      chapters: [{
+        chapterId: 'chapter-1', title: 'The lighthouse', dateLabel: 'August 24, 2025',
+        locationLabel: 'Guishan Island', narrative: 'The path reached the sea.',
+        photoIds: ['photo-1'], captions: { 'photo-1': 'Sea light' },
+        locked: false, userEdited: false,
+      }],
+      epilogue: 'End', shareSummary: null, meta: story.content.meta as never,
+    },
+    photos: [{ id: 'photo-1', url: 'https://signed.example/photo-1.jpg', width: 1600, height: 900 }],
+  };
+
+  const storyHtml = renderSharedV2Html(shared, 'story');
+  const magazineHtml = renderSharedV2Html(shared, 'magazine');
+  assert.ok(storyHtml.includes('class="figure-large"'));
+  assert.ok(!storyHtml.includes('class="page'));
+  assert.ok(magazineHtml.includes('@page{size:letter;margin:0}'));
+  assert.ok(magazineHtml.includes('class="page cover'));
 });

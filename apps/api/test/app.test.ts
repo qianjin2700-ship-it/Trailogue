@@ -186,6 +186,43 @@ test('GET /ready returns a safe 503 error when PostgreSQL is unavailable', async
   assert.doesNotMatch(response.body, /password leaked/);
 });
 
+test('legacy share URLs keep the V1 renderer while renderer=v2 opts into the shared engine', async () => {
+  const shared = {
+    tripTitle: 'Pacific Coast',
+    story: {
+      title: 'Pacific Coast', subtitle: '', preface: '', epilogue: '', shareSummary: null,
+      chapters: [{
+        chapterId: 'chapter-1', title: 'Arrival', dateLabel: null, locationLabel: 'California',
+        narrative: 'We reached the coast.', photoIds: ['photo-1'], captions: {},
+        locked: false, userEdited: false,
+      }],
+      meta: {
+        model: 'test', generatedAt: now.toISOString(), degraded: false, visionAvailable: true,
+        uncertainNotes: [], totalTokens: 1, callCount: 1,
+      },
+    },
+    photos: [{ id: 'photo-1', url: 'https://example.test/photo.jpg', width: 1600, height: 900 }],
+  };
+  const app = await createApp(createServices({
+    shares: {
+      create: async () => { throw new Error('Not used by this test'); },
+      revoke: async () => undefined,
+      resolve: async () => shared,
+    },
+  }));
+  const token = 'a'.repeat(43);
+  const legacy = await app.inject({ method: 'GET', url: `/share/${token}?view=magazine` });
+  const v2 = await app.inject({ method: 'GET', url: `/share/${token}?view=magazine&renderer=v2` });
+  await app.close();
+
+  assert.equal(legacy.statusCode, 200);
+  assert.ok(legacy.body.includes('class="cover"'));
+  assert.ok(!legacy.body.includes('@page{size:letter'));
+  assert.equal(v2.statusCode, 200);
+  assert.ok(v2.body.includes('@page{size:letter;margin:0}'));
+  assert.ok(v2.body.includes('class="page cover'));
+});
+
 test('unknown routes use the standard error envelope', async () => {
   const app = await createApp();
   const response = await app.inject({ method: 'GET', url: '/unknown' });

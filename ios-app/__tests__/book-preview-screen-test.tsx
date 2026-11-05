@@ -115,7 +115,7 @@ describe('<BookPreviewScreen />', () => {
     expect(storySource.html).toContain('https://example.test/original.jpg');
     expect(storySource.html).not.toContain('class="page');
 
-    expect(screen.getByRole('button', { name: 'Edit story' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit story' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Export PDF' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Try another design' })).toBeNull();
@@ -135,7 +135,7 @@ describe('<BookPreviewScreen />', () => {
     await waitFor(() => {
       const magazineSource = screen.getByTestId('book-web-preview').props.source as { html: string };
       expect(magazineSource.html).toContain('class="page');
-      expect(magazineSource.html).toContain('travel_magazine');
+      expect(magazineSource.html).toContain('class="page cover');
     });
     expect(mockUpdateBookLayout).not.toHaveBeenCalled();
   });
@@ -158,5 +158,15 @@ describe('<BookPreviewScreen />', () => {
       const source = screen.getByTestId('book-web-preview').props.source as { html: string };
       expect(source.html).toContain('https://example.test/fresh.jpg');
     });
+  });
+
+  it('offers a retry when the initial preview request fails', async () => {
+    mockGetBook.mockRejectedValueOnce(new Error('Network unavailable'));
+    const screen = render(<BookPreviewScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy());
+
+    fireEvent.press(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.getByTestId('book-web-preview')).toBeTruthy());
+    expect(mockGetBook).toHaveBeenCalledTimes(2);
   });
 });
