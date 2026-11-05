@@ -1,5 +1,5 @@
-import { createDocumentSource, type DocumentSource } from './source';
-import type { BlockPhoto } from './types';
+import { createDocumentSource, type DocumentSource } from './source.js';
+import type { BlockPhoto } from './types.js';
 
 /**
  * 2.0 组件系统的演示数据。
@@ -113,8 +113,44 @@ export function createMockSource(): DocumentSource {
         dateLabel: '10 月 5 日',
         locationLabel: '深圳湾西岸',
         narrative:
-          '最后一天我留到了日落。太阳落下去的时候，整片滩涂变成金色，鸟群一批一批地飞过。我没有再调参数，只是一直按快门。',
+          '最后一天我留到了日落。太阳落下去的时候，整片滩涂变成金色，鸟群一批一批地飞过。我再没有调参数，只是一直按快门。',
         photoIds: [id(7), id(8)],
+      },
+    ],
+  });
+}
+
+/**
+ * 一段紧凑的短旅行：2 章 4 张照片。
+ * 用来验证「短旅行不加分隔页」的规则（见 chapterDivider）。
+ */
+export function createCompactMockSource(): DocumentSource {
+  const photos = [placeholderPhoto(0, 0.75, 'Photo 1'), placeholderPhoto(1, 1.5, 'Photo 2')]
+    .concat(placeholderPhoto(2, 1.5, 'Photo 3'), placeholderPhoto(3, 1.78, 'Photo 4'))
+    .map((photo, index) => ({ ...photo, id: `compact-${index}`, caption: `Caption ${index + 1}` }));
+  return createDocumentSource({
+    language: 'zh',
+    title: '顺德的雨天',
+    subtitle: '两天的吃与走',
+    startDate: '2026-09-20',
+    endDate: '2026-09-21',
+    photos,
+    chapters: [
+      {
+        chapterId: 'compact-a',
+        title: '到得比雨早',
+        dateLabel: '9 月 20 日',
+        locationLabel: '清晖园',
+        narrative: '下车的时候雨刚停。园子里没什么人，石板路还是湿的，光从廊檐上漏下来。',
+        photoIds: ['compact-0', 'compact-1'],
+      },
+      {
+        chapterId: 'compact-b',
+        title: '一碗双皮奶',
+        dateLabel: '9 月 21 日',
+        locationLabel: '大良',
+        narrative: '第二天只做了一件事：把昨天路过的那家店再走一遍。',
+        photoIds: ['compact-2', 'compact-3'],
       },
     ],
   });

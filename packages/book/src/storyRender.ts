@@ -1,6 +1,6 @@
-import { classNames, escapeHtml, escapeMultiline, safeImageUrl } from './html';
-import { STORY_METRICS, STORY_TOKENS } from './tokens';
-import type { BlockPhoto, StoryBlock, StoryDocument } from './types';
+import { classNames, escapeHtml, escapeMultiline, safeImageUrl } from './html.js';
+import { STORY_METRICS, STORY_TOKENS } from './tokens.js';
+import type { BlockPhoto, StoryBlock, StoryDocument } from './types.js';
 
 export interface StoryRenderOptions {
   /**
@@ -18,6 +18,9 @@ export interface StoryRenderOptions {
  *  - 单栏、固定行长（700px），不随屏幕变宽而拉长句子；
  *  - 正文 16.5px / 1.75，段落之间 18px，章节之间 40px 并带分隔线；
  *  - 照片宽度只有三档（大图 / 并排 / 图组），不做自由浮动。
+ *
+ * 与 Magazine 不同，Story 是**流式文档**（没有固定页高），
+ * 所以不需要分页：长度天然由内容决定，不存在「文字溢出页」的问题。
  */
 export function renderStoryHtml(document: StoryDocument, options: StoryRenderOptions = {}): string {
   const t = STORY_TOKENS;
@@ -48,7 +51,6 @@ figcaption{color:${t.muted};font-size:.78rem;line-height:1.5;margin-top:8px;text
 .figure-pair img.photo{height:100%;object-fit:cover;aspect-ratio:3/4}
 .figure-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:24px 0}
 .figure-gallery img.photo{height:100%;object-fit:cover;aspect-ratio:1/1;border-radius:6px}
-.figure-gallery figure:first-child:nth-last-child(3){grid-column:span 1}
 .pull{border-left:3px solid ${t.accent};margin:32px 0;padding:4px 0 4px 18px}
 .pull p{color:${t.ink};font-family:${t.display};font-size:1.18rem;line-height:1.5;white-space:pre-wrap}
 .pull cite{color:${t.muted};display:block;font-size:.78rem;font-style:normal;margin-top:8px}

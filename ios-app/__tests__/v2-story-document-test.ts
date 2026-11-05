@@ -31,7 +31,8 @@ describe('Story 2.0 document builder', () => {
   it('全部照片都被排进图文块，没有丢图', () => {
     const total = figures(document).reduce((sum, block) => sum + block.photos.length, 0);
     expect(total).toBe(9);
-    expect(document.stats).toEqual({ chapterCount: 4, photoCount: 9 });
+    expect(document.stats).toMatchObject({ chapterCount: 4, photoCount: 9 });
+    expect(document.stats.textLength).toBeGreaterThan(100);
   });
 
   it('2 张照片切成并排，4 张照片切成「1 大图 + 3 图组」', () => {

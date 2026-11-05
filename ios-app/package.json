@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "0.1.0",
   "dependencies": {
+    "@trailogue/book": "file:../packages/book",
     "@trailogue/contracts": "file:../packages/contracts",
     "@trailogue/domain": "file:../packages/domain",
     "expo": "~57.0.31",
@@ -26,7 +27,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
-    "react-native-webview": "13.16.1"
+    "react-native-webview": "13.16.1",
+    "trailogue": "file:.."
   },
   "devDependencies": {
     "@testing-library/react-native": "^13.3.3",
@@ -58,7 +60,11 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "cacheDirectory": "<rootDir>/.jest-cache"
+    "cacheDirectory": "<rootDir>/.jest-cache",
+    "moduleNameMapper": {
+      "^@trailogue/book$": "<rootDir>/../packages/book/dist/index.js",
+      "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1"
+    }
   },
   "engines": {
     "node": ">=22.13"

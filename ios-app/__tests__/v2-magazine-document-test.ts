@@ -24,15 +24,11 @@ describe('Magazine 2.0 page composer', () => {
     });
   });
 
-  it('每一章都有独立的分隔页', () => {
+  it('分隔页按内容量与节奏出现，不是每章一页', () => {
     const dividers = document.pages.filter((page) => page.kind === 'chapter_divider');
-    expect(dividers).toHaveLength(4);
-    expect(dividers.map((page) => page.title)).toEqual([
-      '潮水退去之前',
-      '滩涂上的第一次相遇',
-      '午后的红树林',
-      '日落时的归途',
-    ]);
+    // 4 章 9 图 10 页 → R6 上限 1；只有 4 张照片的第 2 章够分量
+    expect(dividers).toHaveLength(1);
+    expect(dividers.map((page) => page.title)).toEqual(['滩涂上的第一次相遇']);
   });
 
   it('横构图主图用满幅 hero，剩余照片切成整版/拼版', () => {
@@ -40,15 +36,12 @@ describe('Magazine 2.0 page composer', () => {
     expect(kinds).toEqual([
       'cover',
       'trip_info',
-      'chapter_divider',
       'hero',
       'full_width',
       'chapter_divider',
       'hero',
       'three_collage',
-      'chapter_divider',
       'hero',
-      'chapter_divider',
       'hero',
       'full_width',
       'closing',
@@ -120,7 +113,7 @@ describe('Magazine 2.0 page composer', () => {
   it('照片切块规则不会留下孤立单图', () => {
     expect(splitPhotoRun(4)).toEqual([1, 3]);
     expect(splitPhotoRun(7)).toEqual([1, 3, 3]);
-    expect(splitPhotoRun(8)).toEqual([3, 3, 2]);
+    expect(splitPhotoRun(8)).toEqual([2, 3, 3]);
     expect(plateKind(1)).toBe('full_width');
     expect(plateKind(2)).toBe('two_spread');
     expect(plateKind(3)).toBe('three_collage');

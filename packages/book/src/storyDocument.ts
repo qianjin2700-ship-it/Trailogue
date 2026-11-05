@@ -1,7 +1,7 @@
-import { formatDateRange } from './format';
-import { chunkPhotos, resolvePhotos } from './layoutEngine';
-import { captionFor, chapterEyebrow, photoIndex, type DocumentSource } from './source';
-import type { StoryBlock, StoryDocument, StoryFigureLayout } from './types';
+import { formatDateRange } from './format.js';
+import { chunkPhotos, resolvePhotos } from './layoutEngine.js';
+import { captionFor, chapterEyebrow, photoIndex, type DocumentSource } from './source.js';
+import type { StoryBlock, StoryDocument, StoryFigureLayout } from './types.js';
 
 /**
  * Story 2.0 编排器。
@@ -39,6 +39,14 @@ export function buildStoryDocument(
   const highlights = new Map((options.highlights ?? []).map((item) => [item.chapterIndex, item]));
 
   source.chapters.forEach((chapter, chapterIndex) => {
+    const photos = resolvePhotos(chapter.photoIds, index).map((photo) => ({
+      ...photo,
+      caption: captionFor(chapter, photo),
+    }));
+    // 完全空白的章节不产生任何块（否则会留下一个没有标题的空 section）
+    const hasContent = Boolean(chapter.title || chapter.narrative || photos.length);
+    if (!hasContent) return;
+
     blocks.push({
       type: 'section',
       title: chapter.title,
@@ -46,10 +54,6 @@ export function buildStoryDocument(
       text: chapter.narrative || undefined,
     });
 
-    const photos = resolvePhotos(chapter.photoIds, index).map((photo) => ({
-      ...photo,
-      caption: captionFor(chapter, photo),
-    }));
     chunkPhotos(photos).forEach((chunk) => {
       blocks.push({ type: 'figure', layout: figureLayout(chunk.length), photos: chunk });
     });
@@ -77,6 +81,7 @@ export function buildStoryDocument(
         (total, block) => total + (block.type === 'figure' ? block.photos.length : 0),
         0,
       ),
+      textLength: source.stats.textLength,
     },
   };
 }

@@ -1,5 +1,5 @@
 /**
- * Trailogue 2.0 文档模型。
+ * Trailogue 2.0 文档模型（共享包版本）。
  *
  * 设计目标：**AI 只产出内容，版式由程序决定**。
  * 因此这里的类型全部是「内容块」而不是「像素」——
@@ -9,15 +9,16 @@
  *  - 存库（未来扩展）
  *  - 做 diff（改版前后对比）
  *  - 单元测试（不需要渲染器）
+ *  - 在 iOS / Node 服务端之间原样传输
  */
 
 /** 照片块。宽高是可选的：历史数据可能没有，缺省按 3:2 处理。 */
 export interface BlockPhoto {
   id: string;
   url: string;
-  caption?: string;
-  width?: number | null;
-  height?: number | null;
+  caption?: string | undefined;
+  width?: number | null | undefined;
+  height?: number | null | undefined;
 }
 
 export type PhotoAspectClass = 'portrait' | 'square' | 'landscape' | 'wide';
@@ -29,8 +30,8 @@ export type PhotoAspectClass = 'portrait' | 'square' | 'landscape' | 'wide';
 export interface StoryHeaderBlock {
   type: 'header';
   title: string;
-  subtitle?: string;
-  eyebrow?: string;
+  subtitle?: string | undefined;
+  eyebrow?: string | undefined;
 }
 
 export interface StoryParagraphBlock {
@@ -41,9 +42,9 @@ export interface StoryParagraphBlock {
 export interface StorySectionBlock {
   type: 'section';
   title: string;
-  text?: string;
+  text?: string | undefined;
   /** 章节元信息，例如「10 月 3 日 · 深圳湾」 */
-  eyebrow?: string;
+  eyebrow?: string | undefined;
 }
 
 export type StoryFigureLayout = 'large' | 'pair' | 'gallery';
@@ -57,7 +58,7 @@ export interface StoryFigureBlock {
 export interface StoryQuoteBlock {
   type: 'quote';
   text: string;
-  attribution?: string;
+  attribution?: string | undefined;
 }
 
 export interface StoryClosingBlock {
@@ -81,6 +82,8 @@ export interface StoryDocument {
   stats: {
     chapterCount: number;
     photoCount: number;
+    /** 正文字符数（不含标点压缩），用于页数预估与「短旅行更紧凑」判断 */
+    textLength: number;
   };
 }
 
@@ -103,20 +106,25 @@ export type MagazinePageKind =
 export interface MagazinePage {
   id: string;
   kind: MagazinePageKind;
-  chapterId?: string;
-  eyebrow?: string;
-  title?: string;
-  body?: string;
+  chapterId?: string | undefined;
+  eyebrow?: string | undefined;
+  title?: string | undefined;
+  body?: string | undefined;
   photos: BlockPhoto[];
   /** 文图页的图片在左还是右 */
-  align?: 'left' | 'right';
+  align?: 'left' | 'right' | undefined;
   /** 主图是竖构图还是横构图，决定 hero 的裁切策略 */
-  lead?: 'portrait' | 'landscape';
+  lead?: 'portrait' | 'landscape' | undefined;
+  /**
+   * 正文被拆页时的续页序号（0 表示首页或不拆）。
+   * 由编排器在正文超过单页容量时写入，渲染器不需要关心。
+   */
+  bodyPart?: number | undefined;
 }
 
 export interface MagazineTripInfo {
-  dateLabel?: string;
-  locationLabel?: string;
+  dateLabel?: string | undefined;
+  locationLabel?: string | undefined;
   photoCount: number;
   chapterCount: number;
 }
@@ -125,7 +133,7 @@ export interface MagazineDocument {
   version: 1;
   language: string;
   title: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
   trip: MagazineTripInfo;
   pages: MagazinePage[];
 }

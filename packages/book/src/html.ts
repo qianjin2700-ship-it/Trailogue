@@ -23,7 +23,7 @@ export function escapeMultiline(value: string): string {
   return escapeHtml(value).replace(/\r\n/g, '\n');
 }
 
-/** 只允许 http(s) 与 data: 图片，防止 javascript: 之类的伪协议进入 src */
+/** 只允许 http(s)、data: 与 file: 图片，防止 javascript: 之类的伪协议进入 src */
 export function safeImageUrl(value: string): string {
   const url = value.trim();
   if (/^https?:\/\//i.test(url)) return escapeHtml(url);

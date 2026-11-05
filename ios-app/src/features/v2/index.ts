@@ -1,74 +1,15 @@
 /**
- * Trailogue 2.0 组件系统（Story / Magazine）。
+ * Trailogue 2.0 组件系统 —— iOS 侧入口。
  *
- * 使用方式：
+ * Phase B0 起，实现已经搬到 monorepo 共享包 `@trailogue/book`
+ * （`packages/book`），因为服务端分享页、expo-print PDF 和 App 预览
+ * 必须读**同一份**文档模型与渲染器，复制一份必然漂移。
  *
- * ```ts
- * const source = sourceFromStory(story.content, photos, { coverPhotoId, startDate, endDate });
- * const storyHtml = renderStoryHtml(buildStoryDocument(source), { preview: true });
- * const magazineHtml = renderMagazineHtml(buildMagazineDocument(source), { preview: true });
- * ```
+ * 这里保留一个转发入口而不是让 app 代码直接 import 包名，有两个用处：
+ *  1. iOS 侧的 import 路径（`@/features/v2`）保持稳定，Phase C 接线时不用全量改；
+ *  2. 将来若需要 iOS 特化（例如注入 `Platform` 相关的图片处理），
+ *     只改这一个文件，不动包本身。
  *
- * 同一份 `source` 同时喂给两种形态，保证「所见即所得」：
- * App 里看到的、分享出去打开的、导出 PDF 的，是同一套排版。
- *
- * 本模块是纯函数集合，不依赖 React / React Native / 网络，
- * 因此可以在 App、Node 测试、未来的服务端分享页三处复用。
+ * 约束不变：本目录及其转发目标都不得 import React / React Native。
  */
-
-export type {
-  BlockPhoto,
-  MagazineDocument,
-  MagazinePage,
-  MagazinePageKind,
-  MagazineTripInfo,
-  PhotoAspectClass,
-  StoryBlock,
-  StoryClosingBlock,
-  StoryDocument,
-  StoryFigureBlock,
-  StoryFigureLayout,
-  StoryHeaderBlock,
-  StoryParagraphBlock,
-  StoryQuoteBlock,
-  StorySectionBlock,
-} from './types';
-
-export { MAGAZINE_TOKENS, PAGE, STORY_METRICS, STORY_TOKENS, type ThemeTokens } from './tokens';
-
-export {
-  chapterEyebrow,
-  createDocumentSource,
-  photoIndex,
-  sourceFromStory,
-  type CreateSourceInput,
-  type DocumentSource,
-  type PhotoLike,
-  type SourceChapter,
-  type StoryLike,
-} from './source';
-
-export {
-  chunkPhotos,
-  classifyAspect,
-  coverVisibleFraction,
-  DEFAULT_ASPECT,
-  photoAspect,
-  pickLead,
-  resolvePhotos,
-  splitPhotoRun,
-} from './layoutEngine';
-
-export { contentSummary, formatDateLabel, formatDateRange } from './format';
-
-export { buildStoryDocument, figureLayout, type StoryBuildOptions } from './storyDocument';
-export { renderStoryHtml, type StoryRenderOptions } from './storyRender';
-
-export {
-  buildMagazineDocument,
-  plateKind,
-  type MagazineBuildOptions,
-} from './magazineDocument';
-export { renderMagazineHtml, type MagazineRenderOptions } from './magazineRender';
-
-export { createMockPhotos, createMockSource, placeholderPhoto } from './mock';
+export * from '@trailogue/book';

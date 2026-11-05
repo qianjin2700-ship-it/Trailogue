@@ -1,4 +1,4 @@
-import type { BlockPhoto } from './types';
+import type { BlockPhoto } from './types.js';
 
 /**
  * 渲染器的输入归一化层。
@@ -29,8 +29,8 @@ export interface DocumentSource {
   coverPhotoId: string | null;
   startDate: string | null;
   endDate: string | null;
-  /** 章节数 + 照片数，供两种形态显示一致的内容量信息 */
-  stats: { chapterCount: number; photoCount: number };
+  /** 章节数 + 照片数 + 正文字符数，供两种形态显示一致的内容量信息 */
+  stats: { chapterCount: number; photoCount: number; textLength: number };
 }
 
 export interface CreateSourceInput {
@@ -73,6 +73,10 @@ export function createDocumentSource(input: CreateSourceInput): DocumentSource {
     chapters.flatMap((chapter) => chapter.photoIds)[0] ??
     photos[0]?.id ??
     null;
+  const textLength =
+    chapters.reduce((total, chapter) => total + chapter.narrative.length, 0) +
+    (trimmed(input.preface)?.length ?? 0) +
+    (trimmed(input.epilogue)?.length ?? 0);
   return {
     language: normalizeLanguage(input.language),
     title: input.title.trim() || 'Trailogue',
@@ -87,6 +91,7 @@ export function createDocumentSource(input: CreateSourceInput): DocumentSource {
     stats: {
       chapterCount: chapters.length,
       photoCount: referenced.size || photos.length,
+      textLength,
     },
   };
 }
@@ -95,7 +100,7 @@ export function createDocumentSource(input: CreateSourceInput): DocumentSource {
  * 1.0 数据的结构性描述。
  *
  * 这里**故意**不 import `StoryContentDTO` / `Photo`：
- *  - 2.0 的渲染层要能脱离 iOS 客户端复用（未来服务端分享页）；
+ *  - 2.0 的渲染层要能脱离 iOS 客户端复用（服务端分享页 / worker）；
  *  - 结构类型（structural typing）下，1.0 的 DTO 天然可赋值进来，无需适配代码；
  *  - 避免 v2 与 1.0 类型纠缠，1.0 将来改字段时 v2 不会被连带绑死。
  */

@@ -36,7 +36,7 @@
 |---|---|---|---|---|
 | 1 | Cover | `cover` | 整版照片 + 底部渐隐 + 左下书名/日期/副标题 | 永远第一页 |
 | 2 | Trip info | `trip_info` | 深色页，四格事实（日期 / 地点 / 照片数 / 章节数）+ 橙色短横 | 第二页（可关） |
-| 3 | Chapter divider | `chapter_divider` | 纯文字，大号章节号 + H2 + eyebrow + 短横 | 每章开头（可关） |
+| 3 | Chapter divider | `chapter_divider` | 纯文字，大号章节号 + H2 + eyebrow + 短横 | **按内容量与页面节奏决定**（Phase B0 规则，见 §11；不是每章一页） |
 | 4 | Hero | `hero` | 满幅横构图 + 底部渐隐 + 标题/正文压底 | 章节主图是横构图 |
 | 5 | Image + text | `image_text` | 左右分栏（1.06 : 0.94），竖构图主图占一栏 | 章节主图是竖构图；或纯文字章节 |
 | 6 | Full width | `full_width` | 整版单图 + 底部渐隐说明 | 章节剩余照片为 1 张 |
@@ -55,7 +55,7 @@
 cover
 trip_info                    ← options.tripInfo !== false
 for each chapter:
-    chapter_divider          ← options.chapterDividers !== false
+    chapter_divider          ← planChapterDividers()（Phase B0 规则 R1–R7，见 §11）
     lead page:
         photos.length === 0        → image_text(text-only)
         lead aspect < 1.05 (竖)    → image_text
@@ -133,10 +133,11 @@ buildMagazineDocument(source)  →  renderMagazineHtml(doc)  →  expo-print  �
 
 | 文件 | 职责 |
 |---|---|
-| `src/features/v2/magazineDocument.ts` | 页序与版式选择（纯函数） |
-| `src/features/v2/magazineRender.ts` | 10 个 `kind` → HTML/CSS |
-| `src/features/v2/layoutEngine.ts` | `pickLead` / `splitPhotoRun` / 宽高比 |
-| `src/features/v2/tokens.ts` | `MAGAZINE_TOKENS`、`PAGE`（Letter 尺寸） |
+| `packages/book/src/magazineDocument.ts` | 页序与版式选择（纯函数） |
+| `packages/book/src/magazineRender.ts` | 10 个 `kind` → HTML/CSS |
+| `packages/book/src/layoutEngine.ts` | `pickLead` / `splitPhotoRun` / 宽高比 / `figureFit` |
+| `packages/book/src/chapterDivider.ts` | 分隔页启用规则（Phase B0） |
+| `packages/book/src/tokens.ts` | `MAGAZINE_TOKENS`、`PAGE`（Letter 尺寸） |
 
 ```ts
 const doc = buildMagazineDocument(source, {
@@ -155,8 +156,8 @@ const html = renderMagazineHtml(doc, { preview: true });
 |---|---|
 | 封面第一页且带照片/标题 | `__tests__/v2-magazine-document-test.ts` |
 | 行程页是第二页，事实数据正确 | 同上 |
-| 每章一个分隔页（4 章 4 页） | 同上 |
-| 完整页序与预期数组完全一致（14 页） | 同上 |
+| 分隔页按规则出现（示例旅行 4 章 → 1 页） | `packages/book/test/chapter-divider.test.ts` |
+| 完整页序与预期数组完全一致（11 页） | 同上 |
 | 竖构图主图 → `image_text`，横构图 → `hero` | 同上 |
 | 无照片章节仍保留文字页 | 同上 |
 | 引语页插入 | 同上 |
@@ -171,8 +172,10 @@ const html = renderMagazineHtml(doc, { preview: true });
 
 ## 10. 预览产物
 
-- `docs/v2/previews/magazine-preview.html` —— 14 页完整画册（内联 SVG 占位照片，离线可看）
-- 生成命令：`node scripts/render-v2-previews.mjs`
+- `docs/v2/previews/magazine-preview.html` —— 11 页完整画册（4 章 9 图，1 个分隔页）
+- `docs/v2/previews/magazine-compact-preview.html` —— 7 页紧凑短途（2 章 4 图，**无**分隔页）
+- `docs/v2/previews/story-preview.html` —— 同一份 source 的图文版
+- 生成命令：`npm --prefix packages/book run build && node scripts/render-v2-previews.mjs`
 
 > 生成方式说明：仓库没有 ts-node/tsx，所以脚本用自带的 tsc 把 `features/v2` 编译到临时目录再 require，
 > 保证**预览与 App 用的是同一份渲染代码**，不是另外画的示意图。
@@ -184,3 +187,30 @@ const html = renderMagazineHtml(doc, { preview: true });
 1. 把 `features/v2` 提到 `packages/magazine`，让服务端分享页也能渲染 Magazine（当前服务端是另一份实现）；
 2. Pro 主题：同一套 `kind` + 不同的 `MAGAZINE_TOKENS` / 少量 CSS 变量，**不新增组件**；
 3. 高清 PDF（长边 1600 → 3000）作为 Pro 能力，走同一个渲染器只换 `MAX_PRINT_EDGE`。
+
+---
+
+## 11. Chapter Divider 启用规则（Phase B0 冻结）
+
+> 原文「每章开头（可关）」在 Phase B0 被推翻：机械地每章一页会把页数翻倍，
+> 短旅行会变成一堆几乎相同的空页。规则实现见 `packages/book/src/chapterDivider.ts`，
+> 阈值集中在 `DIVIDER_RULES` 里，测试逐条锁定。
+
+| 规则 | 条件 | 结果 |
+|---|---|---|
+| R1 | 只有 1 章 | 不插 |
+| R2 | 预计总页数 < 8 | 不插（短旅行保持紧凑） |
+| R3 | 全书照片 < 6 | 不插 |
+| R4 | 第 1 章 | 不插（封面 + 行程页 + 首章主图已经承担开场） |
+| R5 | 该章照片 < 4 **且** 正文 < 700 字 | 不插（分量不够） |
+| R6 | 数量上限 | `min(3, ⌊章节数/2⌋, ⌊页数/8⌋)` |
+| R7 | 与上一个分隔页之间内容页 < 3 | 冲突时保留分量更重的一章 |
+
+示例（`createMockSource`，4 章 9 图 10 页）：
+
+```
+chapter-tide     → first-chapter
+chapter-flats    → ✅ 插（4 张照片）
+chapter-mangrove → below-weight（1 张照片，30 字）
+chapter-sunset   → below-weight（2 张照片，75 字）
+```

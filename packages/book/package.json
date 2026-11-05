@@ -1,0 +1,26 @@
+{
+  "name": "@trailogue/book",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Trailogue 2.0 共享排版引擎：Story / Magazine 文档模型、确定性编排与 HTML 渲染器（无 React、无平台依赖）",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src test --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import ../../scripts/node-runtime-bootstrap.mjs --import tsx --test test/*.test.ts"
+  }
+}
