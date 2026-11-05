@@ -51,4 +51,3 @@ Automated scenarios cover 1, 2-3, 4, 8-12, 20+ and 30 photos; all portrait, all 
 panorama and mixed orientation; short/long text and titles; one, multiple and 12 chapters; missing
 optional fields and missing cover selection. Structural, geometry, page-order, text-capacity and
 repeat-render determinism invariants are checked independently.
-

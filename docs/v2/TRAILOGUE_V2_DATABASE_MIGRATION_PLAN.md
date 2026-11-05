@@ -38,4 +38,3 @@ JSON in place.
 6. Deploy backward-compatible server code before a client begins writing new optional fields.
 
 Phase C performs none of these operations and requires no Neon action.
-

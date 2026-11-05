@@ -52,4 +52,3 @@ Before a Phase C commit is releasable:
 - legacy share renderer tests and the new opt-in V2 share tests must both pass;
 - Apple sign-in, session restoration, trip CRUD, photos, story generation and PDF export client tests
   must remain green.
-

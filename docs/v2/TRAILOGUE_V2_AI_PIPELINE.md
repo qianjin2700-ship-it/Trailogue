@@ -59,4 +59,3 @@ not invent prose locally or persist mock content.
 This behavior is deterministic, preserves user data, and keeps the existing 1.0 generation contract
 unchanged. A future `/v2` generation endpoint may add a clearly marked metadata-only draft, but that
 requires a separate product decision and additive contract.
-
